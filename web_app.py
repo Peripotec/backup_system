@@ -207,19 +207,74 @@ def api_get_inventory():
 def api_add_group():
     data = request.json
     inv = load_inventory()
+    
+    # Validate required fields
+    name = data.get("name", "").strip()
+    vendor = data.get("vendor", "").strip()
+    if not name or not vendor:
+        return jsonify({"error": "Nombre y vendor son requeridos"}), 400
+    
+    # Check for duplicate
+    for g in inv.get("groups", []):
+        if g["name"] == name:
+            return jsonify({"error": "Ya existe un grupo con ese nombre"}), 400
+    
     new_group = {
-        "name": data.get("name"),
-        "vendor": data.get("vendor"),
+        "name": name,
+        "vendor": vendor,
         "credentials": {
-            "user": data.get("user"),
-            "pass": data.get("pass"),
+            "user": data.get("user", ""),
+            "pass": data.get("pass", ""),
             "extra_pass": data.get("extra_pass", "")
         },
         "devices": []
     }
+    if "groups" not in inv:
+        inv["groups"] = []
     inv["groups"].append(new_group)
     save_inventory(inv)
     return jsonify({"status": "ok", "message": "Grupo creado"})
+
+@app.route('/api/inventory/group/<group_name>', methods=['PUT'])
+@requires_auth
+def api_edit_group(group_name):
+    """Edit an existing group."""
+    data = request.json
+    inv = load_inventory()
+    for g in inv.get("groups", []):
+        if g["name"] == group_name:
+            g["vendor"] = data.get("vendor", g["vendor"])
+            g["credentials"] = {
+                "user": data.get("user", g["credentials"].get("user", "")),
+                "pass": data.get("pass", g["credentials"].get("pass", "")),
+                "extra_pass": data.get("extra_pass", g["credentials"].get("extra_pass", ""))
+            }
+            save_inventory(inv)
+            return jsonify({"status": "ok", "message": "Grupo actualizado"})
+    return jsonify({"error": "Grupo no encontrado"}), 404
+
+@app.route('/api/inventory/group/<group_name>', methods=['DELETE'])
+@requires_auth
+def api_delete_group(group_name):
+    """Delete a group and all its devices."""
+    inv = load_inventory()
+    original_len = len(inv.get("groups", []))
+    inv["groups"] = [g for g in inv.get("groups", []) if g["name"] != group_name]
+    if len(inv["groups"]) < original_len:
+        save_inventory(inv)
+        return jsonify({"status": "ok", "message": "Grupo eliminado"})
+    return jsonify({"error": "Grupo no encontrado"}), 404
+
+@app.route('/api/vendors')
+def api_get_vendors():
+    """Return list of available vendor plugins."""
+    import os
+    vendors_dir = os.path.join(os.path.dirname(__file__), 'vendors')
+    vendors = []
+    for f in os.listdir(vendors_dir):
+        if f.endswith('.py') and not f.startswith('_') and f != 'base_vendor.py':
+            vendors.append(f.replace('.py', ''))
+    return jsonify(vendors)
 
 @app.route('/api/inventory/device', methods=['POST'])
 @requires_auth
