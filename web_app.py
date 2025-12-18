@@ -211,8 +211,13 @@ def api_add_group():
     # Validate required fields
     name = data.get("name", "").strip()
     vendor = data.get("vendor", "").strip()
+    credential_ids = data.get("credential_ids", [])
+    
     if not name or not vendor:
         return jsonify({"error": "Nombre y vendor son requeridos"}), 400
+    
+    if not credential_ids:
+        return jsonify({"error": "Seleccione al menos una credencial"}), 400
     
     # Check for duplicate
     for g in inv.get("groups", []):
@@ -222,11 +227,7 @@ def api_add_group():
     new_group = {
         "name": name,
         "vendor": vendor,
-        "credentials": {
-            "user": data.get("user", ""),
-            "pass": data.get("pass", ""),
-            "extra_pass": data.get("extra_pass", "")
-        },
+        "credential_ids": credential_ids,
         "devices": []
     }
     if "groups" not in inv:
@@ -243,12 +244,9 @@ def api_edit_group(group_name):
     inv = load_inventory()
     for g in inv.get("groups", []):
         if g["name"] == group_name:
-            g["vendor"] = data.get("vendor", g["vendor"])
-            g["credentials"] = {
-                "user": data.get("user", g["credentials"].get("user", "")),
-                "pass": data.get("pass", g["credentials"].get("pass", "")),
-                "extra_pass": data.get("extra_pass", g["credentials"].get("extra_pass", ""))
-            }
+            g["vendor"] = data.get("vendor", g.get("vendor", ""))
+            if "credential_ids" in data:
+                g["credential_ids"] = data["credential_ids"]
             save_inventory(inv)
             return jsonify({"status": "ok", "message": "Grupo actualizado"})
     return jsonify({"error": "Grupo no encontrado"}), 404
