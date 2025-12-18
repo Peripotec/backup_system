@@ -117,9 +117,11 @@ class BackupEngine:
             )
             return {"status": "ERROR", "hostname": hostname, "error": str(e)}
 
-    def run(self, target_group=None):
+    def run(self, target_group=None, target_device=None):
         """
         Main runner. Spawns threads.
+        target_group: filter by group name
+        target_device: filter by device hostname
         """
         log.info(f"Starting Backup Run (Dry Run={self.dry_run})")
         run_id = self.db.start_run()
@@ -139,6 +141,10 @@ class BackupEngine:
                     continue
 
                 for device in group['devices']:
+                    # Filter by specific device if requested
+                    if target_device and device['hostname'] != target_device:
+                        continue
+                    
                     # Merge credentials
                     # Device specific creds override group creds
                     full_device_info = device.copy()

@@ -47,6 +47,7 @@ def index():
     db = get_db()
     stats = db.get_stats_24h()
     jobs = db.get_recent_jobs(50)
+    inv = load_inventory()
     
     try:
         total, used, free = shutil.disk_usage(BACKUP_ROOT_DIR)
@@ -58,13 +59,13 @@ def index():
     except:
         disk_info = {"percent": 0, "free_gb": 0, "total_gb": 0}
 
-    return render_template('dashboard.html', stats=stats, jobs=jobs, disk=disk_info, backup_status=backup_status)
+    return render_template('dashboard.html', stats=stats, jobs=jobs, disk=disk_info, backup_status=backup_status, inventory=inv)
 
 # ==========================
 # API: BACKUP TRIGGER
 # ==========================
 
-def run_backup_async(group=None):
+def run_backup_async(group=None, device=None):
     global backup_status
     backup_status = {"running": True, "message": "Iniciando backup...", "progress": 10}
     try:
@@ -72,7 +73,7 @@ def run_backup_async(group=None):
         engine = BackupEngine(dry_run=False)
         backup_status["message"] = "Ejecutando backups..."
         backup_status["progress"] = 50
-        engine.run(target_group=group)
+        engine.run(target_group=group, target_device=device)
         backup_status = {"running": False, "message": "Completado!", "progress": 100}
     except Exception as e:
         backup_status = {"running": False, "message": f"Error: {e}", "progress": 0}
@@ -85,7 +86,8 @@ def trigger_backup():
         return jsonify({"error": "Backup already running", "running": True})
     
     group = request.args.get('group')
-    thread = threading.Thread(target=run_backup_async, args=(group,), daemon=True)
+    device = request.args.get('device')
+    thread = threading.Thread(target=run_backup_async, args=(group, device), daemon=True)
     thread.start()
     return jsonify({"status": "started", "message": "Backup iniciado", "running": True})
 
