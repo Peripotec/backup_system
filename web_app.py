@@ -144,6 +144,9 @@ def update_backup_status(device_name, status, message=""):
     elif status == "log":
         # Generic log message
         backup_status["logs"].append({"type": "info", "msg": f"[{device_name}] {message}"})
+    elif status == "debug":
+        # Real-time CLI debug output from vendor plugin
+        backup_status["logs"].append({"type": "debug", "msg": message})
     
     # Update progress based on completed
     total = len(backup_status["completed"]) + len(backup_status["errors"])

@@ -84,6 +84,15 @@ class BackupVendor(ABC):
         # Flags - override in subclass if needed
         self.git_enabled = True  # Default to True for text backups
         self.protocol = "telnet"  # Default
+        
+        # Debug logging callback - set by engine for real-time CLI output
+        self.log_callback = None
+    
+    def _debug_log(self, message):
+        """Send debug message to callback and standard log."""
+        log.debug(message)
+        if self.log_callback:
+            self.log_callback(message)
 
     @abstractmethod
     def backup(self):
@@ -156,10 +165,13 @@ class BackupVendor(ABC):
         Basic Telnet connection helper.
         Returns a Telnet-compatible object.
         """
+        self._debug_log(f"Conectando a {self.ip}:{self.port}...")
         try:
             tn = telnetlib_Telnet(self.ip, self.port, timeout=10)
+            self._debug_log(f"✓ Conexión establecida con {self.ip}")
             return tn
         except Exception as e:
+            self._debug_log(f"✗ Error de conexión: {e}")
             raise ConnectionError(f"Telnet connection failed to {self.ip}: {e}")
 
     def read_until(self, tn, expected_list, timeout=10):
@@ -168,4 +180,17 @@ class BackupVendor(ABC):
         index, match, text = tn.expect(expected_bytes, timeout)
         if isinstance(text, bytes):
             text = text.decode('ascii', errors='ignore')
+        
+        # Log the received output (truncate if too long)
+        if text:
+            preview = text.strip()[-200:] if len(text) > 200 else text.strip()
+            if preview:
+                self._debug_log(f"← {preview}")
+        
         return index, text
+    
+    def send_command(self, tn, command, hide=False):
+        """Send a command and log it."""
+        display = "****" if hide else command.strip()
+        self._debug_log(f"→ {display}")
+        tn.write(command.encode('ascii') + b"\n")

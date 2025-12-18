@@ -72,15 +72,13 @@ class BackupEngine:
             if not VendorClass:
                 raise ValueError(f"Unknown vendor: {vendor_type}")
             
-            # Log connecting
-            if self.status_callback:
-                self.status_callback(hostname, "connecting")
-            
             plugin = VendorClass(device, self.db, self.git)
             
-            # Log running backup
+            # Connect debug log callback to plugin
             if self.status_callback:
-                self.status_callback(hostname, "log", "Ejecutando backup...")
+                def plugin_log(msg):
+                    self.status_callback(hostname, "debug", msg)
+                plugin.log_callback = plugin_log
             
             archive_path, size, changed = plugin.backup()
             

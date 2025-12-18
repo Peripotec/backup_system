@@ -15,12 +15,15 @@ class Huawei(BackupVendor):
         tn = self.connect_telnet()
         
         # Login
+        self._debug_log("Esperando prompt de login...")
         self.read_until(tn, ["name:", "Username:"])
-        tn.write(self.user.encode('ascii') + b"\n")
+        self.send_command(tn, self.user, hide=False)
         
+        self._debug_log("Enviando credenciales...")
         self.read_until(tn, ["Password:"])
-        tn.write(self.password.encode('ascii') + b"\n")
+        self.send_command(tn, self.password, hide=True)
         
+        self._debug_log("Esperando prompt de sistema...")
         self.read_until(tn, [">", "]"])
         
         # TFTP Upload with unique filename to avoid race conditions
@@ -28,27 +31,34 @@ class Huawei(BackupVendor):
         temp_filename = f"{self.hostname}.zip"
         
         # Command: tftp <server> put <local> <remote>
-        cmd = f"tftp {SERVER_IP} put {config_filename} {temp_filename}\n"
-        tn.write(cmd.encode('ascii'))
+        cmd = f"tftp {SERVER_IP} put {config_filename} {temp_filename}"
+        self._debug_log(f"Ejecutando transferencia TFTP...")
+        self.send_command(tn, cmd)
         
         # Wait for transfer to complete
+        self._debug_log("Esperando fin de transferencia (max 60s)...")
         self.read_until(tn, [">", "]"], timeout=60)
         
-        tn.write(b"quit\n")
+        self._debug_log("Cerrando sesión...")
+        self.send_command(tn, "quit")
         tn.close()
         
         # Verify file arrival
         zip_path = os.path.join(TFTP_ROOT, temp_filename)
         
-        for _ in range(10):
+        self._debug_log(f"Verificando archivo en {zip_path}...")
+        for i in range(10):
             if os.path.exists(zip_path):
+                self._debug_log(f"✓ Archivo encontrado")
                 break
+            self._debug_log(f"Esperando archivo... ({i+1}/10)")
             time.sleep(1)
         
         if not os.path.exists(zip_path):
             raise FileNotFoundError(f"Backup file not found: {zip_path}")
         
         # Extract cfg from zip
+        self._debug_log("Extrayendo configuración del ZIP...")
         cfg_content = self._extract_cfg_from_zip(zip_path)
         
         if cfg_content:
@@ -57,16 +67,17 @@ class Huawei(BackupVendor):
             with open(temp_cfg, 'w', encoding='utf-8', errors='ignore') as f:
                 f.write(cfg_content)
             
-            log.info(f"Extracted cfg from zip: {len(cfg_content)} bytes")
+            self._debug_log(f"✓ Extraído: {len(cfg_content)} bytes")
             
             # Clean up zip file
             os.remove(zip_path)
             
             # Process as TEXT for Git versioning
+            self._debug_log("Procesando archivo para versionado...")
             return self.process_file(temp_cfg, is_text=True)
         else:
             # Fallback: process as binary if extraction fails
-            log.warning(f"Could not extract cfg from zip, saving as binary")
+            self._debug_log("⚠ No se pudo extraer cfg, guardando como binario")
             return self.process_file(zip_path, is_text=False)
     
     def _extract_cfg_from_zip(self, zip_path):
@@ -78,7 +89,7 @@ class Huawei(BackupVendor):
             with zipfile.ZipFile(zip_path, 'r') as zf:
                 # List files in zip
                 names = zf.namelist()
-                log.debug(f"Files in zip: {names}")
+                self._debug_log(f"Archivos en ZIP: {names}")
                 
                 # Look for cfg file (vrpcfg.cfg, startup.cfg, etc.)
                 cfg_file = None
@@ -96,8 +107,8 @@ class Huawei(BackupVendor):
                     return content.decode('utf-8', errors='ignore')
                     
         except zipfile.BadZipFile:
-            log.error(f"Invalid zip file: {zip_path}")
+            self._debug_log(f"✗ ZIP inválido: {zip_path}")
         except Exception as e:
-            log.error(f"Error extracting zip: {e}")
+            self._debug_log(f"✗ Error extrayendo: {e}")
         
         return None
