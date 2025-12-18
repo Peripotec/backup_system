@@ -7,13 +7,43 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        :root {
+            --bg: #f8f9fa;
+            --card-bg: #fff;
+            --text: #212529;
+            --muted: #6c757d;
+        }
+
+        [data-theme="dark"] {
+            --bg: #1a1a2e;
+            --card-bg: #16213e;
+            --text: #e9ecef;
+            --muted: #adb5bd;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            transition: all 0.3s;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .text-muted {
+            color: var(--muted) !important;
+        }
+
         .log-panel {
             font-family: monospace;
             font-size: 10px;
-            background: #1e1e1e;
+            background: #0d1117;
             color: #0f0;
             min-height: 60px;
-            max-height: 120px;
+            max-height: 100px;
             overflow-y: auto;
         }
 
@@ -37,10 +67,19 @@
             max-height: 200px;
             overflow-y: auto;
         }
+
+        .chart-card {
+            height: 140px;
+        }
+
+        .theme-toggle {
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
     </style>
 </head>
 
-<body class="bg-light">
+<body>
 
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-3">
         <div class="container-fluid">
@@ -49,6 +88,9 @@
                 <li class="nav-item"><a class="nav-link active" href="/">Dashboard</a></li>
                 <li class="nav-item"><a class="nav-link" href="/inventory">Inventario</a></li>
                 <li class="nav-item"><a class="nav-link" href="/files">Archivos</a></li>
+                <li class="nav-item ms-3">
+                    <span class="nav-link theme-toggle" onclick="toggleTheme()" title="Cambiar tema">🌓</span>
+                </li>
             </ul>
         </div>
     </nav>
@@ -88,51 +130,50 @@
 
         <!-- Stats Row -->
         <div class="row mb-3">
-            <div class="col-md-2">
-                <div class="card p-2 text-center">
-                    <small class="text-muted">Disco</small>
-                    <div class="progress" style="height: 15px;">
+            <div class="col-md-4">
+                <div class="card p-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>💾 Disco</span>
+                        <small class="text-muted">{{ disk.free_gb }} GB libres</small>
+                    </div>
+                    <div class="progress mt-1" style="height: 12px;">
                         <div class="progress-bar"
                             style="width: {{ disk.percent }}%; background-color: {{ '#dc3545' if disk.percent > 90 else '#ffc107' if disk.percent > 70 else '#198754' }};">
-                            {{ disk.percent }}%
+                            {{ disk.percent }}%</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card p-2 text-center">
+                    <small class="text-muted">Últimas 24h</small>
+                    <div class="d-flex justify-content-around mt-1">
+                        <div>
+                            <h3 class="text-success mb-0">{{ stats.get('SUCCESS', 0) }}</h3><small
+                                class="text-success">✓ OK</small>
+                        </div>
+                        <div>
+                            <h3 class="text-danger mb-0">{{ stats.get('ERROR', 0) }}</h3><small class="text-danger">✗
+                                Error</small>
                         </div>
                     </div>
-                    <small class="text-muted">{{ disk.free_gb }} GB libres</small>
                 </div>
             </div>
-            <div class="col-md-2">
-                <div class="card p-2 text-center">
-                    <h4 class="text-success mb-0">{{ stats.get('SUCCESS', 0) }}</h4>
-                    <small class="text-muted">Exitosos (24h)</small>
-                </div>
-            </div>
-            <div class="col-md-2">
-                <div class="card p-2 text-center">
-                    <h4 class="text-danger mb-0">{{ stats.get('ERROR', 0) }}</h4>
-                    <small class="text-muted">Fallidos (24h)</small>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card p-2">
-                    <small class="text-muted text-center">General</small>
-                    <canvas id="chartPie" height="60"></canvas>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card p-2">
-                    <small class="text-muted text-center">Por Grupo</small>
-                    <canvas id="chartGroups" height="60"></canvas>
+            <div class="col-md-4">
+                <div class="card p-2 chart-card">
+                    <small class="text-muted text-center d-block">General</small>
+                    <canvas id="chartPie"></canvas>
                 </div>
             </div>
         </div>
 
-        <!-- Jobs Table with Pagination -->
+        <!-- Per-Group Charts -->
+        <div class="row mb-3" id="group-charts-row"></div>
+
+        <!-- Jobs Table -->
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center py-2">
                 <span>📋 Últimas Ejecuciones</span>
-                <div>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="loadJobs(1)">🔄</button>
-                </div>
+                <button class="btn btn-sm btn-outline-secondary" onclick="loadJobs(1)">🔄</button>
             </div>
             <div class="card-body p-0">
                 <table class="table table-striped table-hover table-sm mb-0">
@@ -158,7 +199,7 @@
         </div>
     </div>
 
-    <!-- Backup Modal with Collapsible Groups -->
+    <!-- Backup Modal -->
     <div class="modal fade" id="backupModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
@@ -167,42 +208,37 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body" style="max-height: 400px; overflow-y: auto;">
-                    <div class="mb-2">
-                        <input type="text" class="form-control form-control-sm" id="device-search"
-                            placeholder="🔍 Buscar equipo..." onkeyup="filterDevices()">
-                    </div>
+                    <input type="text" class="form-control form-control-sm mb-2" id="device-search"
+                        placeholder="🔍 Buscar..." onkeyup="filterDevices()">
                     <div class="form-check mb-2">
                         <input class="form-check-input" type="checkbox" id="select-all" onchange="toggleAll(this)">
-                        <label class="form-check-label fw-bold" for="select-all">🌐 Seleccionar Todos</label>
+                        <label class="form-check-label fw-bold" for="select-all">🌐 Todos</label>
                     </div>
                     <hr class="my-2">
-                    <div id="groups-container">
-                        {% for group in inventory.groups %}
-                        <div class="mb-2 group-item">
-                            <div class="d-flex align-items-center group-collapse" data-bs-toggle="collapse"
-                                data-bs-target="#collapse-{{ loop.index }}">
-                                <input class="form-check-input me-2 group-check" type="checkbox"
-                                    data-group="{{ group.name }}"
-                                    onclick="event.stopPropagation(); toggleGroup('{{ group.name }}')">
-                                <span class="fw-bold">📁 {{ group.name }}</span>
-                                <span class="badge bg-info ms-2">{{ group.vendor }}</span>
-                                <span class="badge bg-secondary ms-1">{{ group.devices|length }}</span>
-                                <span class="ms-auto">▼</span>
-                            </div>
-                            <div class="collapse device-list ms-4" id="collapse-{{ loop.index }}">
-                                {% for device in group.devices %}
-                                <div class="form-check device-item" data-name="{{ device.hostname|lower }}">
-                                    <input class="form-check-input device-check" type="checkbox"
-                                        data-group="{{ group.name }}" data-device="{{ device.hostname }}"
-                                        value="{{ device.hostname }}">
-                                    <label class="form-check-label"><small>{{ device.hostname }} ({{ device.ip
-                                            }})</small></label>
-                                </div>
-                                {% endfor %}
-                            </div>
+                    {% for group in inventory.groups %}
+                    <div class="mb-2 group-item">
+                        <div class="d-flex align-items-center group-collapse" data-bs-toggle="collapse"
+                            data-bs-target="#collapse-{{ loop.index }}">
+                            <input class="form-check-input me-2 group-check" type="checkbox"
+                                data-group="{{ group.name }}"
+                                onclick="event.stopPropagation(); toggleGroup('{{ group.name }}')">
+                            <span class="fw-bold">📁 {{ group.name }}</span>
+                            <span class="badge bg-info ms-2">{{ group.vendor }}</span>
+                            <span class="badge bg-secondary ms-1">{{ group.devices|length }}</span>
+                            <span class="ms-auto">▼</span>
                         </div>
-                        {% endfor %}
+                        <div class="collapse device-list ms-4" id="collapse-{{ loop.index }}">
+                            {% for device in group.devices %}
+                            <div class="form-check device-item" data-name="{{ device.hostname|lower }}">
+                                <input class="form-check-input device-check" type="checkbox"
+                                    data-group="{{ group.name }}" value="{{ device.hostname }}">
+                                <label class="form-check-label"><small>{{ device.hostname }} ({{ device.ip
+                                        }})</small></label>
+                            </div>
+                            {% endfor %}
+                        </div>
                     </div>
+                    {% endfor %}
                 </div>
                 <div class="modal-footer py-2">
                     <span class="me-auto text-muted">Seleccionados: <strong id="selected-count">0</strong></span>
@@ -216,149 +252,84 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // Theme Toggle
+        function toggleTheme() {
+            const html = document.documentElement;
+            const current = html.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        }
+        (function () {
+            const saved = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', saved);
+        })();
+
         const backupModal = new bootstrap.Modal(document.getElementById('backupModal'));
-        let currentPage = 1;
 
-        // Device Selection
-        function toggleAll(cb) {
-            document.querySelectorAll('.device-check, .group-check').forEach(el => el.checked = cb.checked);
-            updateCount();
-        }
-
-        function toggleGroup(name) {
-            const cb = document.querySelector(`.group-check[data-group="${name}"]`);
-            document.querySelectorAll(`.device-check[data-group="${name}"]`).forEach(el => el.checked = cb.checked);
-            updateCount();
-        }
-
-        function updateCount() {
-            const n = document.querySelectorAll('.device-check:checked').length;
-            document.getElementById('selected-count').textContent = n;
-            document.getElementById('btn-run').disabled = n === 0;
-        }
-
-        function filterDevices() {
-            const q = document.getElementById('device-search').value.toLowerCase();
-            document.querySelectorAll('.device-item').forEach(el => {
-                el.style.display = el.dataset.name.includes(q) ? '' : 'none';
-            });
-        }
-
-        document.querySelectorAll('.device-check').forEach(el => el.addEventListener('change', updateCount));
+        function toggleAll(cb) { document.querySelectorAll('.device-check, .group-check').forEach(function (el) { el.checked = cb.checked; }); updateCount(); }
+        function toggleGroup(name) { var cb = document.querySelector('.group-check[data-group="' + name + '"]'); document.querySelectorAll('.device-check[data-group="' + name + '"]').forEach(function (el) { el.checked = cb.checked; }); updateCount(); }
+        function updateCount() { var n = document.querySelectorAll('.device-check:checked').length; document.getElementById('selected-count').textContent = n; document.getElementById('btn-run').disabled = n === 0; }
+        function filterDevices() { var q = document.getElementById('device-search').value.toLowerCase(); document.querySelectorAll('.device-item').forEach(function (el) { el.style.display = el.dataset.name.includes(q) ? '' : 'none'; }); }
+        document.querySelectorAll('.device-check').forEach(function (el) { el.addEventListener('change', updateCount); });
 
         function runSelectedBackup() {
-            const selected = Array.from(document.querySelectorAll('.device-check:checked')).map(el => el.value);
+            var selected = Array.from(document.querySelectorAll('.device-check:checked')).map(function (el) { return el.value; });
             if (selected.length === 0) return alert('Seleccione equipos');
-            if (!confirm(`¿Backup de ${selected.length} equipo(s)?`)) return;
+            if (!confirm('¿Backup de ' + selected.length + ' equipo(s)?')) return;
             backupModal.hide();
-
             document.getElementById('btn-backup').disabled = true;
             document.getElementById('btn-cancel').style.display = 'inline-block';
             document.getElementById('log-panel').style.display = 'block';
             document.getElementById('log-panel').innerHTML = '';
-
-            const url = selected.length === 1 ? '/api/backup/trigger?device=' + encodeURIComponent(selected[0]) : '/api/backup/trigger';
-            addLog('info', `Iniciando ${selected.length} backup(s)...`);
-            fetch(url).then(r => r.json()).then(d => d.error ? addLog('error', d.error) : pollStatus());
+            var url = selected.length === 1 ? '/api/backup/trigger?device=' + encodeURIComponent(selected[0]) : '/api/backup/trigger';
+            addLog('info', 'Iniciando ' + selected.length + ' backup(s)...');
+            fetch(url).then(function (r) { return r.json(); }).then(function (d) { d.error ? addLog('error', d.error) : pollStatus(); });
         }
 
-        function cancelBackup() {
-            if (confirm('¿Cancelar?')) fetch('/api/backup/cancel').then(r => r.json()).then(d => addLog('info', d.message));
-        }
+        function cancelBackup() { if (confirm('¿Cancelar?')) fetch('/api/backup/cancel').then(function (r) { return r.json(); }).then(function (d) { addLog('info', d.message); }); }
 
         function pollStatus() {
-            fetch('/api/backup/status').then(r => r.json()).then(d => {
+            fetch('/api/backup/status').then(function (r) { return r.json(); }).then(function (d) {
                 document.getElementById('backup-status').textContent = d.message;
                 document.getElementById('progress-bar').style.width = d.progress + '%';
-                if (d.current_device) addLog('info', `→ ${d.current_device}`);
+                if (d.current_device) addLog('info', '→ ' + d.current_device);
                 if (d.running && !d.cancelled) setTimeout(pollStatus, 2000);
-                else {
-                    document.getElementById('btn-backup').disabled = false;
-                    document.getElementById('btn-cancel').style.display = 'none';
-                    addLog('info', '✓ Finalizado');
-                    setTimeout(() => loadJobs(1), 2000);
-                }
+                else { document.getElementById('btn-backup').disabled = false; document.getElementById('btn-cancel').style.display = 'none'; addLog('info', '✓ Finalizado'); setTimeout(function () { loadJobs(1); }, 2000); }
             });
         }
 
-        function addLog(t, m) {
-            const p = document.getElementById('log-panel');
-            p.innerHTML += `<div class="log-${t}">${m}</div>`;
-            p.scrollTop = p.scrollHeight;
-        }
+        function addLog(t, m) { var p = document.getElementById('log-panel'); p.innerHTML += '<div class="log-' + t + '">' + m + '</div>'; p.scrollTop = p.scrollHeight; }
 
-        // Paginated Jobs
         function loadJobs(page) {
-            currentPage = page;
-            fetch('/api/jobs?page=' + page + '&per_page=15').then(r => r.json()).then(data => {
-                const tb = document.getElementById('jobs-table');
-                tb.innerHTML = '';
-                data.jobs.forEach(j => {
-                    const ts = j.timestamp ? j.timestamp.split('.')[0] : '';
-                    const st = j.status === 'SUCCESS' ? '<span class="badge bg-success">OK</span>' : '<span class="badge bg-danger">ERR</span>';
-                    const msg = (j.message || '').substring(0, 30);
-                    tb.innerHTML += `<tr>
-                <td><small>${ts}</small></td>
-                <td><strong>${j.hostname}</strong></td>
-                <td><small>${j.group_name || '-'}</small></td>
-                <td>${st}</td>
-                <td><small class="text-muted">${msg}</small></td>
-                <td>
-                    <a href="/files/${j.hostname}" class="btn btn-sm btn-outline-primary py-0">📁</a>
-                    <a href="/diff/${j.vendor}/${j.hostname}" class="btn btn-sm btn-outline-secondary py-0">📝</a>
-                    <button class="btn btn-sm btn-outline-success py-0" onclick="backupSingle('${j.hostname}')">🔄</button>
-                </td>
-            </tr>`;
+            fetch('/api/jobs?page=' + page + '&per_page=15').then(function (r) { return r.json(); }).then(function (data) {
+                var tb = document.getElementById('jobs-table'); tb.innerHTML = '';
+                data.jobs.forEach(function (j) {
+                    var ts = j.timestamp ? j.timestamp.split('.')[0] : '';
+                    var st = j.status === 'SUCCESS' ? '<span class="badge bg-success">OK</span>' : '<span class="badge bg-danger">ERR</span>';
+                    tb.innerHTML += '<tr><td><small>' + ts + '</small></td><td><strong>' + j.hostname + '</strong></td><td><small>' + (j.group_name || '-') + '</small></td><td>' + st + '</td><td><small class="text-muted">' + (j.message || '').substring(0, 35) + '</small></td><td><a href="/files/' + j.hostname + '" class="btn btn-sm btn-outline-primary py-0">📁</a> <a href="/diff/' + j.vendor + '/' + j.hostname + '" class="btn btn-sm btn-outline-secondary py-0">📝</a> <button class="btn btn-sm btn-outline-success py-0" onclick="backupSingle(\'' + j.hostname + '\')">🔄</button></td></tr>';
                 });
-                document.getElementById('jobs-info').textContent = `Página ${data.page}/${data.pages} (${data.total} total)`;
-
-                // Pagination
-                const pg = document.getElementById('pagination');
-                pg.innerHTML = '';
-                if (data.page > 1) pg.innerHTML += `<li class="page-item"><a class="page-link" href="#" onclick="loadJobs(${data.page - 1})">«</a></li>`;
-                for (let i = Math.max(1, data.page - 2); i <= Math.min(data.pages, data.page + 2); i++) {
-                    pg.innerHTML += `<li class="page-item ${i === data.page ? 'active' : ''}"><a class="page-link" href="#" onclick="loadJobs(${i})">${i}</a></li>`;
-                }
-                if (data.page < data.pages) pg.innerHTML += `<li class="page-item"><a class="page-link" href="#" onclick="loadJobs(${data.page + 1})">»</a></li>`;
+                document.getElementById('jobs-info').textContent = 'Página ' + data.page + '/' + data.pages + ' (' + data.total + ' total)';
+                var pg = document.getElementById('pagination'); pg.innerHTML = '';
+                if (data.page > 1) pg.innerHTML += '<li class="page-item"><a class="page-link" href="#" onclick="loadJobs(' + (data.page - 1) + ')">«</a></li>';
+                for (var i = Math.max(1, data.page - 2); i <= Math.min(data.pages, data.page + 2); i++) { pg.innerHTML += '<li class="page-item ' + (i === data.page ? 'active' : '') + '"><a class="page-link" href="#" onclick="loadJobs(' + i + ')">' + i + '</a></li>'; }
+                if (data.page < data.pages) pg.innerHTML += '<li class="page-item"><a class="page-link" href="#" onclick="loadJobs(' + (data.page + 1) + ')">»</a></li>';
             });
         }
 
-        function backupSingle(h) { if (confirm(`Backup ${h}?`)) { backupModal.hide(); startSingle(h); } }
-        function startSingle(h) {
-            document.getElementById('btn-backup').disabled = true;
-            document.getElementById('log-panel').style.display = 'block';
-            document.getElementById('log-panel').innerHTML = '';
-            addLog('info', 'Backup: ' + h);
-            fetch('/api/backup/trigger?device=' + encodeURIComponent(h)).then(r => r.json()).then(d => d.error ? addLog('error', d.error) : pollStatus());
-        }
+        function backupSingle(h) { if (confirm('Backup ' + h + '?')) { document.getElementById('btn-backup').disabled = true; document.getElementById('log-panel').style.display = 'block'; document.getElementById('log-panel').innerHTML = ''; addLog('info', 'Backup: ' + h); fetch('/api/backup/trigger?device=' + encodeURIComponent(h)).then(function (r) { return r.json(); }).then(function (d) { d.error ? addLog('error', d.error) : pollStatus(); }); } }
 
         // Charts
-        const ok = {{ stats.get('SUCCESS', 0) }}, err = {{ stats.get('ERROR', 0) }};
-        if (ok + err > 0) {
-            new Chart(document.getElementById('chartPie'), {
-                type: 'doughnut',
-                data: { labels: ['OK', 'Error'], datasets: [{ data: [ok, err], backgroundColor: ['#198754', '#dc3545'] }] },
-                options: { responsive: true, plugins: { legend: { display: false } } }
-            });
-        }
+        var ok = {{ stats.get('SUCCESS', 0) }}, err = {{ stats.get('ERROR', 0) }};
+        if (ok + err > 0) { new Chart(document.getElementById('chartPie'), { type: 'doughnut', data: { labels: ['OK', 'Error'], datasets: [{ data: [ok, err], backgroundColor: ['#198754', '#dc3545'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } }); }
 
-        fetch('/api/stats/by_group').then(r => r.json()).then(data => {
-            const groups = Object.keys(data);
-            if (groups.length === 0) return;
-            new Chart(document.getElementById('chartGroups'), {
-                type: 'bar',
-                data: {
-                    labels: groups,
-                    datasets: [
-                        { label: 'OK', data: groups.map(g => data[g].SUCCESS || 0), backgroundColor: '#198754' },
-                        { label: 'Err', data: groups.map(g => data[g].ERROR || 0), backgroundColor: '#dc3545' }
-                    ]
-                },
-                options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } }
-            });
+        fetch('/api/stats/by_group').then(function (r) { return r.json(); }).then(function (data) {
+            var groups = Object.keys(data); if (groups.length === 0) return;
+            var row = document.getElementById('group-charts-row');
+            groups.forEach(function (g, i) { var s = data[g].SUCCESS || 0, e = data[g].ERROR || 0; if (s + e === 0) return; var col = groups.length <= 4 ? 3 : 2; row.innerHTML += '<div class="col-md-' + col + ' mb-2"><div class="card p-2 chart-card"><small class="text-muted text-center d-block">' + g + '</small><canvas id="chart-' + i + '"></canvas></div></div>'; });
+            setTimeout(function () { groups.forEach(function (g, i) { var c = document.getElementById('chart-' + i); if (!c) return; new Chart(c, { type: 'doughnut', data: { labels: ['OK', 'Err'], datasets: [{ data: [data[g].SUCCESS || 0, data[g].ERROR || 0], backgroundColor: ['#198754', '#dc3545'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } }); }); }, 100);
         });
 
-        // Initial load
         loadJobs(1);
     </script>
 </body>

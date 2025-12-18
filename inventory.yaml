@@ -6,7 +6,7 @@ groups:
     pass: n0c442@dm1n.
     user: noc
   devices:
-  - hostname: HUAWEI5720-SUSANA
-    ip: 172.19.2.3
+  - hostname: HW6730-PRUEBAS_LAB
+    ip: 172.19.5.71
   name: Huawei Test
   vendor: huawei
