@@ -11,7 +11,7 @@ sudo apt install python3 python3-venv python3-pip git
 ```bash
 # 1. Clone repository
 cd /opt
-sudo git clone https://github.com/TU_USUARIO/backup_system.git
+sudo git clone https://github.com/Peripotec/backup_system.git
 sudo chown -R $USER:$USER backup_system
 cd backup_system
 

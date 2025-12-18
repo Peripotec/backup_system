@@ -11,7 +11,7 @@ Sistema de respaldo automatizado para equipos de red (Huawei, HP, ZTE OLT) con:
 
 ```bash
 # Clonar
-git clone https://github.com/TU_USUARIO/backup_system.git
+git clone https://github.com/Peripotec/backup_system.git
 cd backup_system
 
 # Instalar
