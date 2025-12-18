@@ -65,7 +65,7 @@ def index():
 # API: BACKUP TRIGGER
 # ==========================
 
-# Enhanced status with cancel support
+# Enhanced status with cancel support and detailed logs
 backup_status = {
     "running": False, 
     "cancelled": False,
@@ -73,7 +73,8 @@ backup_status = {
     "progress": 0,
     "current_device": None,
     "completed": [],
-    "errors": []
+    "errors": [],
+    "logs": []  # Detailed step-by-step logs
 }
 
 def run_backup_async(group=None, device=None):
@@ -85,7 +86,8 @@ def run_backup_async(group=None, device=None):
         "progress": 5,
         "current_device": None,
         "completed": [],
-        "errors": []
+        "errors": [],
+        "logs": [{"type": "info", "msg": "Iniciando proceso de backup..."}]
     }
     
     try:
@@ -98,28 +100,50 @@ def run_backup_async(group=None, device=None):
         
         if backup_status["cancelled"]:
             backup_status["message"] = "Cancelado por usuario"
+            backup_status["logs"].append({"type": "warning", "msg": "Proceso cancelado por usuario"})
         else:
             errors = len(backup_status["errors"])
             completed = len(backup_status["completed"])
             backup_status["message"] = f"Completado: {completed} OK, {errors} errores"
             backup_status["progress"] = 100
+            backup_status["logs"].append({"type": "success", "msg": f"Finalizado: {completed} exitosos, {errors} fallidos"})
         
         backup_status["running"] = False
         
     except Exception as e:
         backup_status["running"] = False
         backup_status["message"] = f"Error: {e}"
+        backup_status["logs"].append({"type": "error", "msg": f"Error fatal: {e}"})
 
 def update_backup_status(device_name, status, message=""):
     """Callback for engine to update status in real-time."""
     global backup_status
+    
+    timestamp = ""
+    
     if status == "start":
         backup_status["current_device"] = device_name
         backup_status["message"] = f"Procesando: {device_name}..."
+        backup_status["logs"].append({"type": "info", "msg": f"[{device_name}] Iniciando backup..."})
+    elif status == "connecting":
+        backup_status["logs"].append({"type": "info", "msg": f"[{device_name}] Conectando..."})
+    elif status == "login":
+        backup_status["logs"].append({"type": "info", "msg": f"[{device_name}] Autenticando..."})
+    elif status == "command":
+        backup_status["logs"].append({"type": "info", "msg": f"[{device_name}] Ejecutando comando: {message}"})
+    elif status == "saving":
+        backup_status["logs"].append({"type": "info", "msg": f"[{device_name}] Guardando archivo..."})
+    elif status == "git":
+        backup_status["logs"].append({"type": "info", "msg": f"[{device_name}] Commit a repositorio..."})
     elif status == "success":
         backup_status["completed"].append({"device": device_name, "msg": message})
+        backup_status["logs"].append({"type": "success", "msg": f"[{device_name}] ✓ {message}"})
     elif status == "error":
         backup_status["errors"].append({"device": device_name, "msg": message})
+        backup_status["logs"].append({"type": "error", "msg": f"[{device_name}] ✗ {message}"})
+    elif status == "log":
+        # Generic log message
+        backup_status["logs"].append({"type": "info", "msg": f"[{device_name}] {message}"})
     
     # Update progress based on completed
     total = len(backup_status["completed"]) + len(backup_status["errors"])

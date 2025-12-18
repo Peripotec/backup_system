@@ -72,13 +72,28 @@ class BackupEngine:
             if not VendorClass:
                 raise ValueError(f"Unknown vendor: {vendor_type}")
             
+            # Log connecting
+            if self.status_callback:
+                self.status_callback(hostname, "connecting")
+            
             plugin = VendorClass(device, self.db, self.git)
+            
+            # Log running backup
+            if self.status_callback:
+                self.status_callback(hostname, "log", "Ejecutando backup...")
+            
             archive_path, size, changed = plugin.backup()
+            
+            # Log saving
+            if self.status_callback:
+                self.status_callback(hostname, "saving")
             
             duration = time.time() - start_time
             msg = f"{size} bytes"
             if changed:
                 msg += " (cambios)"
+                if self.status_callback:
+                    self.status_callback(hostname, "git")
                 diff = self.git.get_diff(plugin.hostname + ".cfg")
             else:
                 diff = None
