@@ -452,7 +452,7 @@ def api_jobs_paginated():
     
     # Get page of jobs
     cursor.execute('''
-        SELECT id, hostname, vendor, group_name, status, message, timestamp, duration, changed
+        SELECT id, hostname, vendor, group_name, status, message, timestamp, duration_seconds, changed
         FROM jobs 
         ORDER BY timestamp DESC
         LIMIT ? OFFSET ?
