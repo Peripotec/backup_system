@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Diff Viewer - {{ hostname }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .diff-content {
+            font-family: monospace;
+            font-size: 12px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            white-space: pre-wrap;
+        }
+
+        .diff-add {
+            color: #4ec9b0;
+            background: #1e3a2f;
+        }
+
+        .diff-del {
+            color: #f48771;
+            background: #3a1e1e;
+        }
+
+        .diff-header {
+            color: #569cd6;
+        }
+    </style>
+</head>
+
+<body class="bg-light">
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="/">🛡️ Backup System</a>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="/">Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/inventory">Inventario</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/files">Archivos</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                📝 Historial de Cambios: <strong>{{ hostname }}</strong> ({{ vendor }})
+            </div>
+            <div class="card-body">
+                <pre class="diff-content p-3 rounded" id="diff-content" style="max-height: 600px; overflow: auto;">
+Cargando diff...
+            </pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        fetch('/api/diff/{{ vendor }}/{{ hostname }}')
+            .then(r => r.json())
+            .then(data => {
+                let content = data.diff || data.error || 'Sin cambios registrados';
+
+                // Colorize diff
+                content = content
+                    .replace(/^(\+.*)$/gm, '<span class="diff-add">$1</span>')
+                    .replace(/^(-.*)$/gm, '<span class="diff-del">$1</span>')
+                    .replace(/^(@@.*)$/gm, '<span class="diff-header">$1</span>')
+                    .replace(/^(commit .*)$/gm, '<span class="diff-header">$1</span>');
+
+                document.getElementById('diff-content').innerHTML = content;
+            });
+    </script>
+
+</body>
+
+</html>

@@ -11,11 +11,12 @@
 
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
         <div class="container">
-            <a class="navbar-brand" href="/">Backup System</a>
+            <a class="navbar-brand" href="/">🛡️ Backup System</a>
             <div class="collapse navbar-collapse">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item"><a class="nav-link" href="/">Dashboard</a></li>
                     <li class="nav-item"><a class="nav-link active" href="/inventory">Inventario</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/files">Archivos</a></li>
                 </ul>
             </div>
         </div>
@@ -23,25 +24,107 @@
 
     <div class="container">
         <div class="row">
-            <div class="col-12">
+            <!-- Form to add device -->
+            <div class="col-md-4">
+                <div class="card mb-4">
+                    <div class="card-header bg-success text-white">➕ Agregar Dispositivo</div>
+                    <div class="card-body">
+                        <div class="mb-2">
+                            <label class="form-label">Grupo</label>
+                            <select class="form-select" id="add-group">
+                                {% for g in inventory.groups %}
+                                <option value="{{ g.name }}">{{ g.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">Hostname</label>
+                            <input type="text" class="form-control" id="add-hostname" placeholder="Router_Core_1">
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">IP</label>
+                            <input type="text" class="form-control" id="add-ip" placeholder="192.168.1.1">
+                        </div>
+                        <button class="btn btn-success w-100" onclick="addDevice()">Agregar</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header bg-primary text-white">➕ Agregar Grupo</div>
+                    <div class="card-body">
+                        <div class="mb-2">
+                            <input type="text" class="form-control" id="grp-name" placeholder="Nombre del grupo">
+                        </div>
+                        <div class="mb-2">
+                            <select class="form-select" id="grp-vendor">
+                                <option value="huawei">Huawei</option>
+                                <option value="hp">HP</option>
+                                <option value="zte_olt">ZTE OLT</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <input type="text" class="form-control" id="grp-user" placeholder="Usuario">
+                        </div>
+                        <div class="mb-2">
+                            <input type="password" class="form-control" id="grp-pass" placeholder="Password">
+                        </div>
+                        <button class="btn btn-primary w-100" onclick="addGroup()">Crear Grupo</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- YAML Editor -->
+            <div class="col-md-8">
                 <div class="card">
                     <div class="card-header bg-warning text-dark">
                         <strong>⚠️ Edición de Inventario (YAML)</strong>
                     </div>
                     <div class="card-body">
                         <form method="POST">
-                            <div class="mb-3">
-                                <label class="form-label">Contenido de <code>inventory.yaml</code></label>
-                                <textarea class="form-control" name="yaml_content" rows="20"
-                                    style="font-family: monospace;">{{ content }}</textarea>
-                            </div>
-                            <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                            <textarea class="form-control" name="yaml_content" rows="20"
+                                style="font-family: monospace; font-size: 12px;">{{ content }}</textarea>
+                            <button type="submit" class="btn btn-warning mt-2">💾 Guardar Cambios</button>
                         </form>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <script>
+        function addDevice() {
+            const data = {
+                group: document.getElementById('add-group').value,
+                hostname: document.getElementById('add-hostname').value,
+                ip: document.getElementById('add-ip').value
+            };
+            fetch('/api/inventory/device', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            }).then(r => r.json()).then(d => {
+                alert(d.message || d.error);
+                location.reload();
+            });
+        }
+
+        function addGroup() {
+            const data = {
+                name: document.getElementById('grp-name').value,
+                vendor: document.getElementById('grp-vendor').value,
+                user: document.getElementById('grp-user').value,
+                pass: document.getElementById('grp-pass').value
+            };
+            fetch('/api/inventory/group', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            }).then(r => r.json()).then(d => {
+                alert(d.message || d.error);
+                location.reload();
+            });
+        }
+    </script>
 
 </body>
 
