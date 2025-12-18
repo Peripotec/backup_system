@@ -3,8 +3,18 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Gestor de Inventario</title>
+    <title>Gestión de Dispositivos</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .btn-delete {
+            color: #dc3545;
+            cursor: pointer;
+        }
+
+        .btn-delete:hover {
+            color: #a71d2a;
+        }
+    </style>
 </head>
 
 <body class="bg-light">
@@ -23,107 +33,157 @@
     </nav>
 
     <div class="container">
-        <div class="row">
-            <!-- Form to add device -->
-            <div class="col-md-4">
-                <div class="card mb-4">
-                    <div class="card-header bg-success text-white">➕ Agregar Dispositivo</div>
-                    <div class="card-body">
-                        <div class="mb-2">
-                            <label class="form-label">Grupo</label>
-                            <select class="form-select" id="add-group">
-                                {% for g in inventory.groups %}
-                                <option value="{{ g.name }}">{{ g.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="mb-2">
-                            <label class="form-label">Hostname</label>
-                            <input type="text" class="form-control" id="add-hostname" placeholder="Router_Core_1">
-                        </div>
-                        <div class="mb-2">
-                            <label class="form-label">IP</label>
-                            <input type="text" class="form-control" id="add-ip" placeholder="192.168.1.1">
-                        </div>
-                        <button class="btn btn-success w-100" onclick="addDevice()">Agregar</button>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-header bg-primary text-white">➕ Agregar Grupo</div>
-                    <div class="card-body">
-                        <div class="mb-2">
-                            <input type="text" class="form-control" id="grp-name" placeholder="Nombre del grupo">
-                        </div>
-                        <div class="mb-2">
-                            <select class="form-select" id="grp-vendor">
-                                <option value="huawei">Huawei</option>
-                                <option value="hp">HP</option>
-                                <option value="zte_olt">ZTE OLT</option>
-                            </select>
-                        </div>
-                        <div class="mb-2">
-                            <input type="text" class="form-control" id="grp-user" placeholder="Usuario">
-                        </div>
-                        <div class="mb-2">
-                            <input type="password" class="form-control" id="grp-pass" placeholder="Password">
-                        </div>
-                        <button class="btn btn-primary w-100" onclick="addGroup()">Crear Grupo</button>
-                    </div>
-                </div>
+        <!-- Device Table -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <span>📋 Dispositivos Registrados</span>
+                <button class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#addDeviceModal">
+                    ➕ Agregar Dispositivo
+                </button>
             </div>
+            <div class="card-body p-0">
+                <table class="table table-hover table-striped mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Hostname</th>
+                            <th>IP</th>
+                            <th>Grupo</th>
+                            <th>Vendor</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="device-table">
+                        <!-- Devices will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
-            <!-- YAML Editor -->
-            <div class="col-md-8">
-                <div class="card">
-                    <div class="card-header bg-warning text-dark">
-                        <strong>⚠️ Edición de Inventario (YAML)</strong>
-                    </div>
-                    <div class="card-body">
-                        <form method="POST">
-                            <textarea class="form-control" name="yaml_content" rows="20"
-                                style="font-family: monospace; font-size: 12px;">{{ content }}</textarea>
-                            <button type="submit" class="btn btn-warning mt-2">💾 Guardar Cambios</button>
-                        </form>
-                    </div>
+        <!-- Raw YAML (collapsed by default) -->
+        <div class="card">
+            <div class="card-header bg-secondary text-white" data-bs-toggle="collapse" data-bs-target="#yamlPanel"
+                style="cursor: pointer;">
+                ⚙️ Edición Avanzada (YAML) - Click para expandir
+            </div>
+            <div class="collapse" id="yamlPanel">
+                <div class="card-body">
+                    <form method="POST">
+                        <textarea class="form-control" name="yaml_content" rows="15"
+                            style="font-family: monospace; font-size: 11px;">{{ content }}</textarea>
+                        <button type="submit" class="btn btn-warning mt-2">💾 Guardar YAML</button>
+                    </form>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Add Device Modal -->
+    <div class="modal fade" id="addDeviceModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">➕ Agregar Dispositivo</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Grupo</label>
+                        <select class="form-select" id="add-group">
+                            {% for g in inventory.groups %}
+                            <option value="{{ g.name }}">{{ g.name }} ({{ g.vendor }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Hostname</label>
+                        <input type="text" class="form-control" id="add-hostname" placeholder="Router_Core_1">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">IP</label>
+                        <input type="text" class="form-control" id="add-ip" placeholder="192.168.1.1">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-success" onclick="addDevice()">Agregar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // Load devices from inventory data passed by Jinja
+        const inventory = {{ inventory | tojson | safe }};
+
+        function renderDevices() {
+            const tbody = document.getElementById('device-table');
+            tbody.innerHTML = '';
+
+            if (!inventory.groups || inventory.groups.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No hay dispositivos configurados</td></tr>';
+                return;
+            }
+
+            inventory.groups.forEach(group => {
+                if (!group.devices) return;
+                group.devices.forEach(device => {
+                    tbody.innerHTML += `
+                <tr>
+                    <td><strong>${device.hostname}</strong></td>
+                    <td><code>${device.ip}</code></td>
+                    <td><span class="badge bg-info">${group.name}</span></td>
+                    <td>${group.vendor}</td>
+                    <td>
+                        <span class="btn-delete" onclick="deleteDevice('${group.name}', '${device.hostname}')" title="Eliminar">🗑️</span>
+                    </td>
+                </tr>
+            `;
+                });
+            });
+        }
+
         function addDevice() {
             const data = {
                 group: document.getElementById('add-group').value,
                 hostname: document.getElementById('add-hostname').value,
                 ip: document.getElementById('add-ip').value
             };
+
+            if (!data.hostname || !data.ip) {
+                alert('Hostname e IP son requeridos');
+                return;
+            }
+
             fetch('/api/inventory/device', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             }).then(r => r.json()).then(d => {
-                alert(d.message || d.error);
-                location.reload();
+                if (d.error) {
+                    alert('Error: ' + d.error);
+                } else {
+                    location.reload();
+                }
             });
         }
 
-        function addGroup() {
-            const data = {
-                name: document.getElementById('grp-name').value,
-                vendor: document.getElementById('grp-vendor').value,
-                user: document.getElementById('grp-user').value,
-                pass: document.getElementById('grp-pass').value
-            };
-            fetch('/api/inventory/group', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+        function deleteDevice(groupName, hostname) {
+            if (!confirm(`¿Eliminar ${hostname} del grupo ${groupName}?`)) return;
+
+            fetch(`/api/inventory/device/${groupName}/${hostname}`, {
+                method: 'DELETE'
             }).then(r => r.json()).then(d => {
-                alert(d.message || d.error);
-                location.reload();
+                if (d.error) {
+                    alert('Error: ' + d.error);
+                } else {
+                    location.reload();
+                }
             });
         }
+
+        // Initial render
+        renderDevices();
     </script>
 
 </body>
