@@ -165,10 +165,17 @@
             status.textContent = 'Iniciando backup...';
             progress.style.display = 'block';
 
-            fetch('/api/backup/trigger', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+            fetch('/api/backup/trigger')
                 .then(r => r.json())
                 .then(data => {
+                    console.log('Trigger response:', data);
                     pollStatus();
+                })
+                .catch(err => {
+                    console.error('Error:', err);
+                    document.getElementById('backup-status').textContent = 'Error al iniciar';
+                    document.getElementById('btn-backup').disabled = false;
+                    document.getElementById('btn-backup').textContent = '▶️ Backup Ahora';
                 });
         }
 

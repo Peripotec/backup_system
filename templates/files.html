@@ -3,18 +3,26 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Archivos de Backup</title>
+    <title>Explorador de Archivos</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
+        .file-item {
+            cursor: pointer;
+        }
+
         .file-item:hover {
             background-color: #f8f9fa;
         }
 
         .file-content {
             font-family: monospace;
-            font-size: 12px;
+            font-size: 11px;
             background: #1e1e1e;
             color: #d4d4d4;
+        }
+
+        .breadcrumb {
+            margin-bottom: 0;
         }
     </style>
 </head>
@@ -22,7 +30,7 @@
 <body class="bg-light">
 
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
-        <div class="container">
+        <div class="container-fluid">
             <a class="navbar-brand" href="/">🛡️ Backup System</a>
             <div class="collapse navbar-collapse">
                 <ul class="navbar-nav ms-auto">
@@ -34,31 +42,44 @@
         </div>
     </nav>
 
-    <div class="container">
+    <div class="container-fluid">
         <div class="row">
+            <!-- Left Panel: File Tree -->
             <div class="col-md-4">
                 <div class="card">
-                    <div class="card-header">📁 Explorador</div>
-                    <div class="card-body p-0" style="max-height: 600px; overflow-y: auto;">
-                        <nav aria-label="breadcrumb" class="p-2 border-bottom">
-                            <ol class="breadcrumb mb-0" id="breadcrumb">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                        <span>📁 Explorador</span>
+                    </div>
+                    <div class="card-body p-2">
+                        <!-- Search -->
+                        <div class="input-group mb-2">
+                            <input type="text" class="form-control form-control-sm" id="search-input"
+                                placeholder="🔍 Buscar archivo..." onkeyup="filterFiles()">
+                        </div>
+                        <!-- Breadcrumb -->
+                        <nav aria-label="breadcrumb" class="mb-2">
+                            <ol class="breadcrumb bg-light p-2 rounded" id="breadcrumb">
                                 <li class="breadcrumb-item"><a href="#" onclick="loadFiles('')">archive</a></li>
                             </ol>
                         </nav>
-                        <ul class="list-group list-group-flush" id="file-list"></ul>
                     </div>
+                    <ul class="list-group list-group-flush" id="file-list" style="max-height: 500px; overflow-y: auto;">
+                    </ul>
                 </div>
             </div>
+
+            <!-- Right Panel: Content Viewer -->
             <div class="col-md-8">
                 <div class="card">
-                    <div class="card-header" id="viewer-header">Selecciona un archivo</div>
-                    <div class="card-body">
-                        <pre class="file-content p-3 rounded" id="file-content"
-                            style="max-height: 500px; overflow: auto;">
-Selecciona un archivo para ver su contenido...
-                    </pre>
-                        <a href="#" class="btn btn-primary mt-2" id="download-btn" style="display:none;">⬇️
+                    <div class="card-header d-flex justify-content-between align-items-center" id="viewer-header">
+                        <span>Selecciona un archivo</span>
+                        <a href="#" class="btn btn-primary btn-sm" id="download-btn" style="display:none;">⬇️
                             Descargar</a>
+                    </div>
+                    <div class="card-body p-0">
+                        <pre class="file-content p-3 m-0" id="file-content" style="max-height: 600px; overflow: auto;">
+Selecciona un archivo de la lista para ver su contenido...
+                    </pre>
                     </div>
                 </div>
             </div>
@@ -67,57 +88,110 @@ Selecciona un archivo para ver su contenido...
 
     <script>
         let currentPath = '';
+        let allItems = [];
+
+        function updateBreadcrumb(path) {
+            const crumb = document.getElementById('breadcrumb');
+            let html = '<li class="breadcrumb-item"><a href="#" onclick="loadFiles(\'\')">archive</a></li>';
+
+            if (path) {
+                const parts = path.split('/').filter(p => p);
+                let accumulated = '';
+                parts.forEach((part, index) => {
+                    accumulated += (accumulated ? '/' : '') + part;
+                    const isLast = index === parts.length - 1;
+                    if (isLast) {
+                        html += `<li class="breadcrumb-item active">${part}</li>`;
+                    } else {
+                        html += `<li class="breadcrumb-item"><a href="#" onclick="loadFiles('${accumulated}')">${part}</a></li>`;
+                    }
+                });
+            }
+            crumb.innerHTML = html;
+        }
 
         function loadFiles(path) {
             currentPath = path;
+            updateBreadcrumb(path);
+            document.getElementById('search-input').value = '';
+
             const url = path ? '/api/files/list/' + path : '/api/files/list';
-            console.log('Loading:', url);
 
             fetch(url)
                 .then(r => r.json())
                 .then(data => {
-                    console.log('Data:', data);
-                    const list = document.getElementById('file-list');
-                    list.innerHTML = '';
-
                     if (data.error) {
-                        list.innerHTML = `<li class="list-group-item text-danger">${data.error}</li>`;
+                        document.getElementById('file-list').innerHTML = `<li class="list-group-item text-danger">${data.error}</li>`;
                         return;
                     }
 
-                    // Back button
-                    if (path) {
-                        const parts = path.split('/').filter(p => p);
-                        parts.pop();
-                        const parent = parts.join('/');
-                        list.innerHTML += `<li class="list-group-item file-item" style="cursor:pointer" onclick="loadFiles('${parent}')">📁 ..</li>`;
-                    }
-
-                    if (!data.items || data.items.length === 0) {
-                        list.innerHTML += '<li class="list-group-item text-muted">Carpeta vacía</li>';
-                        return;
-                    }
-
-                    data.items.forEach(item => {
-                        const fullPath = path ? path + '/' + item.name : item.name;
-                        if (item.is_dir) {
-                            list.innerHTML += `<li class="list-group-item file-item" style="cursor:pointer" onclick="loadFiles('${fullPath}')">📁 ${item.name}</li>`;
-                        } else {
-                            list.innerHTML += `<li class="list-group-item file-item" style="cursor:pointer" onclick="loadFile('${fullPath}')">📄 ${item.name} <small class="text-muted">(${(item.size / 1024).toFixed(1)} KB)</small></li>`;
-                        }
-                    });
+                    allItems = data.items || [];
+                    renderFiles(allItems);
                 })
                 .catch(err => {
-                    console.error('Error:', err);
                     document.getElementById('file-list').innerHTML = '<li class="list-group-item text-danger">Error cargando archivos</li>';
                 });
         }
 
+        function renderFiles(items) {
+            const list = document.getElementById('file-list');
+            list.innerHTML = '';
+
+            // Back button
+            if (currentPath) {
+                const parts = currentPath.split('/').filter(p => p);
+                parts.pop();
+                const parent = parts.join('/');
+                list.innerHTML += `<li class="list-group-item file-item" onclick="loadFiles('${parent}')">
+            <span class="text-primary">📁 ..</span>
+        </li>`;
+            }
+
+            if (items.length === 0) {
+                list.innerHTML += '<li class="list-group-item text-muted">Carpeta vacía</li>';
+                return;
+            }
+
+            // Folders first, then files
+            const folders = items.filter(i => i.is_dir);
+            const files = items.filter(i => !i.is_dir);
+
+            folders.forEach(item => {
+                const fullPath = currentPath ? currentPath + '/' + item.name : item.name;
+                list.innerHTML += `<li class="list-group-item file-item" onclick="loadFiles('${fullPath}')">
+            <span class="text-warning">📁</span> <strong>${item.name}</strong>
+        </li>`;
+            });
+
+            files.forEach(item => {
+                const fullPath = currentPath ? currentPath + '/' + item.name : item.name;
+                const size = (item.size / 1024).toFixed(1);
+                const date = item.mtime ? item.mtime.split('T')[0] : '';
+                list.innerHTML += `<li class="list-group-item file-item d-flex justify-content-between" onclick="loadFile('${fullPath}')">
+            <span><span class="text-secondary">📄</span> ${item.name}</span>
+            <small class="text-muted">${size} KB | ${date}</small>
+        </li>`;
+            });
+        }
+
+        function filterFiles() {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            if (!query) {
+                renderFiles(allItems);
+                return;
+            }
+            const filtered = allItems.filter(item => item.name.toLowerCase().includes(query));
+            renderFiles(filtered);
+        }
+
         function loadFile(path) {
+            document.getElementById('viewer-header').querySelector('span').textContent = 'Cargando...';
+
             fetch('/api/files/content/' + path)
                 .then(r => r.json())
                 .then(data => {
-                    document.getElementById('viewer-header').textContent = data.filename || 'Archivo';
+                    const filename = data.filename || path.split('/').pop();
+                    document.getElementById('viewer-header').querySelector('span').textContent = filename;
                     document.getElementById('file-content').textContent = data.content || data.error || 'Sin contenido';
                     document.getElementById('download-btn').href = '/download/' + path;
                     document.getElementById('download-btn').style.display = 'inline-block';

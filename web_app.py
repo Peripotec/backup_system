@@ -77,21 +77,17 @@ def run_backup_async(group=None):
     except Exception as e:
         backup_status = {"running": False, "message": f"Error: {e}", "progress": 0}
 
-@app.route('/api/backup/trigger', methods=['POST'])
+@app.route('/api/backup/trigger')
 def trigger_backup():
-    """Trigger backup - accepts empty POST."""
+    """Trigger backup via simple GET request."""
     global backup_status
     if backup_status["running"]:
-        return jsonify({"error": "Backup already running"}), 400
+        return jsonify({"error": "Backup already running", "running": True})
     
-    # Handle both empty body and JSON body
-    group = None
-    if request.is_json and request.json:
-        group = request.json.get('group')
-    
+    group = request.args.get('group')
     thread = threading.Thread(target=run_backup_async, args=(group,), daemon=True)
     thread.start()
-    return jsonify({"status": "started", "message": "Backup iniciado"})
+    return jsonify({"status": "started", "message": "Backup iniciado", "running": True})
 
 @app.route('/api/backup/status')
 def backup_status_api():
