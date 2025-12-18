@@ -276,6 +276,77 @@ def api_get_vendors():
             vendors.append(f.replace('.py', ''))
     return jsonify(vendors)
 
+# ==========================
+# API: CREDENTIAL VAULT
+# ==========================
+
+@app.route('/api/vault')
+@requires_auth
+def api_get_vault():
+    """Get all credentials (without passwords)."""
+    from core.vault import get_credentials_list
+    return jsonify(get_credentials_list())
+
+@app.route('/api/vault', methods=['POST'])
+@requires_auth
+def api_add_vault_credential():
+    """Add a new credential to vault."""
+    from core.vault import add_credential
+    data = request.json
+    
+    cred_id = data.get("id", "").strip().lower().replace(" ", "_")
+    name = data.get("name", "").strip()
+    user = data.get("user", "").strip()
+    password = data.get("pass", "")
+    extra_pass = data.get("extra_pass", "")
+    
+    if not cred_id or not name:
+        return jsonify({"error": "ID y nombre son requeridos"}), 400
+    
+    success, message = add_credential(cred_id, name, user, password, extra_pass)
+    if success:
+        return jsonify({"status": "ok", "message": message})
+    return jsonify({"error": message}), 400
+
+@app.route('/api/vault/<cred_id>', methods=['PUT'])
+@requires_auth
+def api_update_vault_credential(cred_id):
+    """Update an existing credential."""
+    from core.vault import update_credential
+    data = request.json
+    
+    name = data.get("name")
+    user = data.get("user")
+    password = data.get("pass")
+    extra_pass = data.get("extra_pass")
+    
+    success, message = update_credential(cred_id, name, user, password, extra_pass)
+    if success:
+        return jsonify({"status": "ok", "message": message})
+    return jsonify({"error": message}), 404
+
+@app.route('/api/vault/<cred_id>', methods=['DELETE'])
+@requires_auth
+def api_delete_vault_credential(cred_id):
+    """Delete a credential from vault."""
+    from core.vault import delete_credential
+    success, message = delete_credential(cred_id)
+    if success:
+        return jsonify({"status": "ok", "message": message})
+    return jsonify({"error": message}), 404
+
+# ==========================
+# ADMIN PAGE: VAULT
+# ==========================
+
+@app.route('/admin/vault')
+@requires_auth
+def admin_vault():
+    """Credential vault management page."""
+    from core.vault import get_credentials_list
+    credentials = get_credentials_list()
+    return render_template('vault.html', credentials=credentials)
+
 @app.route('/api/inventory/device', methods=['POST'])
 @requires_auth
 def api_add_device():
