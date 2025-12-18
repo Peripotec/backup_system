@@ -78,14 +78,14 @@ def run_backup_async(group=None):
         backup_status = {"running": False, "message": f"Error: {e}", "progress": 0}
 
 @app.route('/api/backup/trigger', methods=['POST'])
-@requires_auth
 def trigger_backup():
+    """Trigger backup - no auth needed as dashboard is public."""
     global backup_status
     if backup_status["running"]:
         return jsonify({"error": "Backup already running"}), 400
     
     group = request.json.get('group') if request.is_json else None
-    thread = threading.Thread(target=run_backup_async, args=(group,))
+    thread = threading.Thread(target=run_backup_async, args=(group,), daemon=True)
     thread.start()
     return jsonify({"status": "started", "message": "Backup iniciado"})
 
