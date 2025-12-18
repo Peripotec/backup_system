@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BACKUPS</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        h1 {
+            background-color: #0078d4;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            margin: 0;
+        }
+        #directory-structure {
+            margin: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #fff;
+            border-radius: 5px;
+            max-width: 1000px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        #search-bar {
+            margin: 20px auto;
+            max-width: 1000px;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        input[type="text"] {
+            width: 80%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            margin-left: 10px;
+            padding: 10px 20px;
+            background-color: #0078d4;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #005a9e;
+        }
+        ul {
+            list-style: none;
+            padding-left: 20px;
+        }
+        li {
+            padding: 8px 0;
+            cursor: pointer;
+            transition: background-color 0.3s, box-shadow 0.3s;
+        }
+        .file {
+            cursor: default;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 140px;
+            height: 140px;
+            margin: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+            text-align: center;
+        }
+        .directory::before {
+            content: "📁 ";
+        }
+        .file-icon {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        .directory:hover, .file:hover {
+            background-color: #e7f1ff;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .highlight {
+            background-color: #fffae6;
+            box-shadow: 0 0 5px #ffae42;
+        }
+        a {
+            text-decoration: none;
+            color: #0078d4;
+            width: 100%;
+            display: block;
+            word-wrap: break-word;
+            white-space: normal;
+            overflow-wrap: break-word;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .file-size {
+            font-size: 12px;
+            color: #555;
+            margin-top: 5px;
+        }
+        .file-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>BACKUPS</h1>
+    <div id="directory-structure">
+        <div id="search-results" style="display: none;">
+            <h2>📁 Búsqueda</h2>
+            <div class="file-grid" id="search-file-grid"></div>
+        </div>
+        <div id="search-bar">
+            <input type="text" id="search-input" placeholder="Buscar archivo..." />
+            <button onclick="searchFiles()">Buscar</button>
+        </div>
+        <ul>
+            <li onclick="toggleDirectory('recientes')">📁 Recientes</li>
+            <li onclick="toggleDirectory('unicos')">📁 Únicos</li>
+ 	    <li onclick="toggleDirectory('historico')">📁 Historico</li>
+        </ul>
+    </div>
+    <script>
+        let allDirectories = {};
+
+        function toggleDirectory(dirName, callback) {
+            const containerId = `dir-${dirName}`;
+            const container = document.getElementById(containerId);
+            if (container) {
+                container.remove();
+                if (callback) callback();
+                return;
+            }
+            fetch(`/directory?dir=${encodeURIComponent(dirName)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+                const html = `
+                    <ul id="${containerId}">
+                        ${data.directories.map(dir => `<li class="directory" onclick="toggleDirectory('${dirName}/${dir}')">${dir}</li>`).join('')}
+                        <div class="file-grid">
+                            ${data.files.map(file => `
+                                <li class="file" data-path="${dirName}/${file.name}">
+                                    <span class="file-icon">📄</span>
+                                    <a href="/download/${dirName}/${file.name}" title="${file.name}">${file.name}</a>
+                                    <span class="file-size">${formatFileSize(file.size)}</span>
+                                </li>`).join('')}
+                        </div>
+                    </ul>
+                `;
+                document.querySelector(`[onclick="toggleDirectory('${dirName}')"]`).insertAdjacentHTML('afterend', html);
+                
+                // Store directories and files for search
+                allDirectories[dirName] = {
+                    directories: data.directories,
+                    files: data.files.map(file => dirName + '/' + file.name)
+                };
+                if (callback) callback();
+            })
+            .catch(error => console.error('Error loading the directory:', error));
+        }
+
+        function formatFileSize(size) {
+            const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+            let unitIndex = 0;
+            let newSize = size;
+            while (newSize >= 1024 && unitIndex < units.length - 1) {
+                newSize /= 1024;
+                unitIndex++;
+            }
+            return newSize.toFixed(2) + ' ' + units[unitIndex];
+        }
+
+        // Automatically expand directories on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            toggleDirectory('recientes');
+            toggleDirectory('historico');
+        });
+
+        function searchFiles() {
+            clearHighlights();
+            const searchValue = document.getElementById('search-input').value.toLowerCase().trim();
+            if (searchValue === "") {
+                document.getElementById('search-results').style.display = 'none';
+                return;
+            }
+
+            fetch(`/search?query=${encodeURIComponent(searchValue)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.results.length > 0) {
+                    document.getElementById('search-results').style.display = 'block';
+                    const searchFileGrid = document.getElementById('search-file-grid');
+                    searchFileGrid.innerHTML = data.results.map(file => `
+                        <li class="file" data-path="${file.path}">
+                            <span class="file-icon">📄</span>
+                            <a href="/download/${file.path}" title="${file.name}">${file.name}</a>
+                            <span class="file-size">${formatFileSize(file.size)}</span>
+                        </li>
+                    `).join('');
+                } else {
+                    document.getElementById('search-results').style.display = 'none';
+                }
+            })
+            .catch(error => console.error('Error searching files:', error));
+        }
+
+        function clearHighlights() {
+            document.querySelectorAll('.highlight').forEach(el => el.classList.remove('highlight'));
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Backup Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .card-stat { border-left: 5px solid gray; }
+        .stat-success { border-color: green; }
+        .stat-error { border-color: red; }
+    </style>
+</head>
+<body class="bg-light">
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+  <div class="container">
+    <a class="navbar-brand" href="/">Backup System</a>
+    <div class="collapse navbar-collapse">
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item"><a class="nav-link" href="/">Dashboard</a></li>
+        <li class="nav-item"><a class="nav-link" href="/inventory">Inventario</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+    
+    <!-- Disk Usage -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card p-3">
+                <h5>Estado del Servidor (Disco)</h5>
+                <div class="progress" style="height: 25px;">
+                  <div class="progress-bar bg-info" role="progressbar" style="width: {{ disk.percent }}%;">
+                    {{ disk.percent }}% Usado
+                  </div>
+                </div>
+                <small class="text-muted">{{ disk.free_gb }} GB Libres / {{ disk.total_gb }} GB Total</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card p-3 card-stat stat-success">
+                <h3>{{ stats.get('SUCCESS', 0) }}</h3>
+                <span class="text-success">Exitosos (24h)</span>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-3 card-stat stat-error">
+                <h3>{{ stats.get('ERROR', 0) }}</h3>
+                <span class="text-danger">Fallidos (24h)</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Jobs -->
+    <div class="card">
+        <div class="card-header">Últimas Ejecuciones</div>
+        <div class="card-body">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Hora</th>
+                        <th>Host</th>
+                        <th>Vendor</th>
+                        <th>Status</th>
+                        <th>Mensaje</th>
+                        <th>Archivo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for job in jobs %}
+                    <tr>
+                        <td>{{ job.timestamp }}</td>
+                        <td>{{ job.hostname }}</td>
+                        <td>{{ job.vendor }}</td>
+                        <td>
+                            {% if job.status == 'SUCCESS' %}
+                                <span class="badge bg-success">OK</span>
+                            {% else %}
+                                <span class="badge bg-danger">ERR</span>
+                            {% endif %}
+                            {% if job.changed %}
+                                <span class="badge bg-warning text-dark">Cambios</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ job.message }}</td>
+                        <td>
+                            {% if job.file_path %}
+                                <a href="/files/archive/{{ job.vendor }}/{{ job.hostname }}/{{ job.file_path.split('/')[-1] }}" target="_blank">Download</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

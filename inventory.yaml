@@ -1,0 +1,12 @@
+# Inventory for Production Testing
+# Single device configured for initial validation
+
+groups:
+  - name: "Huawei Test"
+    vendor: "huawei"
+    credentials:
+      user: "noc"
+      pass: "n0c442@dm1n."
+    devices:
+      - hostname: "Huawei_6730_A"
+        ip: "172.19.31.8"

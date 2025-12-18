@@ -1,0 +1,28 @@
+# Backup System
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+
+# Database
+*.db
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets - DO NOT COMMIT REAL CREDENTIALS
+# settings.py contains placeholders, edit after deployment

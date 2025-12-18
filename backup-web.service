@@ -1,0 +1,13 @@
+[Unit]
+Description=Backup System Web Dashboard
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/opt/backup_system
+Environment="PATH=/opt/backup_system/venv/bin"
+ExecStart=/opt/backup_system/venv/bin/python3 web_app.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
