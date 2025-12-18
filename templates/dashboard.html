@@ -7,25 +7,34 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        .card-stat {
-            border-left: 5px solid gray;
-        }
-
-        .stat-success {
-            border-color: #198754;
-        }
-
-        .stat-error {
-            border-color: #dc3545;
-        }
-
         .log-panel {
             font-family: monospace;
             font-size: 11px;
             background: #1e1e1e;
             color: #0f0;
+            min-height: 100px;
             max-height: 200px;
             overflow-y: auto;
+        }
+
+        .log-entry {
+            margin: 2px 0;
+        }
+
+        .log-success {
+            color: #0f0;
+        }
+
+        .log-error {
+            color: #f55;
+        }
+
+        .log-info {
+            color: #5bf;
+        }
+
+        .device-status {
+            font-size: 10px;
         }
     </style>
 </head>
@@ -50,24 +59,44 @@
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
-                    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
-                        <span>🚀 Ejecutar Backup</span>
-                        <button class="btn btn-light" id="btn-backup" data-bs-toggle="modal"
-                            data-bs-target="#backupModal">
-                            ▶️ Backup Ahora
-                        </button>
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                        <span>🚀 Control de Backup</span>
+                        <div>
+                            <button class="btn btn-danger btn-sm me-2" id="btn-cancel" onclick="cancelBackup()"
+                                style="display:none;">
+                                ⏹️ Cancelar
+                            </button>
+                            <button class="btn btn-light" id="btn-backup" data-bs-toggle="modal"
+                                data-bs-target="#backupModal">
+                                ▶️ Ejecutar Backup
+                            </button>
+                        </div>
                     </div>
                     <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span id="backup-status" class="text-muted">Listo para ejecutar</span>
-                            <span id="backup-target" class="badge bg-secondary"></span>
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span id="backup-status" class="text-muted">Listo para ejecutar</span>
+                                    <span id="backup-target" class="badge bg-secondary"></span>
+                                </div>
+                                <div class="progress mb-2" style="height: 10px;">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                        id="progress-bar" style="width: 0%"></div>
+                                </div>
+                                <!-- Real-time results -->
+                                <div class="row" id="realtime-stats" style="display:none;">
+                                    <div class="col-6">
+                                        <small class="text-success">✅ Completados: <span id="count-ok">0</span></small>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-danger">❌ Errores: <span id="count-err">0</span></small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div id="log-panel" class="log-panel p-2 rounded" style="display: none;"></div>
+                            </div>
                         </div>
-                        <div class="progress" style="height: 10px;">
-                            <div class="progress-bar progress-bar-striped progress-bar-animated" id="progress-bar"
-                                style="width: 0%"></div>
-                        </div>
-                        <!-- Live Log Panel (shown during backup) -->
-                        <div id="log-panel" class="log-panel p-2 mt-3 rounded" style="display: none;"></div>
                     </div>
                 </div>
             </div>
@@ -75,38 +104,33 @@
 
         <!-- Stats Row -->
         <div class="row mb-4">
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="card p-3">
-                    <h5>Estado del Servidor</h5>
-                    <div class="progress" style="height: 25px;">
-                        <div class="progress-bar bg-{{ 'danger' if disk.percent > 90 else 'warning' if disk.percent > 70 else 'info' }}"
-                            style="width: {{ disk.percent }}%;">
-                            {{ disk.percent }}% Usado
+                    <h6>Disco</h6>
+                    <div class="progress" style="height: 20px;">
+                        <div class="progress-bar"
+                            style="width: {{ disk.percent }}%; background-color: {{ '#dc3545' if disk.percent > 90 else '#ffc107' if disk.percent > 70 else '#198754' }};">
+                            {{ disk.percent }}%
                         </div>
                     </div>
-                    <small class="text-muted">{{ disk.free_gb }} GB Libres / {{ disk.total_gb }} GB Total</small>
+                    <small class="text-muted">{{ disk.free_gb }} GB libres</small>
                 </div>
             </div>
-            <div class="col-md-4">
-                <div class="card p-3 card-stat stat-success">
-                    <h3>{{ stats.get('SUCCESS', 0) }}</h3>
-                    <span class="text-success">Exitosos (24h)</span>
+            <div class="col-md-3">
+                <div class="card p-3 text-center">
+                    <h3 class="text-success mb-0">{{ stats.get('SUCCESS', 0) }}</h3>
+                    <small class="text-muted">Exitosos (24h)</small>
                 </div>
             </div>
-            <div class="col-md-4">
-                <div class="card p-3 card-stat stat-error">
-                    <h3>{{ stats.get('ERROR', 0) }}</h3>
-                    <span class="text-danger">Fallidos (24h)</span>
+            <div class="col-md-3">
+                <div class="card p-3 text-center">
+                    <h3 class="text-danger mb-0">{{ stats.get('ERROR', 0) }}</h3>
+                    <small class="text-muted">Fallidos (24h)</small>
                 </div>
             </div>
-        </div>
-
-        <!-- Chart -->
-        <div class="row mb-4">
-            <div class="col-12">
+            <div class="col-md-3">
                 <div class="card p-3">
-                    <h5>Tendencia (7 días)</h5>
-                    <canvas id="chartHistory" height="60"></canvas>
+                    <canvas id="chartPie" height="80"></canvas>
                 </div>
             </div>
         </div>
@@ -114,26 +138,27 @@
         <!-- Recent Jobs -->
         <div class="card">
             <div class="card-header d-flex justify-content-between">
-                <span>Últimas Ejecuciones</span>
-                <button class="btn btn-sm btn-outline-secondary" onclick="location.reload()">🔄 Actualizar</button>
+                <span>📋 Últimas Ejecuciones</span>
+                <button class="btn btn-sm btn-outline-secondary" onclick="location.reload()">🔄</button>
             </div>
-            <div class="card-body p-0" style="max-height: 400px; overflow-y: auto;">
+            <div class="card-body p-0" style="max-height: 350px; overflow-y: auto;">
                 <table class="table table-striped table-hover table-sm mb-0">
                     <thead class="table-dark">
                         <tr>
                             <th>Hora</th>
                             <th>Host</th>
-                            <th>Vendor</th>
+                            <th>Grupo</th>
                             <th>Status</th>
+                            <th>Mensaje</th>
                             <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for job in jobs %}
                         <tr>
-                            <td><small>{{ job.timestamp }}</small></td>
-                            <td>{{ job.hostname }}</td>
-                            <td>{{ job.vendor }}</td>
+                            <td><small>{{ job.timestamp.split('.')[0] if job.timestamp else '' }}</small></td>
+                            <td><strong>{{ job.hostname }}</strong></td>
+                            <td><small>{{ job.group_name or '-' }}</small></td>
                             <td>
                                 {% if job.status == 'SUCCESS' %}
                                 <span class="badge bg-success">OK</span>
@@ -141,13 +166,14 @@
                                 <span class="badge bg-danger">ERR</span>
                                 {% endif %}
                             </td>
+                            <td><small class="text-muted">{{ job.message[:30] if job.message else '' }}...</small></td>
                             <td>
                                 <a href="/files/{{ job.hostname }}" class="btn btn-sm btn-outline-primary"
-                                    title="Ver archivos">📁</a>
+                                    title="Archivos">📁</a>
                                 <a href="/diff/{{ job.vendor }}/{{ job.hostname }}"
-                                    class="btn btn-sm btn-outline-secondary" title="Ver cambios">📝</a>
+                                    class="btn btn-sm btn-outline-secondary" title="Historial">📝</a>
                                 <button class="btn btn-sm btn-outline-success"
-                                    onclick="backupSingle('{{ job.hostname }}')" title="Backup individual">🔄</button>
+                                    onclick="backupDevice('{{ job.hostname }}')" title="Backup">🔄</button>
                             </td>
                         </tr>
                         {% endfor %}
@@ -157,49 +183,58 @@
         </div>
     </div>
 
-    <!-- Backup Selector Modal -->
+    <!-- Backup Selector Modal (Safer UX) -->
     <div class="modal fade" id="backupModal" tabindex="-1">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title">🚀 Seleccionar Backup</h5>
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">🎯 Seleccionar Equipos para Backup</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="list-group">
-                        <button
-                            class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-                            onclick="runBackup('all')">
-                            <span>🌐 <strong>Todos los equipos</strong></span>
-                            <span class="badge bg-primary" id="count-all">{{ inventory.groups | sum(attribute='devices',
-                                start=[]) | length if inventory else 0 }}</span>
-                        </button>
-                        {% for group in inventory.groups %}
-                        <button
-                            class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-                            onclick="runBackup('group', '{{ group.name }}')">
-                            <span>📁 {{ group.name }} <small class="text-muted">({{ group.vendor }})</small></span>
-                            <span class="badge bg-info">{{ group.devices | length }}</span>
-                        </button>
-                        {% endfor %}
-                    </div>
-                    <hr>
+                    <p class="text-muted mb-3">Seleccione los equipos que desea respaldar:</p>
+
                     <div class="mb-3">
-                        <label class="form-label">🔍 Backup de un equipo específico:</label>
-                        <select class="form-select" id="single-device">
-                            <option value="">-- Seleccionar --</option>
-                            {% for group in inventory.groups %}
-                            {% for device in group.devices %}
-                            <option value="{{ device.hostname }}">{{ device.hostname }} ({{ device.ip }})</option>
-                            {% endfor %}
-                            {% endfor %}
-                        </select>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="select-all" onchange="toggleAll(this)">
+                            <label class="form-check-label fw-bold" for="select-all">
+                                🌐 Seleccionar Todos
+                            </label>
+                        </div>
                     </div>
+
+                    <hr>
+
+                    {% for group in inventory.groups %}
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input group-check" type="checkbox" id="group-{{ group.name }}"
+                                data-group="{{ group.name }}" onchange="toggleGroup('{{ group.name }}')">
+                            <label class="form-check-label fw-bold" for="group-{{ group.name }}">
+                                📁 {{ group.name }} <span class="badge bg-info">{{ group.vendor }}</span>
+                            </label>
+                        </div>
+                        <div class="ms-4">
+                            {% for device in group.devices %}
+                            <div class="form-check">
+                                <input class="form-check-input device-check" type="checkbox"
+                                    id="device-{{ device.hostname }}" data-group="{{ group.name }}"
+                                    data-device="{{ device.hostname }}" value="{{ device.hostname }}">
+                                <label class="form-check-label" for="device-{{ device.hostname }}">
+                                    {{ device.hostname }} <small class="text-muted">({{ device.ip }})</small>
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
                 </div>
                 <div class="modal-footer">
+                    <span class="me-auto text-muted">Seleccionados: <strong id="selected-count">0</strong></span>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-success" onclick="runBackupSingle()">Ejecutar
-                        Seleccionado</button>
+                    <button type="button" class="btn btn-success" onclick="runSelectedBackup()" id="btn-run">
+                        ▶️ Ejecutar Backup
+                    </button>
                 </div>
             </div>
         </div>
@@ -208,49 +243,80 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const backupModal = new bootstrap.Modal(document.getElementById('backupModal'));
+        let pollInterval = null;
 
-        function runBackup(scope, value) {
-            backupModal.hide();
-            let url = '/api/backup/trigger';
-            let label = 'Todos';
+        // Selection management
+        function toggleAll(checkbox) {
+            document.querySelectorAll('.device-check, .group-check').forEach(el => el.checked = checkbox.checked);
+            updateCount();
+        }
 
-            if (scope === 'group') {
-                url += '?group=' + encodeURIComponent(value);
-                label = 'Grupo: ' + value;
-            } else if (scope === 'device') {
-                url += '?device=' + encodeURIComponent(value);
-                label = 'Equipo: ' + value;
+        function toggleGroup(groupName) {
+            const groupCheck = document.getElementById('group-' + groupName);
+            document.querySelectorAll(`.device-check[data-group="${groupName}"]`).forEach(el => el.checked = groupCheck.checked);
+            updateCount();
+        }
+
+        function updateCount() {
+            const count = document.querySelectorAll('.device-check:checked').length;
+            document.getElementById('selected-count').textContent = count;
+            document.getElementById('btn-run').disabled = count === 0;
+        }
+
+        document.querySelectorAll('.device-check').forEach(el => el.addEventListener('change', updateCount));
+
+        function runSelectedBackup() {
+            const selected = Array.from(document.querySelectorAll('.device-check:checked')).map(el => el.value);
+
+            if (selected.length === 0) {
+                alert('Seleccione al menos un equipo');
+                return;
             }
 
-            document.getElementById('backup-target').textContent = label;
-            document.getElementById('backup-status').textContent = 'Iniciando...';
+            if (!confirm(`¿Ejecutar backup de ${selected.length} equipo(s)?`)) return;
+
+            backupModal.hide();
+
+            // Start with first device, queue the rest
+            startBackupQueue(selected);
+        }
+
+        function startBackupQueue(devices) {
+            document.getElementById('btn-backup').disabled = true;
+            document.getElementById('btn-cancel').style.display = 'inline-block';
+            document.getElementById('realtime-stats').style.display = 'flex';
             document.getElementById('log-panel').style.display = 'block';
-            document.getElementById('log-panel').innerHTML = '> Iniciando backup...\n';
+            document.getElementById('log-panel').innerHTML = '';
+            document.getElementById('backup-target').textContent = devices.length + ' equipos';
+
+            // For single device or queue, use device parameter
+            const url = devices.length === 1
+                ? '/api/backup/trigger?device=' + encodeURIComponent(devices[0])
+                : '/api/backup/trigger'; // All devices
+
+            addLog('info', `Iniciando backup de ${devices.length} equipo(s)...`);
 
             fetch(url)
                 .then(r => r.json())
                 .then(data => {
                     if (data.error) {
-                        document.getElementById('backup-status').textContent = data.error;
+                        addLog('error', data.error);
                     } else {
                         pollStatus();
                     }
                 });
         }
 
-        function runBackupSingle() {
-            const device = document.getElementById('single-device').value;
-            if (!device) {
-                alert('Seleccione un equipo');
-                return;
-            }
-            runBackup('device', device);
+        function backupDevice(hostname) {
+            if (!confirm(`¿Ejecutar backup de ${hostname}?`)) return;
+            startBackupQueue([hostname]);
         }
 
-        function backupSingle(hostname) {
-            if (confirm(`¿Ejecutar backup de ${hostname}?`)) {
-                runBackup('device', hostname);
-            }
+        function cancelBackup() {
+            if (!confirm('¿Cancelar el backup en progreso?')) return;
+            fetch('/api/backup/cancel')
+                .then(r => r.json())
+                .then(data => addLog('info', data.message));
         }
 
         function pollStatus() {
@@ -259,40 +325,60 @@
                 .then(data => {
                     document.getElementById('backup-status').textContent = data.message;
                     document.getElementById('progress-bar').style.width = data.progress + '%';
+                    document.getElementById('count-ok').textContent = data.completed ? data.completed.length : 0;
+                    document.getElementById('count-err').textContent = data.errors ? data.errors.length : 0;
 
-                    const log = document.getElementById('log-panel');
-                    log.innerHTML += `> ${data.message}\n`;
-                    log.scrollTop = log.scrollHeight;
+                    if (data.current_device) {
+                        addLog('info', `Procesando: ${data.current_device}`);
+                    }
 
-                    if (data.running) {
-                        setTimeout(pollStatus, 1500);
+                    if (data.running && !data.cancelled) {
+                        setTimeout(pollStatus, 2000);
                     } else {
-                        document.getElementById('progress-bar').style.width = '100%';
-                        setTimeout(() => location.reload(), 2000);
+                        // Finished
+                        document.getElementById('btn-backup').disabled = false;
+                        document.getElementById('btn-cancel').style.display = 'none';
+
+                        if (data.completed) {
+                            data.completed.forEach(d => addLog('success', `✓ ${d.device}: ${d.msg}`));
+                        }
+                        if (data.errors) {
+                            data.errors.forEach(d => addLog('error', `✗ ${d.device}: ${d.msg}`));
+                        }
+
+                        addLog('info', '--- Backup finalizado ---');
+                        setTimeout(() => location.reload(), 3000);
                     }
                 });
         }
 
-        // Chart
-        fetch('/api/stats/history')
-            .then(r => r.json())
-            .then(data => {
-                const labels = Object.keys(data).sort();
-                const success = labels.map(d => data[d].SUCCESS || 0);
-                const errors = labels.map(d => data[d].ERROR || 0);
+        function addLog(type, message) {
+            const panel = document.getElementById('log-panel');
+            const cls = type === 'error' ? 'log-error' : type === 'success' ? 'log-success' : 'log-info';
+            const time = new Date().toLocaleTimeString();
+            panel.innerHTML += `<div class="log-entry ${cls}">[${time}] ${message}</div>`;
+            panel.scrollTop = panel.scrollHeight;
+        }
 
-                new Chart(document.getElementById('chartHistory'), {
-                    type: 'bar',
-                    data: {
-                        labels: labels,
-                        datasets: [
-                            { label: 'OK', data: success, backgroundColor: '#198754' },
-                            { label: 'Error', data: errors, backgroundColor: '#dc3545' }
-                        ]
-                    },
-                    options: { responsive: true, scales: { y: { beginAtZero: true } } }
-                });
+        // Pie Chart
+        const successCount = {{ stats.get('SUCCESS', 0) }};
+        const errorCount = {{ stats.get('ERROR', 0) }};
+        if (successCount + errorCount > 0) {
+            new Chart(document.getElementById('chartPie'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['OK', 'Error'],
+                    datasets: [{
+                        data: [successCount, errorCount],
+                        backgroundColor: ['#198754', '#dc3545']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } }
+                }
             });
+        }
     </script>
 
 </body>

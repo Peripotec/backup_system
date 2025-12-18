@@ -16,6 +16,7 @@ class BackupEngine:
         self.git = GitManager()
         self.notifier = Notifier()
         self.inventory = self._load_inventory()
+        self.status_callback = None  # Optional callback for web UI updates
 
     def _load_inventory(self):
         try:
@@ -53,50 +54,32 @@ class BackupEngine:
         
         log.info(f"Starting backup for {hostname} ({vendor_type})")
         
+        # Notify UI that we're starting this device
+        if self.status_callback:
+            self.status_callback(hostname, "start")
+        
         if self.dry_run:
             time.sleep(0.5) # Simulate work
             log.info(f"[DRY-RUN] Backup simulated for {hostname}")
             self.db.record_job(hostname, vendor_type, group_name, "SUCCESS", "Dry Run", duration=0.5)
+            if self.status_callback:
+                self.status_callback(hostname, "success", "Dry Run")
             return {"status": "SUCCESS", "hostname": hostname, "diff": None}
 
         # Real Execution
         try:
-            # Instantiate Plugin
             VendorClass = self._get_vendor_plugin(vendor_type)
             if not VendorClass:
                 raise ValueError(f"Unknown vendor: {vendor_type}")
-
-            # Merge credentials into device info if not present specific
-            # Assuming inventory structure has group-level credentials that passed down?
-            # We must handle that logic in run() or here.
-            # Simplified: The 'device' dict passed here should already have everything needed.
             
             plugin = VendorClass(device, self.db, self.git)
-            
-            # Execute Backup
-            # The backup() method should return: (file_path, file_size, changed_boolean)
-            # But the base_class calls process_file which does the moving.
-            # Ideally backup() calls process_file() internally and returns its result.
-            
-            # Let's assume plugin.backup() is the "do it all" method.
-            # It should return a dict or object with metadata.
-            
-            # Wait, vendors/base_vendor.py defined backup() as abstract.
-            # We will implement it in vendors/huawei.py to call process_file().
-            
             archive_path, size, changed = plugin.backup()
             
             duration = time.time() - start_time
-            msg = "Backup created"
+            msg = f"{size} bytes"
             if changed:
-                msg += " (Config Changed)"
-                diff = self.git.get_diff(archive_path) # Wait, archive is binary/timestamped. 
-                # Diff should be checked against the Repo/Latest file.
-                # plugin.backup() should return 'latest_path'? 
-                # Let's rely on GitManager knowing the repo.
-                # Re-reading base_vendor: process_file commits the 'latest_path'.
-                # Any diff capture logic needs the file relative to repo.
-                diff = self.git.get_diff(plugin.hostname + ".cfg") # Simplified logic for now
+                msg += " (cambios)"
+                diff = self.git.get_diff(plugin.hostname + ".cfg")
             else:
                 diff = None
 
@@ -106,6 +89,11 @@ class BackupEngine:
             )
             
             log.info(f"Success: {hostname} ({size} bytes)")
+            
+            # Notify UI of success
+            if self.status_callback:
+                self.status_callback(hostname, "success", msg)
+            
             return {"status": "SUCCESS", "hostname": hostname, "diff": diff}
 
         except Exception as e:
@@ -115,7 +103,13 @@ class BackupEngine:
                 hostname, vendor_type, group_name, "ERROR", str(e), 
                 duration=duration
             )
+            
+            # Notify UI of error
+            if self.status_callback:
+                self.status_callback(hostname, "error", str(e))
+            
             return {"status": "ERROR", "hostname": hostname, "error": str(e)}
+
 
     def run(self, target_group=None, target_device=None):
         """

@@ -65,35 +65,95 @@ def index():
 # API: BACKUP TRIGGER
 # ==========================
 
+# Enhanced status with cancel support
+backup_status = {
+    "running": False, 
+    "cancelled": False,
+    "message": "Listo", 
+    "progress": 0,
+    "current_device": None,
+    "completed": [],
+    "errors": []
+}
+
 def run_backup_async(group=None, device=None):
     global backup_status
-    backup_status = {"running": True, "message": "Iniciando backup...", "progress": 10}
+    backup_status = {
+        "running": True, 
+        "cancelled": False,
+        "message": "Iniciando backup...", 
+        "progress": 5,
+        "current_device": None,
+        "completed": [],
+        "errors": []
+    }
+    
     try:
         from core.engine import BackupEngine
         engine = BackupEngine(dry_run=False)
-        backup_status["message"] = "Ejecutando backups..."
-        backup_status["progress"] = 50
+        
+        # Pass status object to engine for real-time updates
+        engine.status_callback = update_backup_status
         engine.run(target_group=group, target_device=device)
-        backup_status = {"running": False, "message": "Completado!", "progress": 100}
+        
+        if backup_status["cancelled"]:
+            backup_status["message"] = "Cancelado por usuario"
+        else:
+            errors = len(backup_status["errors"])
+            completed = len(backup_status["completed"])
+            backup_status["message"] = f"Completado: {completed} OK, {errors} errores"
+            backup_status["progress"] = 100
+        
+        backup_status["running"] = False
+        
     except Exception as e:
-        backup_status = {"running": False, "message": f"Error: {e}", "progress": 0}
+        backup_status["running"] = False
+        backup_status["message"] = f"Error: {e}"
+
+def update_backup_status(device_name, status, message=""):
+    """Callback for engine to update status in real-time."""
+    global backup_status
+    if status == "start":
+        backup_status["current_device"] = device_name
+        backup_status["message"] = f"Procesando: {device_name}..."
+    elif status == "success":
+        backup_status["completed"].append({"device": device_name, "msg": message})
+    elif status == "error":
+        backup_status["errors"].append({"device": device_name, "msg": message})
+    
+    # Update progress based on completed
+    total = len(backup_status["completed"]) + len(backup_status["errors"])
+    backup_status["progress"] = min(10 + (total * 10), 95)
 
 @app.route('/api/backup/trigger')
 def trigger_backup():
-    """Trigger backup via simple GET request."""
+    """Trigger backup via GET request."""
     global backup_status
     if backup_status["running"]:
-        return jsonify({"error": "Backup already running", "running": True})
+        return jsonify({"error": "Backup ya en ejecución", "running": True})
     
     group = request.args.get('group')
     device = request.args.get('device')
+    
     thread = threading.Thread(target=run_backup_async, args=(group, device), daemon=True)
     thread.start()
-    return jsonify({"status": "started", "message": "Backup iniciado", "running": True})
+    
+    target = device or group or "Todos"
+    return jsonify({"status": "started", "message": f"Backup iniciado: {target}", "running": True})
 
 @app.route('/api/backup/status')
 def backup_status_api():
     return jsonify(backup_status)
+
+@app.route('/api/backup/cancel')
+def cancel_backup():
+    """Cancel running backup."""
+    global backup_status
+    if backup_status["running"]:
+        backup_status["cancelled"] = True
+        backup_status["message"] = "Cancelando..."
+        return jsonify({"status": "cancelling", "message": "Cancelando backup..."})
+    return jsonify({"status": "not_running", "message": "No hay backup en ejecución"})
 
 # ==========================
 # API: INVENTORY CRUD
@@ -259,16 +319,64 @@ def api_file_content(filepath):
 
 @app.route('/api/diff/<vendor>/<hostname>')
 def api_get_diff(vendor, hostname):
-    repo_path = os.path.join(REPO_DIR, vendor, f"{hostname}.cfg")
-    if not os.path.exists(repo_path):
-        return jsonify({"error": "File not in repo", "diff": ""})
+    """Get git diff history for a device config."""
+    # Check if repo exists
+    if not os.path.exists(REPO_DIR):
+        return jsonify({
+            "error": f"Repositorio no encontrado: {REPO_DIR}. Ejecute un backup primero.",
+            "diff": ""
+        })
+    
+    # Check if it's a git repo
+    if not os.path.exists(os.path.join(REPO_DIR, '.git')):
+        return jsonify({
+            "error": "El directorio no es un repositorio Git. Inicialice con: cd /Backup/repo && git init",
+            "diff": ""
+        })
+    
+    repo_file = os.path.join(REPO_DIR, vendor, f"{hostname}.cfg")
+    if not os.path.exists(repo_file):
+        # Try alternative extensions
+        for ext in ['.txt', '.dat', '']:
+            alt = os.path.join(REPO_DIR, vendor, f"{hostname}{ext}")
+            if os.path.exists(alt):
+                repo_file = alt
+                break
+        else:
+            return jsonify({
+                "error": f"No se encontró configuración para {hostname} en el repositorio. Ejecute un backup primero.",
+                "diff": ""
+            })
     
     try:
+        # Check if git is available
         result = subprocess.run(
-            ["git", "log", "-p", "-3", "--pretty=format:%H|%ai|%s", "--", f"{vendor}/{hostname}.cfg"],
+            ["git", "--version"],
+            capture_output=True, text=True
+        )
+        if result.returncode != 0:
+            return jsonify({"error": "Git no está instalado en el servidor", "diff": ""})
+        
+        # Get log with diffs
+        rel_path = os.path.relpath(repo_file, REPO_DIR)
+        result = subprocess.run(
+            ["git", "log", "-p", "-5", "--pretty=format:=== Commit: %h (%ai) ===\n%s\n", "--", rel_path],
             cwd=REPO_DIR, capture_output=True, text=True
         )
+        
+        if result.returncode != 0:
+            return jsonify({"error": f"Error git: {result.stderr}", "diff": ""})
+        
+        if not result.stdout.strip():
+            return jsonify({
+                "hostname": hostname,
+                "diff": "Sin historial de cambios registrados.\nEl archivo existe pero aún no ha sido versionado con git."
+            })
+        
         return jsonify({"hostname": hostname, "diff": result.stdout})
+        
+    except FileNotFoundError:
+        return jsonify({"error": "Git no está instalado. Instale con: apt install git", "diff": ""})
     except Exception as e:
         return jsonify({"error": str(e), "diff": ""})
 
