@@ -159,6 +159,56 @@ def api_delete_device(group_name, hostname):
             return jsonify({"status": "ok", "message": "Dispositivo eliminado"})
     return jsonify({"error": "Not found"}), 404
 
+@app.route('/api/inventory/device/<group_name>/<hostname>', methods=['PUT'])
+@requires_auth
+def api_edit_device(group_name, hostname):
+    """Edit an existing device."""
+    data = request.json
+    inv = load_inventory()
+    for g in inv["groups"]:
+        if g["name"] == group_name:
+            for d in g["devices"]:
+                if d["hostname"] == hostname:
+                    d["hostname"] = data.get("hostname", hostname)
+                    d["ip"] = data.get("ip", d["ip"])
+                    save_inventory(inv)
+                    return jsonify({"status": "ok", "message": "Dispositivo actualizado"})
+    return jsonify({"error": "Device not found"}), 404
+
+@app.route('/api/inventory/test', methods=['POST'])
+@requires_auth
+def api_test_connection():
+    """Test connection to a device before saving."""
+    import socket
+    data = request.json
+    ip = data.get("ip")
+    port = data.get("port", 23)
+    
+    if not ip:
+        return jsonify({"success": False, "error": "IP requerida"})
+    
+    # Validate IP format
+    try:
+        socket.inet_aton(ip)
+    except socket.error:
+        return jsonify({"success": False, "error": "Formato de IP inválido"})
+    
+    # Test TCP connection
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(5)
+        result = sock.connect_ex((ip, port))
+        sock.close()
+        
+        if result == 0:
+            return jsonify({"success": True, "message": f"Conexión OK a {ip}:{port}"})
+        else:
+            return jsonify({"success": False, "error": f"Puerto {port} cerrado o inaccesible"})
+    except socket.timeout:
+        return jsonify({"success": False, "error": "Timeout conectando"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
 # ==========================
 # API: FILE BROWSER
 # ==========================
