@@ -9,16 +9,12 @@
     <style>
         .log-panel {
             font-family: monospace;
-            font-size: 11px;
+            font-size: 10px;
             background: #1e1e1e;
             color: #0f0;
-            min-height: 100px;
-            max-height: 200px;
+            min-height: 60px;
+            max-height: 120px;
             overflow-y: auto;
-        }
-
-        .log-entry {
-            margin: 2px 0;
         }
 
         .log-success {
@@ -33,68 +29,56 @@
             color: #5bf;
         }
 
-        .device-status {
-            font-size: 10px;
+        .group-collapse {
+            cursor: pointer;
+        }
+
+        .device-list {
+            max-height: 200px;
+            overflow-y: auto;
         }
     </style>
 </head>
 
 <body class="bg-light">
 
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
-        <div class="container">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-3">
+        <div class="container-fluid">
             <a class="navbar-brand" href="/">🛡️ Backup System</a>
-            <div class="collapse navbar-collapse">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item"><a class="nav-link active" href="/">Dashboard</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/inventory">Inventario</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/files">Archivos</a></li>
-                </ul>
-            </div>
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item"><a class="nav-link active" href="/">Dashboard</a></li>
+                <li class="nav-item"><a class="nav-link" href="/inventory">Inventario</a></li>
+                <li class="nav-item"><a class="nav-link" href="/files">Archivos</a></li>
+            </ul>
         </div>
     </nav>
 
-    <div class="container">
-        <!-- Backup Control Panel -->
-        <div class="row mb-4">
+    <div class="container-fluid">
+        <!-- Control Panel -->
+        <div class="row mb-3">
             <div class="col-12">
                 <div class="card">
-                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <div
+                        class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-2">
                         <span>🚀 Control de Backup</span>
                         <div>
                             <button class="btn btn-danger btn-sm me-2" id="btn-cancel" onclick="cancelBackup()"
-                                style="display:none;">
-                                ⏹️ Cancelar
-                            </button>
-                            <button class="btn btn-light" id="btn-backup" data-bs-toggle="modal"
-                                data-bs-target="#backupModal">
-                                ▶️ Ejecutar Backup
-                            </button>
+                                style="display:none;">⏹️ Cancelar</button>
+                            <button class="btn btn-light btn-sm" id="btn-backup" data-bs-toggle="modal"
+                                data-bs-target="#backupModal">▶️ Ejecutar Backup</button>
                         </div>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body py-2">
                         <div class="row">
                             <div class="col-md-8">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <span id="backup-status" class="text-muted">Listo para ejecutar</span>
-                                    <span id="backup-target" class="badge bg-secondary"></span>
-                                </div>
-                                <div class="progress mb-2" style="height: 10px;">
+                                <small id="backup-status" class="text-muted">Listo para ejecutar</small>
+                                <div class="progress mt-1" style="height: 6px;">
                                     <div class="progress-bar progress-bar-striped progress-bar-animated"
                                         id="progress-bar" style="width: 0%"></div>
                                 </div>
-                                <!-- Real-time results -->
-                                <div class="row" id="realtime-stats" style="display:none;">
-                                    <div class="col-6">
-                                        <small class="text-success">✅ Completados: <span id="count-ok">0</span></small>
-                                    </div>
-                                    <div class="col-6">
-                                        <small class="text-danger">❌ Errores: <span id="count-err">0</span></small>
-                                    </div>
-                                </div>
                             </div>
                             <div class="col-md-4">
-                                <div id="log-panel" class="log-panel p-2 rounded" style="display: none;"></div>
+                                <div id="log-panel" class="log-panel p-1 rounded" style="display: none;"></div>
                             </div>
                         </div>
                     </div>
@@ -103,11 +87,11 @@
         </div>
 
         <!-- Stats Row -->
-        <div class="row mb-4">
-            <div class="col-md-3">
-                <div class="card p-3">
-                    <h6>Disco</h6>
-                    <div class="progress" style="height: 20px;">
+        <div class="row mb-3">
+            <div class="col-md-2">
+                <div class="card p-2 text-center">
+                    <small class="text-muted">Disco</small>
+                    <div class="progress" style="height: 15px;">
                         <div class="progress-bar"
                             style="width: {{ disk.percent }}%; background-color: {{ '#dc3545' if disk.percent > 90 else '#ffc107' if disk.percent > 70 else '#198754' }};">
                             {{ disk.percent }}%
@@ -116,32 +100,41 @@
                     <small class="text-muted">{{ disk.free_gb }} GB libres</small>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="card p-3 text-center">
-                    <h3 class="text-success mb-0">{{ stats.get('SUCCESS', 0) }}</h3>
+            <div class="col-md-2">
+                <div class="card p-2 text-center">
+                    <h4 class="text-success mb-0">{{ stats.get('SUCCESS', 0) }}</h4>
                     <small class="text-muted">Exitosos (24h)</small>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="card p-3 text-center">
-                    <h3 class="text-danger mb-0">{{ stats.get('ERROR', 0) }}</h3>
+            <div class="col-md-2">
+                <div class="card p-2 text-center">
+                    <h4 class="text-danger mb-0">{{ stats.get('ERROR', 0) }}</h4>
                     <small class="text-muted">Fallidos (24h)</small>
                 </div>
             </div>
             <div class="col-md-3">
-                <div class="card p-3">
-                    <canvas id="chartPie" height="80"></canvas>
+                <div class="card p-2">
+                    <small class="text-muted text-center">General</small>
+                    <canvas id="chartPie" height="60"></canvas>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-2">
+                    <small class="text-muted text-center">Por Grupo</small>
+                    <canvas id="chartGroups" height="60"></canvas>
                 </div>
             </div>
         </div>
 
-        <!-- Recent Jobs -->
+        <!-- Jobs Table with Pagination -->
         <div class="card">
-            <div class="card-header d-flex justify-content-between">
+            <div class="card-header d-flex justify-content-between align-items-center py-2">
                 <span>📋 Últimas Ejecuciones</span>
-                <button class="btn btn-sm btn-outline-secondary" onclick="location.reload()">🔄</button>
+                <div>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="loadJobs(1)">🔄</button>
+                </div>
             </div>
-            <div class="card-body p-0" style="max-height: 350px; overflow-y: auto;">
+            <div class="card-body p-0">
                 <table class="table table-striped table-hover table-sm mb-0">
                     <thead class="table-dark">
                         <tr>
@@ -153,88 +146,69 @@
                             <th>Acciones</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        {% for job in jobs %}
-                        <tr>
-                            <td><small>{{ job.timestamp.split('.')[0] if job.timestamp else '' }}</small></td>
-                            <td><strong>{{ job.hostname }}</strong></td>
-                            <td><small>{{ job.group_name or '-' }}</small></td>
-                            <td>
-                                {% if job.status == 'SUCCESS' %}
-                                <span class="badge bg-success">OK</span>
-                                {% else %}
-                                <span class="badge bg-danger">ERR</span>
-                                {% endif %}
-                            </td>
-                            <td><small class="text-muted">{{ job.message[:30] if job.message else '' }}...</small></td>
-                            <td>
-                                <a href="/files/{{ job.hostname }}" class="btn btn-sm btn-outline-primary"
-                                    title="Archivos">📁</a>
-                                <a href="/diff/{{ job.vendor }}/{{ job.hostname }}"
-                                    class="btn btn-sm btn-outline-secondary" title="Historial">📝</a>
-                                <button class="btn btn-sm btn-outline-success"
-                                    onclick="backupDevice('{{ job.hostname }}')" title="Backup">🔄</button>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
+                    <tbody id="jobs-table"></tbody>
                 </table>
+            </div>
+            <div class="card-footer py-1 d-flex justify-content-between">
+                <small id="jobs-info" class="text-muted">Cargando...</small>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0" id="pagination"></ul>
+                </nav>
             </div>
         </div>
     </div>
 
-    <!-- Backup Selector Modal (Safer UX) -->
+    <!-- Backup Modal with Collapsible Groups -->
     <div class="modal fade" id="backupModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title">🎯 Seleccionar Equipos para Backup</h5>
+                <div class="modal-header bg-primary text-white py-2">
+                    <h6 class="modal-title">🎯 Seleccionar Equipos</h6>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body">
-                    <p class="text-muted mb-3">Seleccione los equipos que desea respaldar:</p>
-
-                    <div class="mb-3">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="select-all" onchange="toggleAll(this)">
-                            <label class="form-check-label fw-bold" for="select-all">
-                                🌐 Seleccionar Todos
-                            </label>
-                        </div>
+                <div class="modal-body" style="max-height: 400px; overflow-y: auto;">
+                    <div class="mb-2">
+                        <input type="text" class="form-control form-control-sm" id="device-search"
+                            placeholder="🔍 Buscar equipo..." onkeyup="filterDevices()">
                     </div>
-
-                    <hr>
-
-                    {% for group in inventory.groups %}
-                    <div class="mb-3">
-                        <div class="form-check">
-                            <input class="form-check-input group-check" type="checkbox" id="group-{{ group.name }}"
-                                data-group="{{ group.name }}" onchange="toggleGroup('{{ group.name }}')">
-                            <label class="form-check-label fw-bold" for="group-{{ group.name }}">
-                                📁 {{ group.name }} <span class="badge bg-info">{{ group.vendor }}</span>
-                            </label>
-                        </div>
-                        <div class="ms-4">
-                            {% for device in group.devices %}
-                            <div class="form-check">
-                                <input class="form-check-input device-check" type="checkbox"
-                                    id="device-{{ device.hostname }}" data-group="{{ group.name }}"
-                                    data-device="{{ device.hostname }}" value="{{ device.hostname }}">
-                                <label class="form-check-label" for="device-{{ device.hostname }}">
-                                    {{ device.hostname }} <small class="text-muted">({{ device.ip }})</small>
-                                </label>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="select-all" onchange="toggleAll(this)">
+                        <label class="form-check-label fw-bold" for="select-all">🌐 Seleccionar Todos</label>
+                    </div>
+                    <hr class="my-2">
+                    <div id="groups-container">
+                        {% for group in inventory.groups %}
+                        <div class="mb-2 group-item">
+                            <div class="d-flex align-items-center group-collapse" data-bs-toggle="collapse"
+                                data-bs-target="#collapse-{{ loop.index }}">
+                                <input class="form-check-input me-2 group-check" type="checkbox"
+                                    data-group="{{ group.name }}"
+                                    onclick="event.stopPropagation(); toggleGroup('{{ group.name }}')">
+                                <span class="fw-bold">📁 {{ group.name }}</span>
+                                <span class="badge bg-info ms-2">{{ group.vendor }}</span>
+                                <span class="badge bg-secondary ms-1">{{ group.devices|length }}</span>
+                                <span class="ms-auto">▼</span>
                             </div>
-                            {% endfor %}
+                            <div class="collapse device-list ms-4" id="collapse-{{ loop.index }}">
+                                {% for device in group.devices %}
+                                <div class="form-check device-item" data-name="{{ device.hostname|lower }}">
+                                    <input class="form-check-input device-check" type="checkbox"
+                                        data-group="{{ group.name }}" data-device="{{ device.hostname }}"
+                                        value="{{ device.hostname }}">
+                                    <label class="form-check-label"><small>{{ device.hostname }} ({{ device.ip
+                                            }})</small></label>
+                                </div>
+                                {% endfor %}
+                            </div>
                         </div>
+                        {% endfor %}
                     </div>
-                    {% endfor %}
                 </div>
-                <div class="modal-footer">
+                <div class="modal-footer py-2">
                     <span class="me-auto text-muted">Seleccionados: <strong id="selected-count">0</strong></span>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-success" onclick="runSelectedBackup()" id="btn-run">
-                        ▶️ Ejecutar Backup
-                    </button>
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-success btn-sm" onclick="runSelectedBackup()" id="btn-run"
+                        disabled>▶️ Ejecutar</button>
                 </div>
             </div>
         </div>
@@ -243,144 +217,150 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const backupModal = new bootstrap.Modal(document.getElementById('backupModal'));
-        let pollInterval = null;
+        let currentPage = 1;
 
-        // Selection management
-        function toggleAll(checkbox) {
-            document.querySelectorAll('.device-check, .group-check').forEach(el => el.checked = checkbox.checked);
+        // Device Selection
+        function toggleAll(cb) {
+            document.querySelectorAll('.device-check, .group-check').forEach(el => el.checked = cb.checked);
             updateCount();
         }
 
-        function toggleGroup(groupName) {
-            const groupCheck = document.getElementById('group-' + groupName);
-            document.querySelectorAll(`.device-check[data-group="${groupName}"]`).forEach(el => el.checked = groupCheck.checked);
+        function toggleGroup(name) {
+            const cb = document.querySelector(`.group-check[data-group="${name}"]`);
+            document.querySelectorAll(`.device-check[data-group="${name}"]`).forEach(el => el.checked = cb.checked);
             updateCount();
         }
 
         function updateCount() {
-            const count = document.querySelectorAll('.device-check:checked').length;
-            document.getElementById('selected-count').textContent = count;
-            document.getElementById('btn-run').disabled = count === 0;
+            const n = document.querySelectorAll('.device-check:checked').length;
+            document.getElementById('selected-count').textContent = n;
+            document.getElementById('btn-run').disabled = n === 0;
+        }
+
+        function filterDevices() {
+            const q = document.getElementById('device-search').value.toLowerCase();
+            document.querySelectorAll('.device-item').forEach(el => {
+                el.style.display = el.dataset.name.includes(q) ? '' : 'none';
+            });
         }
 
         document.querySelectorAll('.device-check').forEach(el => el.addEventListener('change', updateCount));
 
         function runSelectedBackup() {
             const selected = Array.from(document.querySelectorAll('.device-check:checked')).map(el => el.value);
-
-            if (selected.length === 0) {
-                alert('Seleccione al menos un equipo');
-                return;
-            }
-
-            if (!confirm(`¿Ejecutar backup de ${selected.length} equipo(s)?`)) return;
-
+            if (selected.length === 0) return alert('Seleccione equipos');
+            if (!confirm(`¿Backup de ${selected.length} equipo(s)?`)) return;
             backupModal.hide();
 
-            // Start with first device, queue the rest
-            startBackupQueue(selected);
-        }
-
-        function startBackupQueue(devices) {
             document.getElementById('btn-backup').disabled = true;
             document.getElementById('btn-cancel').style.display = 'inline-block';
-            document.getElementById('realtime-stats').style.display = 'flex';
             document.getElementById('log-panel').style.display = 'block';
             document.getElementById('log-panel').innerHTML = '';
-            document.getElementById('backup-target').textContent = devices.length + ' equipos';
 
-            // For single device or queue, use device parameter
-            const url = devices.length === 1
-                ? '/api/backup/trigger?device=' + encodeURIComponent(devices[0])
-                : '/api/backup/trigger'; // All devices
-
-            addLog('info', `Iniciando backup de ${devices.length} equipo(s)...`);
-
-            fetch(url)
-                .then(r => r.json())
-                .then(data => {
-                    if (data.error) {
-                        addLog('error', data.error);
-                    } else {
-                        pollStatus();
-                    }
-                });
-        }
-
-        function backupDevice(hostname) {
-            if (!confirm(`¿Ejecutar backup de ${hostname}?`)) return;
-            startBackupQueue([hostname]);
+            const url = selected.length === 1 ? '/api/backup/trigger?device=' + encodeURIComponent(selected[0]) : '/api/backup/trigger';
+            addLog('info', `Iniciando ${selected.length} backup(s)...`);
+            fetch(url).then(r => r.json()).then(d => d.error ? addLog('error', d.error) : pollStatus());
         }
 
         function cancelBackup() {
-            if (!confirm('¿Cancelar el backup en progreso?')) return;
-            fetch('/api/backup/cancel')
-                .then(r => r.json())
-                .then(data => addLog('info', data.message));
+            if (confirm('¿Cancelar?')) fetch('/api/backup/cancel').then(r => r.json()).then(d => addLog('info', d.message));
         }
 
         function pollStatus() {
-            fetch('/api/backup/status')
-                .then(r => r.json())
-                .then(data => {
-                    document.getElementById('backup-status').textContent = data.message;
-                    document.getElementById('progress-bar').style.width = data.progress + '%';
-                    document.getElementById('count-ok').textContent = data.completed ? data.completed.length : 0;
-                    document.getElementById('count-err').textContent = data.errors ? data.errors.length : 0;
-
-                    if (data.current_device) {
-                        addLog('info', `Procesando: ${data.current_device}`);
-                    }
-
-                    if (data.running && !data.cancelled) {
-                        setTimeout(pollStatus, 2000);
-                    } else {
-                        // Finished
-                        document.getElementById('btn-backup').disabled = false;
-                        document.getElementById('btn-cancel').style.display = 'none';
-
-                        if (data.completed) {
-                            data.completed.forEach(d => addLog('success', `✓ ${d.device}: ${d.msg}`));
-                        }
-                        if (data.errors) {
-                            data.errors.forEach(d => addLog('error', `✗ ${d.device}: ${d.msg}`));
-                        }
-
-                        addLog('info', '--- Backup finalizado ---');
-                        setTimeout(() => location.reload(), 3000);
-                    }
-                });
-        }
-
-        function addLog(type, message) {
-            const panel = document.getElementById('log-panel');
-            const cls = type === 'error' ? 'log-error' : type === 'success' ? 'log-success' : 'log-info';
-            const time = new Date().toLocaleTimeString();
-            panel.innerHTML += `<div class="log-entry ${cls}">[${time}] ${message}</div>`;
-            panel.scrollTop = panel.scrollHeight;
-        }
-
-        // Pie Chart
-        const successCount = {{ stats.get('SUCCESS', 0) }};
-        const errorCount = {{ stats.get('ERROR', 0) }};
-        if (successCount + errorCount > 0) {
-            new Chart(document.getElementById('chartPie'), {
-                type: 'doughnut',
-                data: {
-                    labels: ['OK', 'Error'],
-                    datasets: [{
-                        data: [successCount, errorCount],
-                        backgroundColor: ['#198754', '#dc3545']
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } }
+            fetch('/api/backup/status').then(r => r.json()).then(d => {
+                document.getElementById('backup-status').textContent = d.message;
+                document.getElementById('progress-bar').style.width = d.progress + '%';
+                if (d.current_device) addLog('info', `→ ${d.current_device}`);
+                if (d.running && !d.cancelled) setTimeout(pollStatus, 2000);
+                else {
+                    document.getElementById('btn-backup').disabled = false;
+                    document.getElementById('btn-cancel').style.display = 'none';
+                    addLog('info', '✓ Finalizado');
+                    setTimeout(() => loadJobs(1), 2000);
                 }
             });
         }
-    </script>
 
+        function addLog(t, m) {
+            const p = document.getElementById('log-panel');
+            p.innerHTML += `<div class="log-${t}">${m}</div>`;
+            p.scrollTop = p.scrollHeight;
+        }
+
+        // Paginated Jobs
+        function loadJobs(page) {
+            currentPage = page;
+            fetch('/api/jobs?page=' + page + '&per_page=15').then(r => r.json()).then(data => {
+                const tb = document.getElementById('jobs-table');
+                tb.innerHTML = '';
+                data.jobs.forEach(j => {
+                    const ts = j.timestamp ? j.timestamp.split('.')[0] : '';
+                    const st = j.status === 'SUCCESS' ? '<span class="badge bg-success">OK</span>' : '<span class="badge bg-danger">ERR</span>';
+                    const msg = (j.message || '').substring(0, 30);
+                    tb.innerHTML += `<tr>
+                <td><small>${ts}</small></td>
+                <td><strong>${j.hostname}</strong></td>
+                <td><small>${j.group_name || '-'}</small></td>
+                <td>${st}</td>
+                <td><small class="text-muted">${msg}</small></td>
+                <td>
+                    <a href="/files/${j.hostname}" class="btn btn-sm btn-outline-primary py-0">📁</a>
+                    <a href="/diff/${j.vendor}/${j.hostname}" class="btn btn-sm btn-outline-secondary py-0">📝</a>
+                    <button class="btn btn-sm btn-outline-success py-0" onclick="backupSingle('${j.hostname}')">🔄</button>
+                </td>
+            </tr>`;
+                });
+                document.getElementById('jobs-info').textContent = `Página ${data.page}/${data.pages} (${data.total} total)`;
+
+                // Pagination
+                const pg = document.getElementById('pagination');
+                pg.innerHTML = '';
+                if (data.page > 1) pg.innerHTML += `<li class="page-item"><a class="page-link" href="#" onclick="loadJobs(${data.page - 1})">«</a></li>`;
+                for (let i = Math.max(1, data.page - 2); i <= Math.min(data.pages, data.page + 2); i++) {
+                    pg.innerHTML += `<li class="page-item ${i === data.page ? 'active' : ''}"><a class="page-link" href="#" onclick="loadJobs(${i})">${i}</a></li>`;
+                }
+                if (data.page < data.pages) pg.innerHTML += `<li class="page-item"><a class="page-link" href="#" onclick="loadJobs(${data.page + 1})">»</a></li>`;
+            });
+        }
+
+        function backupSingle(h) { if (confirm(`Backup ${h}?`)) { backupModal.hide(); startSingle(h); } }
+        function startSingle(h) {
+            document.getElementById('btn-backup').disabled = true;
+            document.getElementById('log-panel').style.display = 'block';
+            document.getElementById('log-panel').innerHTML = '';
+            addLog('info', 'Backup: ' + h);
+            fetch('/api/backup/trigger?device=' + encodeURIComponent(h)).then(r => r.json()).then(d => d.error ? addLog('error', d.error) : pollStatus());
+        }
+
+        // Charts
+        const ok = {{ stats.get('SUCCESS', 0) }}, err = {{ stats.get('ERROR', 0) }};
+        if (ok + err > 0) {
+            new Chart(document.getElementById('chartPie'), {
+                type: 'doughnut',
+                data: { labels: ['OK', 'Error'], datasets: [{ data: [ok, err], backgroundColor: ['#198754', '#dc3545'] }] },
+                options: { responsive: true, plugins: { legend: { display: false } } }
+            });
+        }
+
+        fetch('/api/stats/by_group').then(r => r.json()).then(data => {
+            const groups = Object.keys(data);
+            if (groups.length === 0) return;
+            new Chart(document.getElementById('chartGroups'), {
+                type: 'bar',
+                data: {
+                    labels: groups,
+                    datasets: [
+                        { label: 'OK', data: groups.map(g => data[g].SUCCESS || 0), backgroundColor: '#198754' },
+                        { label: 'Err', data: groups.map(g => data[g].ERROR || 0), backgroundColor: '#dc3545' }
+                    ]
+                },
+                options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } }
+            });
+        });
+
+        // Initial load
+        loadJobs(1);
+    </script>
 </body>
 
 </html>

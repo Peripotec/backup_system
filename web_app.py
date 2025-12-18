@@ -349,9 +349,12 @@ def api_get_diff(vendor, hostname):
             })
     
     try:
+        # Use full path to git to avoid PATH issues with systemd
+        git_path = "/usr/bin/git"
+        
         # Check if git is available
         result = subprocess.run(
-            ["git", "--version"],
+            [git_path, "--version"],
             capture_output=True, text=True
         )
         if result.returncode != 0:
@@ -360,7 +363,7 @@ def api_get_diff(vendor, hostname):
         # Get log with diffs
         rel_path = os.path.relpath(repo_file, REPO_DIR)
         result = subprocess.run(
-            ["git", "log", "-p", "-5", "--pretty=format:=== Commit: %h (%ai) ===\n%s\n", "--", rel_path],
+            [git_path, "log", "-p", "-5", "--pretty=format:=== Commit: %h (%ai) ===\n%s\n", "--", rel_path],
             cwd=REPO_DIR, capture_output=True, text=True
         )
         
@@ -387,7 +390,6 @@ def api_get_diff(vendor, hostname):
 @app.route('/api/stats/history')
 def api_stats_history():
     db = get_db()
-    # Get last 7 days stats
     conn = db._get_connection()
     cursor = conn.cursor()
     cursor.execute('''
@@ -400,7 +402,6 @@ def api_stats_history():
     rows = cursor.fetchall()
     conn.close()
     
-    # Format for chart
     data = {}
     for day, status, count in rows:
         if day not in data:
@@ -408,6 +409,72 @@ def api_stats_history():
         data[day][status] = count
     
     return jsonify(data)
+
+@app.route('/api/stats/by_group')
+def api_stats_by_group():
+    """Get stats per group for the last 24 hours."""
+    db = get_db()
+    conn = db._get_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT group_name, status, count(*) 
+        FROM jobs 
+        WHERE timestamp >= datetime('now', '-24 hours')
+        GROUP BY group_name, status
+    ''')
+    rows = cursor.fetchall()
+    conn.close()
+    
+    # Format: {group_name: {SUCCESS: X, ERROR: Y}}
+    data = {}
+    for group, status, count in rows:
+        if group not in data:
+            data[group] = {"SUCCESS": 0, "ERROR": 0, "total": 0}
+        data[group][status] = count
+        data[group]["total"] += count
+    
+    return jsonify(data)
+
+@app.route('/api/jobs')
+def api_jobs_paginated():
+    """Get paginated jobs list."""
+    page = int(request.args.get('page', 1))
+    per_page = int(request.args.get('per_page', 20))
+    offset = (page - 1) * per_page
+    
+    db = get_db()
+    conn = db._get_connection()
+    cursor = conn.cursor()
+    
+    # Get total count
+    cursor.execute('SELECT COUNT(*) FROM jobs')
+    total = cursor.fetchone()[0]
+    
+    # Get page of jobs
+    cursor.execute('''
+        SELECT id, hostname, vendor, group_name, status, message, timestamp, duration, changed
+        FROM jobs 
+        ORDER BY timestamp DESC
+        LIMIT ? OFFSET ?
+    ''', (per_page, offset))
+    
+    jobs = []
+    for row in cursor.fetchall():
+        jobs.append({
+            "id": row[0], "hostname": row[1], "vendor": row[2], "group_name": row[3],
+            "status": row[4], "message": row[5], "timestamp": row[6], 
+            "duration": row[7], "changed": row[8]
+        })
+    
+    conn.close()
+    
+    return jsonify({
+        "jobs": jobs,
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "pages": (total + per_page - 1) // per_page
+    })
 
 # ==========================
 # PAGES

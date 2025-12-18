@@ -2,11 +2,11 @@
 # Single device configured for initial validation
 
 groups:
-  - name: "Huawei Test"
-    vendor: "huawei"
-    credentials:
-      user: "noc"
-      pass: "n0c442@dm1n."
-    devices:
-      - hostname: "Huawei_6730_A"
-        ip: "172.19.31.8"
+- credentials:
+    pass: n0c442@dm1n.
+    user: noc
+  devices:
+  - hostname: HUAWEI5720-SUSANA
+    ip: 172.19.2.3
+  name: Huawei Test
+  vendor: huawei
