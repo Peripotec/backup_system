@@ -6,59 +6,92 @@
     <title>Explorador de Archivos</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
+        :root {
+            --bg: #f8f9fa;
+            --card-bg: #fff;
+            --text: #212529;
+            --muted: #6c757d;
+        }
+
+        [data-theme="dark"] {
+            --bg: #1a1a2e;
+            --card-bg: #16213e;
+            --text: #e9ecef;
+            --muted: #adb5bd;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: none;
+        }
+
+        .text-muted {
+            color: var(--muted) !important;
+        }
+
         .file-item {
             cursor: pointer;
         }
 
         .file-item:hover {
-            background-color: #f8f9fa;
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+
+        [data-theme="dark"] .file-item:hover {
+            background-color: rgba(255, 255, 255, 0.05);
         }
 
         .file-content {
             font-family: monospace;
             font-size: 11px;
-            background: #1e1e1e;
+            background: #0d1117;
             color: #d4d4d4;
         }
 
-        .breadcrumb {
-            margin-bottom: 0;
+        .delete-btn {
+            opacity: 0.5;
+        }
+
+        .delete-btn:hover {
+            opacity: 1;
+        }
+
+        .theme-toggle {
+            cursor: pointer;
+            font-size: 1.2rem;
         }
     </style>
 </head>
 
-<body class="bg-light">
+<body>
 
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
         <div class="container-fluid">
             <a class="navbar-brand" href="/">🛡️ Backup System</a>
-            <div class="collapse navbar-collapse">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item"><a class="nav-link" href="/">Dashboard</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/inventory">Inventario</a></li>
-                    <li class="nav-item"><a class="nav-link active" href="/files">Archivos</a></li>
-                </ul>
-            </div>
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item"><a class="nav-link" href="/">Dashboard</a></li>
+                <li class="nav-item"><a class="nav-link" href="/inventory">Inventario</a></li>
+                <li class="nav-item"><a class="nav-link active" href="/files">Archivos</a></li>
+                <li class="nav-item ms-3"><span class="nav-link theme-toggle" onclick="toggleTheme()">🌓</span></li>
+            </ul>
         </div>
     </nav>
 
     <div class="container-fluid">
         <div class="row">
-            <!-- Left Panel: File Tree -->
             <div class="col-md-4">
                 <div class="card">
-                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                        <span>📁 Explorador</span>
-                    </div>
+                    <div class="card-header bg-primary text-white">📁 Explorador</div>
                     <div class="card-body p-2">
-                        <!-- Search -->
-                        <div class="input-group mb-2">
-                            <input type="text" class="form-control form-control-sm" id="search-input"
-                                placeholder="🔍 Buscar archivo..." onkeyup="filterFiles()">
-                        </div>
-                        <!-- Breadcrumb -->
-                        <nav aria-label="breadcrumb" class="mb-2">
-                            <ol class="breadcrumb bg-light p-2 rounded" id="breadcrumb">
+                        <input type="text" class="form-control form-control-sm mb-2" id="search-input"
+                            placeholder="🔍 Buscar..." onkeyup="filterFiles()">
+                        <nav>
+                            <ol class="breadcrumb bg-light p-2 rounded mb-0" id="breadcrumb">
                                 <li class="breadcrumb-item"><a href="#" onclick="loadFiles('')">archive</a></li>
                             </ol>
                         </nav>
@@ -67,47 +100,76 @@
                     </ul>
                 </div>
             </div>
-
-            <!-- Right Panel: Content Viewer -->
             <div class="col-md-8">
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center" id="viewer-header">
                         <span>Selecciona un archivo</span>
-                        <a href="#" class="btn btn-primary btn-sm" id="download-btn" style="display:none;">⬇️
-                            Descargar</a>
+                        <div>
+                            <a href="#" class="btn btn-primary btn-sm" id="download-btn" style="display:none;">⬇️
+                                Descargar</a>
+                            <button class="btn btn-outline-danger btn-sm" id="delete-btn" style="display:none;"
+                                onclick="confirmDelete()">🗑️ Eliminar</button>
+                        </div>
                     </div>
                     <div class="card-body p-0">
-                        <pre class="file-content p-3 m-0" id="file-content" style="max-height: 600px; overflow: auto;">
-Selecciona un archivo de la lista para ver su contenido...
-                    </pre>
+                        <pre class="file-content p-3 m-0" id="file-content"
+                            style="max-height: 600px; overflow: auto;">Selecciona un archivo de la lista...</pre>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">⚠️ Confirmar Eliminación</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-danger">
+                        <strong>¡ATENCIÓN!</strong> Esta acción es <strong>IRREVERSIBLE</strong>.
+                    </div>
+                    <p>Está a punto de eliminar:</p>
+                    <p class="text-center"><code id="delete-target" class="fs-5"></code></p>
+                    <p class="text-muted small">El archivo/carpeta será eliminado permanentemente del servidor.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger" id="confirm-delete-btn">🗑️ Sí, Eliminar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        let currentPath = '';
-        let allItems = [];
+        // Theme
+        function toggleTheme() {
+            var t = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', t);
+            localStorage.setItem('theme', t);
+        }
+        (function () { document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'light'); })();
+
+        let currentPath = '', allItems = [], selectedFile = '';
+        const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
 
         function updateBreadcrumb(path) {
-            const crumb = document.getElementById('breadcrumb');
-            let html = '<li class="breadcrumb-item"><a href="#" onclick="loadFiles(\'\')">archive</a></li>';
-
+            var html = '<li class="breadcrumb-item"><a href="#" onclick="loadFiles(\'\')">archive</a></li>';
             if (path) {
-                const parts = path.split('/').filter(p => p);
-                let accumulated = '';
-                parts.forEach((part, index) => {
-                    accumulated += (accumulated ? '/' : '') + part;
-                    const isLast = index === parts.length - 1;
-                    if (isLast) {
-                        html += `<li class="breadcrumb-item active">${part}</li>`;
-                    } else {
-                        html += `<li class="breadcrumb-item"><a href="#" onclick="loadFiles('${accumulated}')">${part}</a></li>`;
-                    }
+                var parts = path.split('/').filter(function (p) { return p; });
+                var acc = '';
+                parts.forEach(function (p, i) {
+                    acc += (acc ? '/' : '') + p;
+                    html += i === parts.length - 1
+                        ? '<li class="breadcrumb-item active">' + p + '</li>'
+                        : '<li class="breadcrumb-item"><a href="#" onclick="loadFiles(\'' + acc + '\')">' + p + '</a></li>';
                 });
             }
-            crumb.innerHTML = html;
+            document.getElementById('breadcrumb').innerHTML = html;
         }
 
         function loadFiles(path) {
@@ -115,36 +177,26 @@ Selecciona un archivo de la lista para ver su contenido...
             updateBreadcrumb(path);
             document.getElementById('search-input').value = '';
 
-            const url = path ? '/api/files/list/' + path : '/api/files/list';
-
-            fetch(url)
-                .then(r => r.json())
-                .then(data => {
-                    if (data.error) {
-                        document.getElementById('file-list').innerHTML = `<li class="list-group-item text-danger">${data.error}</li>`;
-                        return;
-                    }
-
-                    allItems = data.items || [];
-                    renderFiles(allItems);
-                })
-                .catch(err => {
-                    document.getElementById('file-list').innerHTML = '<li class="list-group-item text-danger">Error cargando archivos</li>';
-                });
+            var url = path ? '/api/files/list/' + path : '/api/files/list';
+            fetch(url).then(function (r) { return r.json(); }).then(function (data) {
+                if (data.error) {
+                    document.getElementById('file-list').innerHTML = '<li class="list-group-item text-danger">' + data.error + '</li>';
+                    return;
+                }
+                allItems = data.items || [];
+                renderFiles(allItems);
+            });
         }
 
         function renderFiles(items) {
-            const list = document.getElementById('file-list');
+            var list = document.getElementById('file-list');
             list.innerHTML = '';
 
-            // Back button
             if (currentPath) {
-                const parts = currentPath.split('/').filter(p => p);
+                var parts = currentPath.split('/').filter(function (p) { return p; });
                 parts.pop();
-                const parent = parts.join('/');
-                list.innerHTML += `<li class="list-group-item file-item" onclick="loadFiles('${parent}')">
-            <span class="text-primary">📁 ..</span>
-        </li>`;
+                var parent = parts.join('/');
+                list.innerHTML += '<li class="list-group-item file-item" onclick="loadFiles(\'' + parent + '\')"><span class="text-primary">📁 ..</span></li>';
             }
 
             if (items.length === 0) {
@@ -152,56 +204,69 @@ Selecciona un archivo de la lista para ver su contenido...
                 return;
             }
 
-            // Folders first, then files
-            const folders = items.filter(i => i.is_dir);
-            const files = items.filter(i => !i.is_dir);
+            var folders = items.filter(function (i) { return i.is_dir; });
+            var files = items.filter(function (i) { return !i.is_dir; });
 
-            folders.forEach(item => {
-                const fullPath = currentPath ? currentPath + '/' + item.name : item.name;
-                list.innerHTML += `<li class="list-group-item file-item" onclick="loadFiles('${fullPath}')">
-            <span class="text-warning">📁</span> <strong>${item.name}</strong>
-        </li>`;
+            folders.forEach(function (item) {
+                var fp = currentPath ? currentPath + '/' + item.name : item.name;
+                list.innerHTML += '<li class="list-group-item file-item d-flex justify-content-between align-items-center" onclick="loadFiles(\'' + fp + '\')"><span><span class="text-warning">📁</span> <strong>' + item.name + '</strong></span><button class="btn btn-sm btn-outline-danger delete-btn py-0" onclick="event.stopPropagation(); prepareDelete(\'' + fp + '\', true)">🗑️</button></li>';
             });
 
-            files.forEach(item => {
-                const fullPath = currentPath ? currentPath + '/' + item.name : item.name;
-                const size = (item.size / 1024).toFixed(1);
-                const date = item.mtime ? item.mtime.split('T')[0] : '';
-                list.innerHTML += `<li class="list-group-item file-item d-flex justify-content-between" onclick="loadFile('${fullPath}')">
-            <span><span class="text-secondary">📄</span> ${item.name}</span>
-            <small class="text-muted">${size} KB | ${date}</small>
-        </li>`;
+            files.forEach(function (item) {
+                var fp = currentPath ? currentPath + '/' + item.name : item.name;
+                var size = (item.size / 1024).toFixed(1);
+                var date = item.mtime ? item.mtime.split('T')[0] : '';
+                list.innerHTML += '<li class="list-group-item file-item d-flex justify-content-between align-items-center" onclick="loadFile(\'' + fp + '\')"><span><span class="text-secondary">📄</span> ' + item.name + '</span><div><small class="text-muted me-2">' + size + ' KB</small><button class="btn btn-sm btn-outline-danger delete-btn py-0" onclick="event.stopPropagation(); prepareDelete(\'' + fp + '\', false)">🗑️</button></div></li>';
             });
         }
 
         function filterFiles() {
-            const query = document.getElementById('search-input').value.toLowerCase();
-            if (!query) {
-                renderFiles(allItems);
-                return;
-            }
-            const filtered = allItems.filter(item => item.name.toLowerCase().includes(query));
-            renderFiles(filtered);
+            var q = document.getElementById('search-input').value.toLowerCase();
+            renderFiles(q ? allItems.filter(function (i) { return i.name.toLowerCase().includes(q); }) : allItems);
         }
 
         function loadFile(path) {
+            selectedFile = path;
             document.getElementById('viewer-header').querySelector('span').textContent = 'Cargando...';
+            fetch('/api/files/content/' + path).then(function (r) { return r.json(); }).then(function (data) {
+                document.getElementById('viewer-header').querySelector('span').textContent = data.filename || path.split('/').pop();
+                document.getElementById('file-content').textContent = data.content || data.error || 'Sin contenido';
+                document.getElementById('download-btn').href = '/download/' + path;
+                document.getElementById('download-btn').style.display = 'inline-block';
+                document.getElementById('delete-btn').style.display = 'inline-block';
+            });
+        }
 
-            fetch('/api/files/content/' + path)
-                .then(r => r.json())
-                .then(data => {
-                    const filename = data.filename || path.split('/').pop();
-                    document.getElementById('viewer-header').querySelector('span').textContent = filename;
-                    document.getElementById('file-content').textContent = data.content || data.error || 'Sin contenido';
-                    document.getElementById('download-btn').href = '/download/' + path;
-                    document.getElementById('download-btn').style.display = 'inline-block';
+        function confirmDelete() {
+            prepareDelete(selectedFile, false);
+        }
+
+        function prepareDelete(path, isDir) {
+            selectedFile = path;
+            document.getElementById('delete-target').textContent = (isDir ? '📁 ' : '📄 ') + path;
+            document.getElementById('confirm-delete-btn').onclick = function () { executeDelete(path); };
+            deleteModal.show();
+        }
+
+        function executeDelete(path) {
+            fetch('/api/files/delete/' + path, { method: 'DELETE' })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    deleteModal.hide();
+                    if (data.success) {
+                        alert('✓ ' + data.message);
+                        loadFiles(currentPath);
+                        document.getElementById('file-content').textContent = 'Archivo eliminado';
+                        document.getElementById('delete-btn').style.display = 'none';
+                        document.getElementById('download-btn').style.display = 'none';
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
                 });
         }
 
-        // Initial load
         loadFiles('');
     </script>
-
 </body>
 
 </html>

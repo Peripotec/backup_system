@@ -313,6 +313,30 @@ def api_file_content(filepath):
     except:
         return jsonify({"error": "Cannot read file"}), 500
 
+@app.route('/api/files/delete/<path:filepath>', methods=['DELETE'])
+@requires_auth
+def api_delete_file(filepath):
+    """Delete a file from the archive directory."""
+    target = os.path.join(ARCHIVE_DIR, filepath)
+    
+    # Security: ensure path is within ARCHIVE_DIR
+    if not os.path.realpath(target).startswith(os.path.realpath(ARCHIVE_DIR)):
+        return jsonify({"success": False, "error": "Acceso denegado"}), 403
+    
+    if not os.path.exists(target):
+        return jsonify({"success": False, "error": "Archivo no encontrado"}), 404
+    
+    try:
+        if os.path.isdir(target):
+            import shutil
+            shutil.rmtree(target)
+            return jsonify({"success": True, "message": f"Carpeta '{filepath}' eliminada"})
+        else:
+            os.remove(target)
+            return jsonify({"success": True, "message": f"Archivo '{filepath}' eliminado"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
 # ==========================
 # API: DIFF VIEWER
 # ==========================
