@@ -54,10 +54,15 @@ class Huawei(BackupVendor):
             self.send_command(tn, password, hide=True)
             
             self._debug_log("Esperando respuesta...")
-            idx, response = self.read_until(tn, [">", "]", "fail", "Fail", "Username:"], timeout=15)
+            # Only check for > or ] as success, Username: as clear failure
+            idx, response = self.read_until(tn, [">", "]", "Username:"], timeout=15)
             
             # Check if login succeeded (idx 0 or 1 means > or ])
-            if idx in [0, 1] and "fail" not in response.lower():
+            # Specific Huawei error pattern: "Error: Authentication fail"
+            # Don't match on "Failed: X" which is just stats in banner
+            auth_error = "error: authentication" in response.lower()
+            
+            if idx in [0, 1] and not auth_error:
                 self._debug_log(f"✓ Login exitoso con credencial {i+1}")
                 logged_in = True
                 successful_cred_id = cred_id
