@@ -17,14 +17,34 @@ class Huawei(BackupVendor):
         # Login
         self._debug_log("Esperando prompt de login...")
         self.read_until(tn, ["name:", "Username:"])
+        time.sleep(0.3)  # Small delay to ensure buffer is clear
         self.send_command(tn, self.user, hide=False)
         
         self._debug_log("Enviando credenciales...")
         self.read_until(tn, ["Password:"])
+        time.sleep(0.3)  # Small delay before sending password
+        
+        # Clear any leftover chars in buffer
+        try:
+            tn.read_very_eager()
+        except:
+            pass
+        
         self.send_command(tn, self.password, hide=True)
         
         self._debug_log("Esperando prompt de sistema...")
-        self.read_until(tn, [">", "]"])
+        response = self.read_until(tn, [">", "]", "fail", "Fail", "Username:"], timeout=15)
+        
+        # Check if authentication failed
+        if "fail" in response.lower() or "Username:" in response:
+            self._debug_log("⚠ Primer intento falló, reintentando...")
+            # Retry with same credentials (common Huawei quirk)
+            time.sleep(0.5)
+            self.send_command(tn, self.user, hide=False)
+            self.read_until(tn, ["Password:"])
+            time.sleep(0.3)
+            self.send_command(tn, self.password, hide=True)
+            self.read_until(tn, [">", "]"], timeout=15)
         
         # TFTP Upload with unique filename to avoid race conditions
         config_filename = "vrpcfg.zip"
