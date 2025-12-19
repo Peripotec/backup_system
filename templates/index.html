@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BACKUPS</title>
+    <link rel="icon" type="image/png" href="/static/favicon.png">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -12,6 +14,7 @@
             margin: 0;
             padding: 0;
         }
+
         h1 {
             background-color: #0078d4;
             color: white;
@@ -19,6 +22,7 @@
             text-align: center;
             margin: 0;
         }
+
         #directory-structure {
             margin: 20px;
             padding: 10px;
@@ -29,6 +33,7 @@
             margin-left: auto;
             margin-right: auto;
         }
+
         #search-bar {
             margin: 20px auto;
             max-width: 1000px;
@@ -39,6 +44,7 @@
             justify-content: center;
             align-items: center;
         }
+
         input[type="text"] {
             width: 80%;
             padding: 10px;
@@ -46,6 +52,7 @@
             border-radius: 5px;
             font-size: 16px;
         }
+
         button {
             margin-left: 10px;
             padding: 10px 20px;
@@ -56,18 +63,22 @@
             cursor: pointer;
             font-size: 16px;
         }
+
         button:hover {
             background-color: #005a9e;
         }
+
         ul {
             list-style: none;
             padding-left: 20px;
         }
+
         li {
             padding: 8px 0;
             cursor: pointer;
             transition: background-color 0.3s, box-shadow 0.3s;
         }
+
         .file {
             cursor: default;
             display: flex;
@@ -82,21 +93,27 @@
             background-color: #f9f9f9;
             text-align: center;
         }
+
         .directory::before {
             content: "📁 ";
         }
+
         .file-icon {
             font-size: 24px;
             margin-bottom: 5px;
         }
-        .directory:hover, .file:hover {
+
+        .directory:hover,
+        .file:hover {
             background-color: #e7f1ff;
             box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
         }
+
         .highlight {
             background-color: #fffae6;
             box-shadow: 0 0 5px #ffae42;
         }
+
         a {
             text-decoration: none;
             color: #0078d4;
@@ -106,14 +123,17 @@
             white-space: normal;
             overflow-wrap: break-word;
         }
+
         a:hover {
             text-decoration: underline;
         }
+
         .file-size {
             font-size: 12px;
             color: #555;
             margin-top: 5px;
         }
+
         .file-grid {
             display: flex;
             flex-wrap: wrap;
@@ -122,6 +142,7 @@
         }
     </style>
 </head>
+
 <body>
     <h1>BACKUPS</h1>
     <div id="directory-structure">
@@ -136,7 +157,7 @@
         <ul>
             <li onclick="toggleDirectory('recientes')">📁 Recientes</li>
             <li onclick="toggleDirectory('unicos')">📁 Únicos</li>
- 	    <li onclick="toggleDirectory('historico')">📁 Historico</li>
+            <li onclick="toggleDirectory('historico')">📁 Historico</li>
         </ul>
     </div>
     <script>
@@ -151,13 +172,13 @@
                 return;
             }
             fetch(`/directory?dir=${encodeURIComponent(dirName)}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    alert(data.error);
-                    return;
-                }
-                const html = `
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+                    const html = `
                     <ul id="${containerId}">
                         ${data.directories.map(dir => `<li class="directory" onclick="toggleDirectory('${dirName}/${dir}')">${dir}</li>`).join('')}
                         <div class="file-grid">
@@ -170,16 +191,16 @@
                         </div>
                     </ul>
                 `;
-                document.querySelector(`[onclick="toggleDirectory('${dirName}')"]`).insertAdjacentHTML('afterend', html);
-                
-                // Store directories and files for search
-                allDirectories[dirName] = {
-                    directories: data.directories,
-                    files: data.files.map(file => dirName + '/' + file.name)
-                };
-                if (callback) callback();
-            })
-            .catch(error => console.error('Error loading the directory:', error));
+                    document.querySelector(`[onclick="toggleDirectory('${dirName}')"]`).insertAdjacentHTML('afterend', html);
+
+                    // Store directories and files for search
+                    allDirectories[dirName] = {
+                        directories: data.directories,
+                        files: data.files.map(file => dirName + '/' + file.name)
+                    };
+                    if (callback) callback();
+                })
+                .catch(error => console.error('Error loading the directory:', error));
         }
 
         function formatFileSize(size) {
@@ -194,7 +215,7 @@
         }
 
         // Automatically expand directories on page load
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             toggleDirectory('recientes');
             toggleDirectory('historico');
         });
@@ -208,23 +229,23 @@
             }
 
             fetch(`/search?query=${encodeURIComponent(searchValue)}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.results.length > 0) {
-                    document.getElementById('search-results').style.display = 'block';
-                    const searchFileGrid = document.getElementById('search-file-grid');
-                    searchFileGrid.innerHTML = data.results.map(file => `
+                .then(response => response.json())
+                .then(data => {
+                    if (data.results.length > 0) {
+                        document.getElementById('search-results').style.display = 'block';
+                        const searchFileGrid = document.getElementById('search-file-grid');
+                        searchFileGrid.innerHTML = data.results.map(file => `
                         <li class="file" data-path="${file.path}">
                             <span class="file-icon">📄</span>
                             <a href="/download/${file.path}" title="${file.name}">${file.name}</a>
                             <span class="file-size">${formatFileSize(file.size)}</span>
                         </li>
                     `).join('');
-                } else {
-                    document.getElementById('search-results').style.display = 'none';
-                }
-            })
-            .catch(error => console.error('Error searching files:', error));
+                    } else {
+                        document.getElementById('search-results').style.display = 'none';
+                    }
+                })
+                .catch(error => console.error('Error searching files:', error));
         }
 
         function clearHighlights() {
@@ -232,4 +253,5 @@
         }
     </script>
 </body>
+
 </html>

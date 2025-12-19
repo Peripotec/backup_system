@@ -11,7 +11,7 @@ from settings import BACKUP_ROOT_DIR, INVENTORY_FILE, DB_FILE, REPO_DIR, ARCHIVE
 from core.db_manager import DBManager
 from core.logger import log
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static', static_url_path='/static')
 app.secret_key = 'super_secret_key_change_me'
 
 # Global state for backup execution
