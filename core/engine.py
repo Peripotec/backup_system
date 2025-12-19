@@ -8,6 +8,7 @@ from core.logger import log
 from core.db_manager import DBManager
 from core.git_manager import GitManager
 from core.notifier import Notifier
+from core.vault import get_credentials_for_group
 
 class BackupEngine:
     def __init__(self, dry_run=False):
@@ -45,7 +46,7 @@ class BackupEngine:
             log.error(f"Class {class_name} not found in {vendor_name} plugin.")
             return None
 
-    def process_device(self, device, group_name="Default", vendor_type="generic"):
+    def process_device(self, device, group_name="Default", vendor_type="generic", credential_ids=None):
         """
         Worker function to process a single device.
         """
@@ -72,7 +73,13 @@ class BackupEngine:
             if not VendorClass:
                 raise ValueError(f"Unknown vendor: {vendor_type}")
             
-            plugin = VendorClass(device, self.db, self.git)
+            # Get credentials from vault if credential_ids provided
+            credentials = []
+            if credential_ids:
+                credentials = get_credentials_for_group(credential_ids)
+                log.debug(f"Loaded {len(credentials)} credentials from vault for {hostname}")
+            
+            plugin = VendorClass(device, self.db, self.git, credentials)
             
             # Connect debug log callback to plugin
             if self.status_callback:
@@ -142,7 +149,8 @@ class BackupEngine:
             for group in self.inventory['groups']:
                 grp_name = group['name']
                 vendor_type = group['vendor']
-                grp_creds = group.get('credentials', {})
+                # Get credential_ids for vault lookup (new format)
+                grp_credential_ids = group.get('credential_ids', [])
 
                 if target_group and target_group != grp_name:
                     continue
@@ -152,14 +160,17 @@ class BackupEngine:
                     if target_device and device['hostname'] != target_device:
                         continue
                     
-                    # Merge credentials
-                    # Device specific creds override group creds
-                    full_device_info = device.copy()
-                    if 'credentials' not in full_device_info:
-                        full_device_info['credentials'] = grp_creds
+                    # Device-specific credential_ids override group
+                    device_cred_ids = device.get('credential_ids', grp_credential_ids)
                     
-                    # Submit to pool
-                    future = executor.submit(self.process_device, full_device_info, grp_name, vendor_type)
+                    # Submit to pool with credential_ids
+                    future = executor.submit(
+                        self.process_device, 
+                        device, 
+                        grp_name, 
+                        vendor_type,
+                        device_cred_ids
+                    )
                     tasks.append(future)
 
         # Collect Results

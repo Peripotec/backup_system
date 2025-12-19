@@ -70,13 +70,25 @@ class BackupVendor(ABC):
     Each vendor must implement the backup() method.
     """
     
-    def __init__(self, device_info, db_manager, git_manager):
+    def __init__(self, device_info, db_manager, git_manager, credentials=None):
         self.hostname = device_info['hostname']
         self.ip = device_info['ip']
         self.port = device_info.get('port', 23)
-        self.user = device_info['credentials']['user']
-        self.password = device_info['credentials']['pass']
-        self.extra_pass = device_info['credentials'].get('extra_pass')
+        
+        # Credentials from vault (list) or legacy inline
+        if credentials and len(credentials) > 0:
+            # Use first credential from vault as default; plugins can try others
+            self.credentials_pool = credentials
+            self.user = credentials[0].get('user', '')
+            self.password = credentials[0].get('pass', '')
+            self.extra_pass = credentials[0].get('extra_pass', '')
+        else:
+            # Legacy fallback: inline credentials in device_info
+            creds = device_info.get('credentials', {})
+            self.credentials_pool = []
+            self.user = creds.get('user', '')
+            self.password = creds.get('pass', '')
+            self.extra_pass = creds.get('extra_pass', '')
         
         self.db = db_manager
         self.git = git_manager

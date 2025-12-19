@@ -1,7 +1,7 @@
 groups:
-- credentials:
-    pass: n0c442@dm1n.
-    user: noc
+- credential_ids:
+  - noc_fácil
+  - noc_dificil
   devices:
   - hostname: HUAWEI5720-SUSANA
     ip: 172.19.2.3
@@ -9,10 +9,9 @@ groups:
     ip: 172.19.30.6
   name: Huawei Test
   vendor: huawei
-- credentials:
-    extra_pass: enable
-    pass: noc442admin
-    user: noc
+- credential_ids:
+  - noc_fácil
+  - noc_dificil
   devices: []
-  name: ZTE_TEST
+  name: ZTE TEST
   vendor: zte_olt
