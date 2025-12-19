@@ -40,11 +40,20 @@ class Huawei(BackupVendor):
             self._debug_log("⚠ Primer intento falló, reintentando...")
             # Retry with same credentials (common Huawei quirk)
             time.sleep(0.5)
+            
+            # Wait for Username prompt if not already there
+            if "Username:" not in response:
+                self.read_until(tn, ["Username:"], timeout=5)
+            
+            time.sleep(0.2)
             self.send_command(tn, self.user, hide=False)
             self.read_until(tn, ["Password:"])
-            time.sleep(0.3)
+            time.sleep(0.2)
             self.send_command(tn, self.password, hide=True)
-            self.read_until(tn, [">", "]"], timeout=15)
+            
+            idx2, resp2 = self.read_until(tn, [">", "]", "fail", "Fail"], timeout=15)
+            if idx2 >= 2 or (resp2 and "fail" in resp2.lower()):
+                raise Exception("Authentication failed after retry")
         
         # TFTP Upload with unique filename to avoid race conditions
         config_filename = "vrpcfg.zip"
