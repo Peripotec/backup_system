@@ -234,6 +234,12 @@
                         </div>
                         <div id="device-test-result" class="form-text"></div>
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label">Credenciales (override)</label>
+                        <div class="form-text mb-2">Opcional: seleccione para usar credenciales específicas en lugar de
+                            las del grupo.</div>
+                        <div id="device-credentials-container" class="ps-2"></div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -336,7 +342,10 @@
                 if (!group.devices || group.devices.length === 0) return;
                 hasDevices = true;
                 group.devices.forEach(function (device) {
-                    tbody.innerHTML += '<tr><td><strong>' + device.hostname + '</strong></td><td><code>' + device.ip + '</code></td><td><span class="badge bg-info">' + group.name + '</span></td><td>' + group.vendor + '</td><td><span class="btn-action" onclick="openEditDeviceModal(\'' + group.name + '\', \'' + device.hostname + '\', \'' + device.ip + '\')" title="Editar">✏️</span><span class="btn-action" onclick="deleteDevice(\'' + group.name + '\', \'' + device.hostname + '\')" title="Eliminar">🗑️</span></td></tr>';
+                    var credIds = device.credential_ids ? JSON.stringify(device.credential_ids) : '[]';
+                    var hasOverride = device.credential_ids && device.credential_ids.length > 0;
+                    var overrideBadge = hasOverride ? '<span class="badge bg-warning ms-1" title="Credenciales override">🔑</span>' : '';
+                    tbody.innerHTML += '<tr><td><strong>' + device.hostname + '</strong>' + overrideBadge + '</td><td><code>' + device.ip + '</code></td><td><span class="badge bg-info">' + group.name + '</span></td><td>' + group.vendor + '</td><td><span class="btn-action" onclick="openEditDeviceModal(\'' + group.name + '\', \'' + device.hostname + '\', \'' + device.ip + '\', ' + credIds + ')" title="Editar">✏️</span><span class="btn-action" onclick="deleteDevice(\'' + group.name + '\', \'' + device.hostname + '\')" title="Eliminar">🗑️</span></td></tr>';
                 });
             });
             if (!hasDevices) tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Sin dispositivos. Agregue dispositivos a los grupos.</td></tr>';
@@ -358,6 +367,29 @@
         }
 
         // Device functions
+        function renderDeviceCredentials(selectedIds, groupCredIds) {
+            var container = document.getElementById('device-credentials-container');
+            selectedIds = selectedIds || [];
+            groupCredIds = groupCredIds || [];
+
+            if (vaultCredentials.length === 0) {
+                container.innerHTML = '<div class="text-muted">No hay credenciales en el vault.</div>';
+                return;
+            }
+
+            var html = '<div class="form-text mb-1"><small>Heredadas del grupo: ' + (groupCredIds.join(', ') || 'ninguna') + '</small></div>';
+            vaultCredentials.forEach(function (c) {
+                var checked = selectedIds.indexOf(c.id) >= 0 ? 'checked' : '';
+                html += '<div class="form-check"><input class="form-check-input device-cred-check" type="checkbox" value="' + c.id + '" id="dev-cred-' + c.id + '" ' + checked + '><label class="form-check-label" for="dev-cred-' + c.id + '">' + c.name + ' <span class="text-muted">(' + c.user + ')</span></label></div>';
+            });
+            container.innerHTML = html;
+        }
+
+        function getSelectedDeviceCredentialIds() {
+            var checked = document.querySelectorAll('.device-cred-check:checked');
+            return Array.from(checked).map(function (cb) { return cb.value; });
+        }
+
         function openAddDeviceModal() {
             if (!inventory.groups || inventory.groups.length === 0) {
                 alert('Primero cree un grupo');
@@ -369,10 +401,14 @@
             document.getElementById('device-hostname').value = '';
             document.getElementById('device-ip').value = '';
             document.getElementById('device-test-result').innerHTML = '';
-            deviceModal.show();
+
+            loadVaultCredentials().then(function () {
+                renderDeviceCredentials([], []);
+                deviceModal.show();
+            });
         }
 
-        function openEditDeviceModal(group, hostname, ip) {
+        function openEditDeviceModal(group, hostname, ip, credentialIds) {
             document.getElementById('device-edit-mode').value = 'edit';
             document.getElementById('device-original-group').value = group;
             document.getElementById('device-original-hostname').value = hostname;
@@ -382,7 +418,15 @@
             document.getElementById('device-hostname').value = hostname;
             document.getElementById('device-ip').value = ip;
             document.getElementById('device-test-result').innerHTML = '';
-            deviceModal.show();
+
+            // Get group's credential_ids for reference
+            var groupObj = inventory.groups.find(function (g) { return g.name === group; });
+            var groupCredIds = groupObj ? (groupObj.credential_ids || []) : [];
+
+            loadVaultCredentials().then(function () {
+                renderDeviceCredentials(credentialIds || [], groupCredIds);
+                deviceModal.show();
+            });
         }
 
         function testDeviceConnection() {
@@ -399,19 +443,23 @@
             var hostname = document.getElementById('device-hostname').value.trim();
             var ip = document.getElementById('device-ip').value.trim();
             var group = document.getElementById('device-group').value;
+            var credentialIds = getSelectedDeviceCredentialIds();
+
             if (!hostname || !ip) { alert('Complete todos los campos'); return; }
-            if (!/^[A-Za-z0-9_-]+$/.test(hostname)) { alert('Hostname inválido'); return; }
+            if (!/^[A-Za-z0-9_ -]+$/.test(hostname)) { alert('Hostname inválido'); return; }
             if (!/^(\d{1,3}\.){3}\d{1,3}$/.test(ip)) { alert('IP inválida'); return; }
 
             var mode = document.getElementById('device-edit-mode').value;
+            var data = { group: group, hostname: hostname, ip: ip, credential_ids: credentialIds };
+
             if (mode === 'add') {
-                fetch('/api/inventory/device', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ group: group, hostname: hostname, ip: ip }) })
-                    .then(function (r) { return r.json(); }).then(function (data) { data.error ? alert(data.error) : location.reload(); });
+                fetch('/api/inventory/device', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+                    .then(function (r) { return r.json(); }).then(function (resp) { resp.error ? alert(resp.error) : location.reload(); });
             } else {
                 var origGroup = document.getElementById('device-original-group').value;
                 var origHostname = document.getElementById('device-original-hostname').value;
-                fetch('/api/inventory/device/' + origGroup + '/' + origHostname, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hostname: hostname, ip: ip }) })
-                    .then(function (r) { return r.json(); }).then(function (data) { data.error ? alert(data.error) : location.reload(); });
+                fetch('/api/inventory/device/' + origGroup + '/' + origHostname, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+                    .then(function (r) { return r.json(); }).then(function (resp) { resp.error ? alert(resp.error) : location.reload(); });
             }
         }
 

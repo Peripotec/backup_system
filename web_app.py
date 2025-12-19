@@ -375,18 +375,51 @@ def api_delete_device(group_name, hostname):
 @app.route('/api/inventory/device/<group_name>/<hostname>', methods=['PUT'])
 @requires_auth
 def api_edit_device(group_name, hostname):
-    """Edit an existing device."""
+    """Edit an existing device. Supports moving to different group."""
     data = request.json
     inv = load_inventory()
+    
+    new_group = data.get("group", group_name)
+    new_hostname = data.get("hostname", hostname)
+    new_ip = data.get("ip")
+    new_credential_ids = data.get("credential_ids")  # Optional device-level override
+    
+    # Find and remove device from original group
+    device_data = None
     for g in inv["groups"]:
         if g["name"] == group_name:
-            for d in g["devices"]:
+            for i, d in enumerate(g["devices"]):
                 if d["hostname"] == hostname:
-                    d["hostname"] = data.get("hostname", hostname)
-                    d["ip"] = data.get("ip", d["ip"])
-                    save_inventory(inv)
-                    return jsonify({"status": "ok", "message": "Dispositivo actualizado"})
-    return jsonify({"error": "Device not found"}), 404
+                    device_data = g["devices"].pop(i)
+                    break
+            break
+    
+    if not device_data:
+        return jsonify({"error": "Device not found"}), 404
+    
+    # Update device data
+    device_data["hostname"] = new_hostname
+    if new_ip:
+        device_data["ip"] = new_ip
+    if new_credential_ids is not None:
+        if new_credential_ids:
+            device_data["credential_ids"] = new_credential_ids
+        elif "credential_ids" in device_data:
+            del device_data["credential_ids"]  # Remove override if empty
+    
+    # Add to target group (same or different)
+    for g in inv["groups"]:
+        if g["name"] == new_group:
+            g["devices"].append(device_data)
+            save_inventory(inv)
+            return jsonify({"status": "ok", "message": "Dispositivo actualizado"})
+    
+    # If target group not found, put back in original
+    for g in inv["groups"]:
+        if g["name"] == group_name:
+            g["devices"].append(device_data)
+    save_inventory(inv)
+    return jsonify({"error": "Target group not found"}), 404
 
 @app.route('/api/inventory/test', methods=['POST'])
 @requires_auth
