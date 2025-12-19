@@ -33,10 +33,10 @@ class Huawei(BackupVendor):
         self.send_command(tn, self.password, hide=True)
         
         self._debug_log("Esperando prompt de sistema...")
-        response = self.read_until(tn, [">", "]", "fail", "Fail", "Username:"], timeout=15)
+        idx, response = self.read_until(tn, [">", "]", "fail", "Fail", "Username:"], timeout=15)
         
-        # Check if authentication failed
-        if "fail" in response.lower() or "Username:" in response:
+        # Check if authentication failed (idx 2,3,4 means matched fail/Fail/Username)
+        if idx >= 2 or (response and ("fail" in response.lower() or "Username:" in response)):
             self._debug_log("⚠ Primer intento falló, reintentando...")
             # Retry with same credentials (common Huawei quirk)
             time.sleep(0.5)
