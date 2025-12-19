@@ -14,46 +14,67 @@ class Huawei(BackupVendor):
         """
         tn = self.connect_telnet()
         
-        # Login
-        self._debug_log("Esperando prompt de login...")
-        self.read_until(tn, ["name:", "Username:"])
-        time.sleep(0.3)  # Small delay to ensure buffer is clear
-        self.send_command(tn, self.user, hide=False)
+        # Try login with credential pool
+        logged_in = False
+        credentials_to_try = self.credentials_pool if self.credentials_pool else [
+            {"user": self.user, "pass": self.password, "extra_pass": self.extra_pass}
+        ]
         
-        self._debug_log("Enviando credenciales...")
-        self.read_until(tn, ["Password:"])
-        time.sleep(0.3)  # Small delay before sending password
-        
-        # Clear any leftover chars in buffer
-        try:
-            tn.read_very_eager()
-        except:
-            pass
-        
-        self.send_command(tn, self.password, hide=True)
-        
-        self._debug_log("Esperando prompt de sistema...")
-        idx, response = self.read_until(tn, [">", "]", "fail", "Fail", "Username:"], timeout=15)
-        
-        # Check if authentication failed (idx 2,3,4 means matched fail/Fail/Username)
-        if idx >= 2 or (response and ("fail" in response.lower() or "Username:" in response)):
-            self._debug_log("⚠ Primer intento falló, reintentando...")
-            # Retry with same credentials (common Huawei quirk)
-            time.sleep(0.5)
+        for i, cred in enumerate(credentials_to_try):
+            user = cred.get('user', '')
+            password = cred.get('pass', '')
             
-            # Wait for Username prompt if not already there
-            if "Username:" not in response:
-                self.read_until(tn, ["Username:"], timeout=5)
+            self._debug_log(f"Probando credencial {i+1}/{len(credentials_to_try)}...")
             
-            time.sleep(0.2)
-            self.send_command(tn, self.user, hide=False)
+            # Wait for login prompt
+            if i == 0:
+                self._debug_log("Esperando prompt de login...")
+                self.read_until(tn, ["name:", "Username:"])
+            else:
+                # For retry, wait for Username prompt
+                self._debug_log("Esperando nuevo prompt de login...")
+                self.read_until(tn, ["Username:"], timeout=10)
+            
+            time.sleep(0.3)
+            self.send_command(tn, user, hide=False)
+            
+            self._debug_log("Enviando contraseña...")
             self.read_until(tn, ["Password:"])
-            time.sleep(0.2)
-            self.send_command(tn, self.password, hide=True)
+            time.sleep(0.3)
             
-            idx2, resp2 = self.read_until(tn, [">", "]", "fail", "Fail"], timeout=15)
-            if idx2 >= 2 or (resp2 and "fail" in resp2.lower()):
-                raise Exception("Authentication failed after retry")
+            # Clear buffer
+            try:
+                tn.read_very_eager()
+            except:
+                pass
+            
+            self.send_command(tn, password, hide=True)
+            
+            self._debug_log("Esperando respuesta...")
+            idx, response = self.read_until(tn, [">", "]", "fail", "Fail", "Username:"], timeout=15)
+            
+            # Check if login succeeded (idx 0 or 1 means > or ])
+            if idx in [0, 1] and "fail" not in response.lower():
+                self._debug_log(f"✓ Login exitoso con credencial {i+1}")
+                logged_in = True
+                # Update current credentials for future use
+                self.user = user
+                self.password = password
+                break
+            else:
+                self._debug_log(f"✗ Credencial {i+1} falló")
+                if i < len(credentials_to_try) - 1:
+                    time.sleep(0.5)
+                    # Wait for Username prompt if not there
+                    if "Username:" not in response:
+                        try:
+                            self.read_until(tn, ["Username:"], timeout=5)
+                        except:
+                            pass
+        
+        if not logged_in:
+            tn.close()
+            raise Exception(f"Authentication failed with all {len(credentials_to_try)} credentials")
         
         # TFTP Upload with unique filename to avoid race conditions
         config_filename = "vrpcfg.zip"
