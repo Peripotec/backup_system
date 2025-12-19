@@ -8,7 +8,7 @@ from core.logger import log
 from core.db_manager import DBManager
 from core.git_manager import GitManager
 from core.notifier import Notifier
-from core.vault import get_credentials_for_group
+from core.vault import get_credentials_for_device
 
 class BackupEngine:
     def __init__(self, dry_run=False):
@@ -76,7 +76,7 @@ class BackupEngine:
             # Get credentials from vault if credential_ids provided
             credentials = []
             if credential_ids:
-                credentials = get_credentials_for_group(credential_ids)
+                credentials = get_credentials_for_device(hostname, credential_ids)
                 log.debug(f"Loaded {len(credentials)} credentials from vault for {hostname}")
             
             plugin = VendorClass(device, self.db, self.git, credentials)

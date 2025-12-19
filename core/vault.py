@@ -145,3 +145,57 @@ def get_credentials_for_group(credential_ids):
         if cred:
             result.append(cred)
     return result
+
+# Credential cache - stores which credential worked for which device
+CREDENTIAL_CACHE_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.credential_cache.yaml')
+
+def _load_credential_cache():
+    """Load credential cache from file."""
+    if not os.path.exists(CREDENTIAL_CACHE_FILE):
+        return {}
+    try:
+        with open(CREDENTIAL_CACHE_FILE, 'r', encoding='utf-8') as f:
+            return yaml.safe_load(f) or {}
+    except:
+        return {}
+
+def _save_credential_cache(cache):
+    """Save credential cache to file."""
+    with open(CREDENTIAL_CACHE_FILE, 'w', encoding='utf-8') as f:
+        yaml.dump(cache, f, default_flow_style=False, allow_unicode=True)
+
+def get_preferred_credential_for_device(hostname):
+    """Get the preferred credential ID for a device (from cache)."""
+    cache = _load_credential_cache()
+    return cache.get(hostname)
+
+def save_preferred_credential_for_device(hostname, cred_id):
+    """Save which credential worked for a device."""
+    cache = _load_credential_cache()
+    cache[hostname] = cred_id
+    _save_credential_cache(cache)
+
+def get_credentials_for_device(hostname, credential_ids):
+    """
+    Get credentials for a device, with preferred one first.
+    Returns list of decrypted credentials, ordered by preference.
+    """
+    # Get preferred credential for this device
+    preferred_id = get_preferred_credential_for_device(hostname)
+    
+    result = []
+    
+    # Add preferred credential first if it exists and is in the allowed list
+    if preferred_id and preferred_id in credential_ids:
+        cred = get_credential_by_id(preferred_id)
+        if cred:
+            result.append(cred)
+    
+    # Add remaining credentials
+    for cred_id in credential_ids:
+        if cred_id != preferred_id:  # Skip if already added as preferred
+            cred = get_credential_by_id(cred_id)
+            if cred:
+                result.append(cred)
+    
+    return result

@@ -5,6 +5,7 @@ import tempfile
 from vendors.base_vendor import BackupVendor
 from settings import TFTP_ROOT, SERVER_IP
 from core.logger import log
+from core.vault import save_preferred_credential_for_device
 
 class Huawei(BackupVendor):
     def backup(self):
@@ -16,13 +17,15 @@ class Huawei(BackupVendor):
         
         # Try login with credential pool
         logged_in = False
+        successful_cred_id = None
         credentials_to_try = self.credentials_pool if self.credentials_pool else [
-            {"user": self.user, "pass": self.password, "extra_pass": self.extra_pass}
+            {"user": self.user, "pass": self.password, "extra_pass": self.extra_pass, "id": None}
         ]
         
         for i, cred in enumerate(credentials_to_try):
             user = cred.get('user', '')
             password = cred.get('pass', '')
+            cred_id = cred.get('id')
             
             self._debug_log(f"Probando credencial {i+1}/{len(credentials_to_try)}...")
             
@@ -57,6 +60,7 @@ class Huawei(BackupVendor):
             if idx in [0, 1] and "fail" not in response.lower():
                 self._debug_log(f"✓ Login exitoso con credencial {i+1}")
                 logged_in = True
+                successful_cred_id = cred_id
                 # Update current credentials for future use
                 self.user = user
                 self.password = password
@@ -75,6 +79,11 @@ class Huawei(BackupVendor):
         if not logged_in:
             tn.close()
             raise Exception(f"Authentication failed with all {len(credentials_to_try)} credentials")
+        
+        # Save successful credential to cache for next time
+        if successful_cred_id:
+            save_preferred_credential_for_device(self.hostname, successful_cred_id)
+            self._debug_log(f"📝 Credencial guardada como preferida para {self.hostname}")
         
         # TFTP Upload with unique filename to avoid race conditions
         config_filename = "vrpcfg.zip"
