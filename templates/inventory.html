@@ -342,7 +342,7 @@
                 if (!group.devices || group.devices.length === 0) return;
                 hasDevices = true;
                 group.devices.forEach(function (device) {
-                    var credIds = device.credential_ids ? JSON.stringify(device.credential_ids) : '[]';
+                    var credIds = device.credential_ids ? JSON.stringify(device.credential_ids).replace(/"/g, '&quot;') : '[]';
                     var hasOverride = device.credential_ids && device.credential_ids.length > 0;
                     var overrideBadge = hasOverride ? '<span class="badge bg-warning ms-1" title="Credenciales override">🔑</span>' : '';
                     tbody.innerHTML += '<tr><td><strong>' + device.hostname + '</strong>' + overrideBadge + '</td><td><code>' + device.ip + '</code></td><td><span class="badge bg-info">' + group.name + '</span></td><td>' + group.vendor + '</td><td><span class="btn-action" onclick="openEditDeviceModal(\'' + group.name + '\', \'' + device.hostname + '\', \'' + device.ip + '\', ' + credIds + ')" title="Editar">✏️</span><span class="btn-action" onclick="deleteDevice(\'' + group.name + '\', \'' + device.hostname + '\')" title="Eliminar">🗑️</span></td></tr>';
@@ -541,7 +541,7 @@
             var credentialIds = getSelectedCredentialIds();
 
             if (!name || !vendor) { alert('Nombre y vendor son requeridos'); return; }
-            if (!/^[A-Za-z0-9_-]+$/.test(name)) { alert('Nombre inválido (solo letras, números, guiones)'); return; }
+            if (!/^[A-Za-z0-9_ -]+$/.test(name)) { alert('Nombre inválido (solo letras, números, espacios, guiones)'); return; }
             if (credentialIds.length === 0) { alert('Seleccione al menos una credencial del vault'); return; }
 
             var mode = document.getElementById('group-edit-mode').value;

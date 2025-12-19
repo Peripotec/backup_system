@@ -160,8 +160,18 @@ class BackupEngine:
                     if target_device and device['hostname'] != target_device:
                         continue
                     
-                    # Device-specific credential_ids override group
-                    device_cred_ids = device.get('credential_ids', grp_credential_ids)
+                    # Device-specific credential_ids override group, but include group as fallback
+                    device_cred_ids = device.get('credential_ids', [])
+                    if device_cred_ids:
+                        # Device has override - use device creds first, then group creds as fallback
+                        all_cred_ids = list(device_cred_ids)
+                        for grp_cred in grp_credential_ids:
+                            if grp_cred not in all_cred_ids:
+                                all_cred_ids.append(grp_cred)
+                        device_cred_ids = all_cred_ids
+                    else:
+                        # No device override - use group credentials
+                        device_cred_ids = grp_credential_ids
                     
                     # Submit to pool with credential_ids
                     future = executor.submit(
