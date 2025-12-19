@@ -1,0 +1,11 @@
+credentials:
+- extra_pass_encrypted: gAAAAABpRGwT0GsmXQlPhHiAo5whcMc9PpDUq27erP9EZ2Oj-vINVzBC03Cqp2X7-rHtsldBAI5nKsIpdk9ULw_BbwQ9Jv2reA==
+  id: noc_fácil
+  name: Noc Fácil
+  pass_encrypted: gAAAAABpRGwTJW9HaSQmyLFgVt-CC2Tyv-FLwBqWq7fQPC_yoJo548vbMd0x9TUQ2mGpDb7UWtY4EdsXoj9DpeCiWTfq0-duFw==
+  user: noc
+- extra_pass_encrypted: ''
+  id: noc_dificil
+  name: NOC Difícil
+  pass_encrypted: gAAAAABpRU7BaY8Kc0_dGqsXd9twDLCvKVJnrt6EAsTrjwDgAyrDdhq1YibPLPBaIATSIgcT6V8ULyX3cnj7RIgh7-dy6F2udA==
+  user: noc

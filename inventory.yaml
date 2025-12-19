@@ -1,12 +1,18 @@
-# Inventory for Production Testing
-# Single device configured for initial validation
-
 groups:
 - credentials:
     pass: n0c442@dm1n.
     user: noc
   devices:
-  - hostname: HW6730-PRUEBAS_LAB
-    ip: 172.19.5.71
+  - hostname: HUAWEI5720-SUSANA
+    ip: 172.19.2.3
+  - hostname: HUAWEI-6730-A
+    ip: 172.19.30.6
   name: Huawei Test
   vendor: huawei
+- credentials:
+    extra_pass: enable
+    pass: noc442admin
+    user: noc
+  devices: []
+  name: ZTE_TEST
+  vendor: zte_olt
