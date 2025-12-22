@@ -305,6 +305,13 @@
                 </a>
             </li>
             {% endif %}
+            {% if has_permission('manage_roles') %}
+            <li class="nav-item">
+                <a class="nav-link {% if '/roles' in request.path %}active{% endif %}" href="/admin/roles">
+                    <i class="bi bi-person-badge"></i> Roles
+                </a>
+            </li>
+            {% endif %}
             {% endif %}
         </ul>
 

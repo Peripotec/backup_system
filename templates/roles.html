@@ -1,428 +1,278 @@
-<!DOCTYPE html>
-<html lang="es">
+{% extends "base.html" %}
+{% block title %}Gestión de Roles{% endblock %}
 
-<head>
-    <meta charset="UTF-8">
-    <title>Gestión de Roles</title>
-    <link rel="icon" type="image/png" href="/static/favicon.png">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        :root {
-            --bg-body: #f0f2f5;
-            --bg-card: #fff;
-            --bg-navbar: #212529;
-            --text-primary: #212529;
-            --text-muted: #6c757d;
-            --border-color: #dee2e6;
-        }
+{% block head %}
+<style>
+    .role-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 20px;
+        transition: transform 0.2s, box-shadow 0.2s;
+        cursor: pointer;
+    }
 
-        [data-theme="dark"] {
-            --bg-body: #0f172a;
-            --bg-card: #1e293b;
-            --bg-navbar: #0f172a;
-            --text-primary: #f1f5f9;
-            --text-muted: #94a3b8;
-            --border-color: #334155;
-        }
+    .role-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    }
 
-        body {
-            background: var(--bg-body);
-            color: var(--text-primary);
-            transition: all 0.3s;
-        }
+    .role-emoji {
+        font-size: 3rem;
+        margin-bottom: 10px;
+    }
 
-        .navbar {
-            background: var(--bg-navbar) !important;
-            border-bottom: 1px solid var(--border-color);
-        }
+    .role-name {
+        font-size: 1.3rem;
+        font-weight: 600;
+        text-transform: capitalize;
+    }
 
-        .role-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 20px;
-            transition: transform 0.2s, box-shadow 0.2s;
-            cursor: pointer;
-        }
+    .role-description {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+        min-height: 40px;
+    }
 
-        .role-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-        }
+    .role-badge-system {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+    }
 
-        .role-emoji {
-            font-size: 3rem;
-            margin-bottom: 10px;
-        }
+    .emoji-picker {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        max-height: 150px;
+        overflow-y: auto;
+    }
 
-        .role-name {
-            font-size: 1.3rem;
-            font-weight: 600;
-            text-transform: capitalize;
-        }
+    .emoji-option {
+        font-size: 1.5rem;
+        cursor: pointer;
+        padding: 5px;
+        border-radius: 8px;
+        transition: background 0.2s;
+    }
 
-        .role-description {
-            color: var(--text-muted);
-            font-size: 0.9rem;
-            min-height: 40px;
-        }
+    .emoji-option:hover {
+        background: rgba(0, 0, 0, 0.1);
+    }
 
-        .role-badge-system {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-        }
+    .emoji-option.selected {
+        background: #3b82f6;
+    }
+</style>
+{% endblock %}
 
-        .perm-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 8px;
-        }
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4><i class="bi bi-person-badge"></i> Gestión de Roles</h4>
+    <button class="btn btn-primary" onclick="openAddModal()">➕ Crear Rol</button>
+</div>
 
-        .perm-badge {
-            font-size: 0.75rem;
-            padding: 4px 8px;
-        }
+<div class="row g-4" id="roles-grid"></div>
 
-        .emoji-picker {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 5px;
-            max-height: 150px;
-            overflow-y: auto;
-        }
+<div class="alert alert-info mt-4">
+    <strong>ℹ️ Nota:</strong> Los roles del sistema (marcados con 🔒) no se pueden eliminar.
+    Los permisos de cada rol determinan qué puede hacer un usuario con ese rol.
+</div>
 
-        .emoji-option {
-            font-size: 1.5rem;
-            cursor: pointer;
-            padding: 5px;
-            border-radius: 8px;
-            transition: background 0.2s;
-        }
-
-        .emoji-option:hover {
-            background: rgba(0, 0, 0, 0.1);
-        }
-
-        .emoji-option.selected {
-            background: #3b82f6;
-        }
-
-        [data-theme="dark"] .modal-content {
-            background: var(--bg-card);
-            color: var(--text-primary);
-        }
-
-        [data-theme="dark"] .form-control,
-        [data-theme="dark"] .form-select {
-            background: #334155;
-            color: var(--text-primary);
-            border-color: var(--border-color);
-        }
-
-        .theme-toggle {
-            cursor: pointer;
-            font-size: 1.3rem;
-            transition: transform 0.3s;
-        }
-
-        .theme-toggle:hover {
-            transform: rotate(180deg);
-        }
-    </style>
-</head>
-
-<body>
-
-    <nav class="navbar navbar-dark mb-4">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="/">🛡️ Backup System</a>
-            <ul class="navbar-nav flex-row gap-3">
-                <li class="nav-item"><a class="nav-link" href="/">Dashboard</a></li>
-                <li class="nav-item"><a class="nav-link" href="/inventory">Inventario</a></li>
-                <li class="nav-item"><a class="nav-link" href="/files">Archivos</a></li>
-                <li class="nav-item"><a class="nav-link" href="/admin/vault">🔐 Vault</a></li>
-                <li class="nav-item"><a class="nav-link" href="/admin/settings">⚙️ Settings</a></li>
-                <li class="nav-item"><a class="nav-link" href="/admin/users">👥 Usuarios</a></li>
-                <li class="nav-item"><a class="nav-link active" href="/admin/roles">🎭 Roles</a></li>
-                <li class="nav-item"><span class="nav-link theme-toggle" onclick="toggleTheme()">🌓</span></li>
-            </ul>
-        </div>
-    </nav>
-
-    <div class="container">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h4>🎭 Gestión de Roles</h4>
-            <button class="btn btn-primary" onclick="openAddModal()">➕ Crear Rol</button>
-        </div>
-
-        <div class="row g-4" id="roles-grid">
-            <!-- Roles will be rendered here -->
-        </div>
-
-        <div class="alert alert-info mt-4">
-            <strong>ℹ️ Nota:</strong> Los roles del sistema (marcados con 🔒) no se pueden eliminar.
-            Para modificar los permisos de un rol, haz clic en su tarjeta.
-        </div>
-    </div>
-
-    <!-- Role Modal -->
-    <div class="modal fade" id="roleModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header bg-primary text-white" id="modal-header">
-                    <h5 class="modal-title" id="modal-title">🎭 Editar Rol</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <input type="hidden" id="edit-mode" value="add">
-                    <input type="hidden" id="role-id" value="">
-
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">Nombre del Rol *</label>
-                                <input type="text" class="form-control" id="role-name" placeholder="ej: auditor">
-                                <div class="form-text">Solo letras minúsculas, sin espacios</div>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Descripción</label>
-                                <input type="text" class="form-control" id="role-description"
-                                    placeholder="Descripción del rol">
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Emoji</label>
-                                <div class="emoji-picker" id="emoji-picker">
-                                    <!-- Emojis will be added by JS -->
-                                </div>
-                                <input type="hidden" id="role-emoji" value="👤">
-                            </div>
+<!-- Role Modal -->
+<div class="modal fade" id="roleModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="modal-title">🎭 Editar Rol</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="edit-mode" value="add">
+                <input type="hidden" id="role-id" value="">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Nombre del Rol *</label>
+                            <input type="text" class="form-control" id="role-name" placeholder="ej: auditor">
+                            <div class="form-text">Solo letras minúsculas, sin espacios</div>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Permisos</label>
-                            <div class="card p-3">
-                                <div class="mb-2"><strong>📖 Visualización</strong></div>
-                                <div class="form-check"><input class="form-check-input perm-check" type="checkbox"
-                                        id="perm-view_dashboard"><label class="form-check-label"
-                                        for="perm-view_dashboard">Dashboard</label></div>
-                                <div class="form-check"><input class="form-check-input perm-check" type="checkbox"
-                                        id="perm-view_files"><label class="form-check-label"
-                                        for="perm-view_files">Archivos</label></div>
-                                <div class="form-check"><input class="form-check-input perm-check" type="checkbox"
-                                        id="perm-view_diff"><label class="form-check-label"
-                                        for="perm-view_diff">Comparar versiones</label></div>
-                                <div class="form-check"><input class="form-check-input perm-check" type="checkbox"
-                                        id="perm-view_inventory"><label class="form-check-label"
-                                        for="perm-view_inventory">Ver inventario</label></div>
-                                <div class="form-check"><input class="form-check-input perm-check" type="checkbox"
-                                        id="perm-view_vault"><label class="form-check-label" for="perm-view_vault">Ver
-                                        credenciales</label></div>
-                                <div class="form-check"><input class="form-check-input perm-check" type="checkbox"
-                                        id="perm-view_settings"><label class="form-check-label"
-                                        for="perm-view_settings">Ver configuración</label></div>
+                        <div class="mb-3">
+                            <label class="form-label">Descripción</label>
+                            <input type="text" class="form-control" id="role-description"
+                                placeholder="Descripción del rol">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Emoji</label>
+                            <div class="emoji-picker" id="emoji-picker"></div>
+                            <input type="hidden" id="role-emoji" value="👤">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Permisos</label>
+                        <div class="card p-3">
+                            <div class="mb-2"><strong>📖 Visualización</strong></div>
+                            <div class="form-check"><input class="form-check-input perm-check" type="checkbox"
+                                    id="perm-view_dashboard"><label class="form-check-label"
+                                    for="perm-view_dashboard">Dashboard</label></div>
+                            <div class="form-check"><input class="form-check-input perm-check" type="checkbox"
+                                    id="perm-view_files"><label class="form-check-label"
+                                    for="perm-view_files">Archivos</label></div>
+                            <div class="form-check"><input class="form-check-input perm-check" type="checkbox"
+                                    id="perm-view_diff"><label class="form-check-label" for="perm-view_diff">Comparar
+                                    versiones</label></div>
+                            <div class="form-check"><input class="form-check-input perm-check" type="checkbox"
+                                    id="perm-view_inventory"><label class="form-check-label"
+                                    for="perm-view_inventory">Ver inventario</label></div>
+                            <div class="form-check"><input class="form-check-input perm-check" type="checkbox"
+                                    id="perm-view_vault"><label class="form-check-label" for="perm-view_vault">Ver
+                                    credenciales</label></div>
+                            <div class="form-check"><input class="form-check-input perm-check" type="checkbox"
+                                    id="perm-view_settings"><label class="form-check-label" for="perm-view_settings">Ver
+                                    configuración</label></div>
 
-                                <div class="mb-2 mt-3"><strong>✏️ Edición</strong></div>
-                                <div class="form-check"><input class="form-check-input perm-check" type="checkbox"
-                                        id="perm-run_backup"><label class="form-check-label"
-                                        for="perm-run_backup">Ejecutar backup</label></div>
-                                <div class="form-check"><input class="form-check-input perm-check" type="checkbox"
-                                        id="perm-edit_inventory"><label class="form-check-label"
-                                        for="perm-edit_inventory">Editar inventario</label></div>
-                                <div class="form-check"><input class="form-check-input perm-check" type="checkbox"
-                                        id="perm-edit_vault"><label class="form-check-label"
-                                        for="perm-edit_vault">Editar credenciales</label></div>
-                                <div class="form-check"><input class="form-check-input perm-check" type="checkbox"
-                                        id="perm-edit_settings"><label class="form-check-label"
-                                        for="perm-edit_settings">Editar config</label></div>
+                            <div class="mb-2 mt-3"><strong>✏️ Edición</strong></div>
+                            <div class="form-check"><input class="form-check-input perm-check" type="checkbox"
+                                    id="perm-run_backup"><label class="form-check-label" for="perm-run_backup">Ejecutar
+                                    backup</label></div>
+                            <div class="form-check"><input class="form-check-input perm-check" type="checkbox"
+                                    id="perm-edit_inventory"><label class="form-check-label"
+                                    for="perm-edit_inventory">Editar inventario</label></div>
+                            <div class="form-check"><input class="form-check-input perm-check" type="checkbox"
+                                    id="perm-edit_vault"><label class="form-check-label" for="perm-edit_vault">Editar
+                                    credenciales</label></div>
+                            <div class="form-check"><input class="form-check-input perm-check" type="checkbox"
+                                    id="perm-edit_settings"><label class="form-check-label"
+                                    for="perm-edit_settings">Editar config</label></div>
 
-                                <div class="mb-2 mt-3"><strong>🔐 Administración</strong></div>
-                                <div class="form-check"><input class="form-check-input perm-check" type="checkbox"
-                                        id="perm-manage_users"><label class="form-check-label"
-                                        for="perm-manage_users">Gestionar usuarios</label></div>
-                                <div class="form-check"><input class="form-check-input perm-check" type="checkbox"
-                                        id="perm-manage_roles"><label class="form-check-label"
-                                        for="perm-manage_roles">Gestionar roles</label></div>
-                            </div>
+                            <div class="mb-2 mt-3"><strong>🔐 Administración</strong></div>
+                            <div class="form-check"><input class="form-check-input perm-check" type="checkbox"
+                                    id="perm-manage_users"><label class="form-check-label"
+                                    for="perm-manage_users">Gestionar usuarios</label></div>
+                            <div class="form-check"><input class="form-check-input perm-check" type="checkbox"
+                                    id="perm-manage_roles"><label class="form-check-label"
+                                    for="perm-manage_roles">Gestionar roles</label></div>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <span id="delete-btn-container"></span>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" onclick="saveRole()">💾 Guardar</button>
-                </div>
+            </div>
+            <div class="modal-footer">
+                <span id="delete-btn-container"></span>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="saveRole()">💾 Guardar</button>
             </div>
         </div>
     </div>
+</div>
+{% endblock %}
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Theme
-        function toggleTheme() {
-            var t = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-            document.documentElement.setAttribute('data-theme', t);
-            localStorage.setItem('theme', t);
-        }
-        (function () { document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'light'); })();
+{% block scripts %}
+<script>
+    var roles = {{ roles | tojson | safe }};
+    var roleModal;
+    var ALL_PERMISSIONS = ['view_dashboard', 'view_files', 'view_diff', 'view_inventory', 'view_vault', 'view_settings',
+        'run_backup', 'edit_inventory', 'edit_vault', 'edit_settings', 'manage_users', 'manage_roles'];
+    var EMOJIS = ['👤', '👁️', '🔧', '⚙️', '🛡️', '🎭', '👑', '🔐', '📊', '💼', '🔍', '📝', '🚀', '⭐', '💎', '🔮'];
 
-        var roles = {{ roles | tojson | safe }};
-        var roleModal;
+    document.addEventListener('DOMContentLoaded', function () {
+        roleModal = new bootstrap.Modal(document.getElementById('roleModal'));
+        renderRoles();
+        renderEmojiPicker();
+    });
 
-        var ALL_PERMISSIONS = [
-            'view_dashboard', 'view_files', 'view_diff', 'view_inventory', 'view_vault', 'view_settings',
-            'run_backup', 'edit_inventory', 'edit_vault', 'edit_settings', 'manage_users', 'manage_roles'
-        ];
-
-        var EMOJIS = ['👤', '👁️', '🔧', '⚙️', '🛡️', '🎭', '👑', '🔐', '📊', '💼', '🔍', '📝', '🚀', '⭐', '💎', '🔮'];
-
-        document.addEventListener('DOMContentLoaded', function () {
-            roleModal = new bootstrap.Modal(document.getElementById('roleModal'));
-            renderRoles();
-            renderEmojiPicker();
+    function renderEmojiPicker() {
+        var container = document.getElementById('emoji-picker');
+        container.innerHTML = '';
+        EMOJIS.forEach(function (emoji) {
+            var span = document.createElement('span');
+            span.className = 'emoji-option';
+            span.textContent = emoji;
+            span.onclick = function () { selectEmoji(emoji); };
+            container.appendChild(span);
         });
+    }
 
-        function renderEmojiPicker() {
-            var container = document.getElementById('emoji-picker');
-            container.innerHTML = '';
-            EMOJIS.forEach(function (emoji) {
-                var span = document.createElement('span');
-                span.className = 'emoji-option';
-                span.textContent = emoji;
-                span.onclick = function () { selectEmoji(emoji); };
-                container.appendChild(span);
-            });
-        }
+    function selectEmoji(emoji) {
+        document.getElementById('role-emoji').value = emoji;
+        document.querySelectorAll('.emoji-option').forEach(function (el) {
+            el.classList.remove('selected');
+            if (el.textContent === emoji) el.classList.add('selected');
+        });
+    }
 
-        function selectEmoji(emoji) {
-            document.getElementById('role-emoji').value = emoji;
-            document.querySelectorAll('.emoji-option').forEach(function (el) {
-                el.classList.remove('selected');
-                if (el.textContent === emoji) el.classList.add('selected');
-            });
-        }
+    function renderRoles() {
+        var container = document.getElementById('roles-grid');
+        container.innerHTML = '';
+        roles.forEach(function (role) {
+            var permCount = (role.permissions || []).length;
+            var card = document.createElement('div');
+            card.className = 'col-md-4 col-lg-3';
+            card.innerHTML =
+                '<div class="role-card position-relative" onclick="openEditModal(' + role.id + ')">' +
+                (role.is_system ? '<span class="badge bg-secondary role-badge-system">🔒 Sistema</span>' : '') +
+                '<div class="role-emoji">' + (role.emoji || '👤') + '</div>' +
+                '<div class="role-name">' + role.name + '</div>' +
+                '<div class="role-description">' + (role.description || '') + '</div>' +
+                '<div class="mt-2"><span class="badge bg-primary">' + permCount + ' permisos</span></div></div>';
+            container.appendChild(card);
+        });
+    }
 
-        function renderRoles() {
-            var container = document.getElementById('roles-grid');
-            container.innerHTML = '';
+    function openAddModal() {
+        document.getElementById('edit-mode').value = 'add';
+        document.getElementById('role-id').value = '';
+        document.getElementById('modal-title').textContent = '➕ Crear Rol';
+        document.getElementById('role-name').value = '';
+        document.getElementById('role-name').disabled = false;
+        document.getElementById('role-description').value = '';
+        selectEmoji('👤');
+        clearPermissions();
+        document.getElementById('delete-btn-container').innerHTML = '';
+        roleModal.show();
+    }
 
-            roles.forEach(function (role) {
-                var permCount = (role.permissions || []).length;
-                var card = document.createElement('div');
-                card.className = 'col-md-4 col-lg-3';
-                card.innerHTML =
-                    '<div class="role-card position-relative" onclick="openEditModal(' + role.id + ')">' +
-                    (role.is_system ? '<span class="badge bg-secondary role-badge-system">🔒 Sistema</span>' : '') +
-                    '<div class="role-emoji">' + (role.emoji || '👤') + '</div>' +
-                    '<div class="role-name">' + role.name + '</div>' +
-                    '<div class="role-description">' + (role.description || '') + '</div>' +
-                    '<div class="mt-2"><span class="badge bg-primary">' + permCount + ' permisos</span></div>' +
-                    '</div>';
-                container.appendChild(card);
-            });
-        }
+    function openEditModal(roleId) {
+        var role = roles.find(function (r) { return r.id === roleId; });
+        if (!role) return;
+        document.getElementById('edit-mode').value = 'edit';
+        document.getElementById('role-id').value = roleId;
+        document.getElementById('modal-title').textContent = role.emoji + ' Editar: ' + role.name;
+        document.getElementById('role-name').value = role.name;
+        document.getElementById('role-name').disabled = role.is_system;
+        document.getElementById('role-description').value = role.description || '';
+        selectEmoji(role.emoji || '👤');
+        setPermissions(role.permissions || []);
 
-        function openAddModal() {
-            document.getElementById('edit-mode').value = 'add';
-            document.getElementById('role-id').value = '';
-            document.getElementById('modal-title').textContent = '➕ Crear Rol';
-            document.getElementById('role-name').value = '';
-            document.getElementById('role-name').disabled = false;
-            document.getElementById('role-description').value = '';
-            document.getElementById('role-emoji').value = '👤';
-            selectEmoji('👤');
-            clearPermissions();
-            document.getElementById('delete-btn-container').innerHTML = '';
-            roleModal.show();
-        }
+        var del = document.getElementById('delete-btn-container');
+        del.innerHTML = role.is_system ? '' : '<button type="button" class="btn btn-danger me-auto" onclick="deleteRole(' + roleId + ')">🗑️ Eliminar</button>';
+        roleModal.show();
+    }
 
-        function openEditModal(roleId) {
-            var role = roles.find(function (r) { return r.id === roleId; });
-            if (!role) return;
+    function clearPermissions() { ALL_PERMISSIONS.forEach(function (p) { var cb = document.getElementById('perm-' + p); if (cb) cb.checked = false; }); }
+    function setPermissions(perms) { ALL_PERMISSIONS.forEach(function (p) { var cb = document.getElementById('perm-' + p); if (cb) cb.checked = perms.includes(p); }); }
+    function getSelectedPermissions() { var perms = []; ALL_PERMISSIONS.forEach(function (p) { var cb = document.getElementById('perm-' + p); if (cb && cb.checked) perms.push(p); }); return perms; }
 
-            document.getElementById('edit-mode').value = 'edit';
-            document.getElementById('role-id').value = roleId;
-            document.getElementById('modal-title').textContent = role.emoji + ' Editar Rol: ' + role.name;
-            document.getElementById('role-name').value = role.name;
-            document.getElementById('role-name').disabled = role.is_system;
-            document.getElementById('role-description').value = role.description || '';
-            document.getElementById('role-emoji').value = role.emoji || '👤';
-            selectEmoji(role.emoji || '👤');
-            setPermissions(role.permissions || []);
+    function saveRole() {
+        var mode = document.getElementById('edit-mode').value;
+        var data = {
+            name: document.getElementById('role-name').value.trim().toLowerCase(),
+            emoji: document.getElementById('role-emoji').value,
+            description: document.getElementById('role-description').value.trim(),
+            permissions: getSelectedPermissions()
+        };
+        if (!data.name) { alert('El nombre es requerido'); return; }
 
-            // Show delete button only for non-system roles
-            var deleteContainer = document.getElementById('delete-btn-container');
-            if (!role.is_system) {
-                deleteContainer.innerHTML = '<button type="button" class="btn btn-danger me-auto" onclick="deleteRole(' + roleId + ')">🗑️ Eliminar</button>';
-            } else {
-                deleteContainer.innerHTML = '';
-            }
+        var url = mode === 'add' ? '/api/roles' : '/api/roles/' + document.getElementById('role-id').value;
+        fetch(url, { method: mode === 'add' ? 'POST' : 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+            .then(function (r) { return r.json(); })
+            .then(function (resp) { if (resp.error) alert(resp.error); else location.reload(); });
+    }
 
-            roleModal.show();
-        }
-
-        function clearPermissions() {
-            ALL_PERMISSIONS.forEach(function (perm) {
-                var cb = document.getElementById('perm-' + perm);
-                if (cb) cb.checked = false;
-            });
-        }
-
-        function setPermissions(permissions) {
-            ALL_PERMISSIONS.forEach(function (perm) {
-                var cb = document.getElementById('perm-' + perm);
-                if (cb) cb.checked = permissions.includes(perm);
-            });
-        }
-
-        function getSelectedPermissions() {
-            var perms = [];
-            ALL_PERMISSIONS.forEach(function (perm) {
-                var cb = document.getElementById('perm-' + perm);
-                if (cb && cb.checked) perms.push(perm);
-            });
-            return perms;
-        }
-
-        function saveRole() {
-            var mode = document.getElementById('edit-mode').value;
-            var data = {
-                name: document.getElementById('role-name').value.trim().toLowerCase(),
-                emoji: document.getElementById('role-emoji').value,
-                description: document.getElementById('role-description').value.trim(),
-                permissions: getSelectedPermissions()
-            };
-
-            if (!data.name) {
-                alert('El nombre es requerido');
-                return;
-            }
-
-            var url = mode === 'add' ? '/api/roles' : '/api/roles/' + document.getElementById('role-id').value;
-            var method = mode === 'add' ? 'POST' : 'PUT';
-
-            fetch(url, {
-                method: method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            })
-                .then(function (r) { return r.json(); })
-                .then(function (resp) {
-                    if (resp.error) alert(resp.error);
-                    else location.reload();
-                });
-        }
-
-        function deleteRole(roleId) {
-            if (!confirm('¿Eliminar este rol?')) return;
-
-            fetch('/api/roles/' + roleId, { method: 'DELETE' })
-                .then(function (r) { return r.json(); })
-                .then(function (resp) {
-                    if (resp.error) alert(resp.error);
-                    else location.reload();
-                });
-        }
-    </script>
-</body>
-
-</html>
+    function deleteRole(roleId) {
+        if (!confirm('¿Eliminar este rol?')) return;
+        fetch('/api/roles/' + roleId, { method: 'DELETE' })
+            .then(function (r) { return r.json(); })
+            .then(function (resp) { if (resp.error) alert(resp.error); else location.reload(); });
+    }
+</script>
+{% endblock %}
