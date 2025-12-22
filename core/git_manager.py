@@ -14,8 +14,9 @@ class GitManager:
             cwd = self.repo_dir
         
         try:
-            # Check if git is installed
-            cmd = ["git"] + args
+            # Use full path to git to avoid PATH issues with systemd
+            git_path = "/usr/bin/git"
+            cmd = [git_path] + args
             result = subprocess.run(
                 cmd, 
                 cwd=cwd, 
