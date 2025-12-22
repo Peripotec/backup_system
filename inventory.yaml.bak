@@ -5,10 +5,8 @@ groups:
   devices:
   - hostname: HUAWEI5720-SUSANA
     ip: 172.19.2.3
-    sysname: HUAWEI5720-SUSANA
   - hostname: HUAWEI-6730-A
     ip: 172.19.30.6
-    sysname: HUAWEI-6730-A
   name: Huawei Test
   vendor: huawei
 - credential_ids:

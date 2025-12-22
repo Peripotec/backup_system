@@ -50,22 +50,30 @@ class BackupEngine:
         """
         Worker function to process a single device.
         """
-        hostname = device['hostname']
+        # PRIMARY ID: sysname (fallback to hostname for legacy)
+        sysname = device.get('sysname') or device.get('hostname')
+        
+        # CONNECTION HOST: hostname (can be IP or DNS name)
+        # Note: 'hostname' is used by plugins for connection headers/filenames usually
+        # We ensure it's available.
+        
         start_time = time.time()
         
-        log.info(f"Starting backup for {hostname} ({vendor_type})")
+        # Metadata logging
+        criticidad = device.get('criticidad', 'N/A')
+        log.info(f"Starting backup for {sysname} ({vendor_type}) [Crit:{criticidad}]")
         
         # Notify UI that we're starting this device
         if self.status_callback:
-            self.status_callback(hostname, "start")
+            self.status_callback(sysname, "start")
         
         if self.dry_run:
             time.sleep(0.5) # Simulate work
-            log.info(f"[DRY-RUN] Backup simulated for {hostname}")
-            self.db.record_job(hostname, vendor_type, group_name, "SUCCESS", "Dry Run", duration=0.5)
+            log.info(f"[DRY-RUN] Backup simulated for {sysname}")
+            self.db.record_job(sysname, vendor_type, group_name, "SUCCESS", "Dry Run", duration=0.5)
             if self.status_callback:
-                self.status_callback(hostname, "success", "Dry Run")
-            return {"status": "SUCCESS", "hostname": hostname, "diff": None}
+                self.status_callback(sysname, "success", "Dry Run")
+            return {"status": "SUCCESS", "hostname": sysname, "diff": None}
 
         # Real Execution
         try:
@@ -76,59 +84,65 @@ class BackupEngine:
             # Get credentials from vault if credential_ids provided
             credentials = []
             if credential_ids:
-                credentials = get_credentials_for_device(hostname, credential_ids)
-                log.debug(f"Loaded {len(credentials)} credentials from vault for {hostname}")
+                credentials = get_credentials_for_device(sysname, credential_ids)
+                log.debug(f"Loaded {len(credentials)} credentials from vault for {sysname}")
             
-            plugin = VendorClass(device, self.db, self.git, credentials)
+            # Prepare device info for plugin
+            # Ensure plugin receives the correct 'hostname' for file naming preference
+            # If we want files named by sysname, pass sysname as hostname to plugin
+            plugin_device_info = device.copy()
+            plugin_device_info['hostname'] = sysname 
+            
+            plugin = VendorClass(plugin_device_info, self.db, self.git, credentials)
             
             # Connect debug log callback to plugin
             if self.status_callback:
                 def plugin_log(msg):
-                    self.status_callback(hostname, "debug", msg)
+                    self.status_callback(sysname, "debug", msg)
                 plugin.log_callback = plugin_log
             
             archive_path, size, changed = plugin.backup()
             
             # Log saving
             if self.status_callback:
-                self.status_callback(hostname, "saving")
+                self.status_callback(sysname, "saving")
             
             duration = time.time() - start_time
             msg = f"{size} bytes"
             if changed:
                 msg += " (cambios)"
                 if self.status_callback:
-                    self.status_callback(hostname, "git")
+                    self.status_callback(sysname, "git")
                 diff = self.git.get_diff(plugin.hostname + ".cfg")
             else:
                 diff = None
 
             self.db.record_job(
-                hostname, vendor_type, group_name, "SUCCESS", msg, 
+                sysname, vendor_type, group_name, "SUCCESS", msg, 
                 file_path=archive_path, file_size=size, duration=duration, changed=changed
             )
             
-            log.info(f"Success: {hostname} ({size} bytes)")
+            log.info(f"Success: {sysname} ({size} bytes)")
             
             # Notify UI of success
             if self.status_callback:
-                self.status_callback(hostname, "success", msg)
+                self.status_callback(sysname, "success", msg)
             
-            return {"status": "SUCCESS", "hostname": hostname, "diff": diff}
+            return {"status": "SUCCESS", "hostname": sysname, "diff": diff}
 
         except Exception as e:
             duration = time.time() - start_time
-            log.error(f"Error backup {hostname}: {e}")
+            log.error(f"Error backup {sysname}: {e}")
             self.db.record_job(
-                hostname, vendor_type, group_name, "ERROR", str(e), 
+                sysname, vendor_type, group_name, "ERROR", str(e), 
                 duration=duration
             )
             
             # Notify UI of error
             if self.status_callback:
-                self.status_callback(hostname, "error", str(e))
+                self.status_callback(sysname, "error", str(e))
             
-            return {"status": "ERROR", "hostname": hostname, "error": str(e)}
+            return {"status": "ERROR", "hostname": sysname, "error": str(e)}
 
 
     def run(self, target_group=None, target_device=None):
