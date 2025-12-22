@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}Grupos{% endblock %}
+
+{% block head %}
+<style>
+    .btn-action {
+        cursor: pointer;
+        margin-right: 5px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card mb-4">
+    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-folder"></i> Grupos de Equipos</span>
+        <button class="btn btn-light btn-sm" onclick="openAddGroupModal()">➕ Agregar Grupo</button>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover table-striped mb-0">
+            <thead class="table-dark">
+                <tr>
+                    <th>Nombre</th>
+                    <th>Vendor</th>
+                    <th>Credenciales</th>
+                    <th>Dispositivos</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="group-table"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- YAML Panel -->
+<div class="card">
+    <div class="card-header bg-secondary text-white" data-bs-toggle="collapse" data-bs-target="#yamlPanel"
+        style="cursor: pointer;">
+        ⚙️ Edición Avanzada (YAML) - Click para expandir
+    </div>
+    <div class="collapse" id="yamlPanel">
+        <div class="card-body">
+            <form method="POST" action="/inventory/groups">
+                <textarea class="form-control" name="yaml_content" rows="15"
+                    style="font-family: monospace; font-size: 11px;">{{ content }}</textarea>
+                <button type="submit" class="btn btn-warning mt-2">💾 Guardar YAML</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Group Modal -->
+<div class="modal fade" id="groupModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white" id="group-modal-header">
+                <h5 class="modal-title" id="group-modal-title">➕ Agregar Grupo</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="group-edit-mode" value="add">
+                <input type="hidden" id="group-original-name" value="">
+                <div class="mb-3"><label class="form-label">Nombre *</label><input type="text" class="form-control"
+                        id="group-name" required></div>
+                <div class="mb-3"><label class="form-label">Vendor *</label><select class="form-select"
+                        id="group-vendor" required></select></div>
+                <hr>
+                <h6>🔐 Credenciales del Vault</h6>
+                <div class="mb-3" id="vault-credentials-container">
+                    <div class="text-muted">Cargando...</div>
+                </div>
+                <div class="form-text"><a href="/admin/vault" target="_blank">➕ Agregar credenciales al vault</a></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="saveGroup()">Guardar Grupo</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    var inventory = {{ inventory | tojson | safe }};
+    var vendors = [], vaultCredentials = [];
+    var groupModal;
+
+    document.addEventListener('DOMContentLoaded', function () {
+        groupModal = new bootstrap.Modal(document.getElementById('groupModal'));
+        loadVendors();
+        renderGroups();
+    });
+
+    function loadVendors() {
+        fetch('/api/vendors').then(r => r.json()).then(data => {
+            vendors = data;
+            var sel = document.getElementById('group-vendor');
+            sel.innerHTML = data.map(v => '<option value="' + v + '">' + v.charAt(0).toUpperCase() + v.slice(1) + '</option>').join('');
+        });
+    }
+
+    function renderGroups() {
+        var tbody = document.getElementById('group-table');
+        tbody.innerHTML = '';
+        if (!inventory.groups || inventory.groups.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No hay grupos. Cree uno para comenzar.</td></tr>';
+            return;
+        }
+        inventory.groups.forEach(g => {
+            var dc = g.devices ? g.devices.length : 0;
+            var creds = g.credential_ids ? g.credential_ids.join(', ') : '-';
+            tbody.innerHTML += '<tr><td><strong>' + g.name + '</strong></td><td><span class="badge bg-primary">' + g.vendor + '</span></td><td><small>' + creds + '</small></td><td>' + dc + '</td><td><span class="btn-action" onclick="openEditGroupModal(\'' + g.name + '\')">✏️</span><span class="btn-action" onclick="deleteGroup(\'' + g.name + '\')">🗑️</span></td></tr>';
+        });
+    }
+
+    function loadVaultCredentials() { return fetch('/api/vault').then(r => r.json()).then(data => { vaultCredentials = data; return data; }); }
+
+    function renderVaultCheckboxes(sel) {
+        var c = document.getElementById('vault-credentials-container'); sel = sel || [];
+        if (vaultCredentials.length === 0) { c.innerHTML = '<div class="text-muted">No hay credenciales. <a href="/admin/vault">Agregar</a></div>'; return; }
+        c.innerHTML = vaultCredentials.map(cr => '<div class="form-check"><input class="form-check-input vault-cred-check" type="checkbox" value="' + cr.id + '" id="cred-' + cr.id + '" ' + (sel.indexOf(cr.id) >= 0 ? 'checked' : '') + '><label class="form-check-label" for="cred-' + cr.id + '"><strong>' + cr.name + '</strong> <span class="text-muted">(' + cr.user + ')</span></label></div>').join('');
+    }
+
+    function getSelectedCredentialIds() { return Array.from(document.querySelectorAll('.vault-cred-check:checked')).map(c => c.value); }
+
+    function openAddGroupModal() {
+        document.getElementById('group-edit-mode').value = 'add';
+        document.getElementById('group-modal-title').textContent = '➕ Agregar Grupo';
+        document.getElementById('group-modal-header').className = 'modal-header bg-success text-white';
+        document.getElementById('group-name').value = ''; document.getElementById('group-name').disabled = false;
+        loadVaultCredentials().then(() => { renderVaultCheckboxes([]); groupModal.show(); });
+    }
+
+    function openEditGroupModal(name) {
+        var g = inventory.groups.find(gr => gr.name === name); if (!g) return;
+        document.getElementById('group-edit-mode').value = 'edit';
+        document.getElementById('group-original-name').value = name;
+        document.getElementById('group-modal-title').textContent = '✏️ Editar Grupo';
+        document.getElementById('group-modal-header').className = 'modal-header bg-warning text-dark';
+        document.getElementById('group-name').value = name; document.getElementById('group-name').disabled = true;
+        document.getElementById('group-vendor').value = g.vendor;
+        loadVaultCredentials().then(() => { renderVaultCheckboxes(g.credential_ids || []); groupModal.show(); });
+    }
+
+    function saveGroup() {
+        var name = document.getElementById('group-name').value.trim(), vendor = document.getElementById('group-vendor').value;
+        var cids = getSelectedCredentialIds();
+        if (!name || !vendor) { alert('Nombre y vendor requeridos'); return; }
+        if (cids.length === 0) { alert('Seleccione credenciales'); return; }
+        var mode = document.getElementById('group-edit-mode').value;
+        var data = { name: name, vendor: vendor, credential_ids: cids };
+        if (mode === 'add') {
+            fetch('/api/inventory/group', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+                .then(r => r.json()).then(resp => { resp.error ? alert(resp.error) : location.reload(); });
+        } else {
+            var on = document.getElementById('group-original-name').value;
+            fetch('/api/inventory/group/' + on, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+                .then(r => r.json()).then(resp => { resp.error ? alert(resp.error) : location.reload(); });
+        }
+    }
+
+    function deleteGroup(name) {
+        var g = inventory.groups.find(gr => gr.name === name), dc = g && g.devices ? g.devices.length : 0;
+        var msg = '¿Eliminar grupo "' + name + '"?' + (dc > 0 ? '\n\n⚠️ Eliminará ' + dc + ' dispositivo(s)!' : '');
+        if (!confirm(msg)) return;
+        fetch('/api/inventory/group/' + name, { method: 'DELETE' }).then(r => r.json()).then(d => { d.error ? alert(d.error) : location.reload(); });
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block title %}Dispositivos{% endblock %}
+
+{% block head %}
+<style>
+    .btn-action {
+        cursor: pointer;
+        margin-right: 5px;
+    }
+
+    .test-success {
+        color: #22c55e;
+    }
+
+    .test-error {
+        color: #ef4444;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-hdd-network"></i> Dispositivos Registrados</span>
+        <button class="btn btn-light btn-sm" onclick="openAddDeviceModal()">➕ Agregar Dispositivo</button>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover table-striped mb-0">
+            <thead class="table-dark">
+                <tr>
+                    <th>Hostname</th>
+                    <th>IP</th>
+                    <th>Grupo</th>
+                    <th>Vendor</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="device-table"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Device Modal -->
+<div class="modal fade" id="deviceModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white" id="device-modal-header">
+                <h5 class="modal-title" id="device-modal-title">➕ Agregar Dispositivo</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="device-edit-mode" value="add">
+                <input type="hidden" id="device-original-group" value="">
+                <input type="hidden" id="device-original-hostname" value="">
+                <div class="mb-3"><label class="form-label">Grupo *</label><select class="form-select" id="device-group"
+                        required></select></div>
+                <div class="mb-3"><label class="form-label">Hostname *</label><input type="text" class="form-control"
+                        id="device-hostname" required></div>
+                <div class="mb-3">
+                    <label class="form-label">IP *</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="device-ip" placeholder="192.168.1.1" required>
+                        <button class="btn btn-outline-secondary" type="button" onclick="testDeviceConnection()">🔌
+                            Test</button>
+                    </div>
+                    <div id="device-test-result" class="form-text"></div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Credenciales (override)</label>
+                    <div id="device-credentials-container" class="ps-2"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="saveDevice()">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    var inventory = {{ inventory | tojson | safe }};
+    var vaultCredentials = [];
+    var deviceModal;
+
+    document.addEventListener('DOMContentLoaded', function () {
+        deviceModal = new bootstrap.Modal(document.getElementById('deviceModal'));
+        renderDevices();
+    });
+
+    function renderDevices() {
+        var tbody = document.getElementById('device-table'), gSel = document.getElementById('device-group');
+        tbody.innerHTML = ''; gSel.innerHTML = '';
+        if (!inventory.groups || inventory.groups.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No hay grupos. <a href="/inventory/groups">Cree uno primero</a>.</td></tr>';
+            return;
+        }
+        inventory.groups.forEach(g => { gSel.innerHTML += '<option value="' + g.name + '">' + g.name + ' (' + g.vendor + ')</option>'; });
+        var has = false;
+        inventory.groups.forEach(g => {
+            if (!g.devices || g.devices.length === 0) return;
+            has = true;
+            g.devices.forEach(d => {
+                var cids = d.credential_ids ? JSON.stringify(d.credential_ids).replace(/"/g, '&quot;') : '[]';
+                var badge = d.credential_ids && d.credential_ids.length > 0 ? '<span class="badge bg-warning ms-1">🔑</span>' : '';
+                tbody.innerHTML += '<tr><td><strong>' + d.hostname + '</strong>' + badge + '</td><td><code>' + d.ip + '</code></td><td><span class="badge bg-info">' + g.name + '</span></td><td>' + g.vendor + '</td><td><span class="btn-action" onclick="openEditDeviceModal(\'' + g.name + '\', \'' + d.hostname + '\', \'' + d.ip + '\', ' + cids + ')">✏️</span><span class="btn-action" onclick="deleteDevice(\'' + g.name + '\', \'' + d.hostname + '\')">🗑️</span></td></tr>';
+            });
+        });
+        if (!has) tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Sin dispositivos. Agregue dispositivos.</td></tr>';
+    }
+
+    function loadVaultCredentials() { return fetch('/api/vault').then(r => r.json()).then(data => { vaultCredentials = data; return data; }); }
+
+    function renderDeviceCredentials(sel, grpCreds) {
+        var c = document.getElementById('device-credentials-container'); sel = sel || []; grpCreds = grpCreds || [];
+        if (vaultCredentials.length === 0) { c.innerHTML = '<div class="text-muted">No hay credenciales.</div>'; return; }
+        c.innerHTML = '<div class="form-text mb-1"><small>Heredadas: ' + (grpCreds.join(', ') || 'ninguna') + '</small></div>' +
+            vaultCredentials.map(cr => '<div class="form-check"><input class="form-check-input device-cred-check" type="checkbox" value="' + cr.id + '" id="dev-cred-' + cr.id + '" ' + (sel.indexOf(cr.id) >= 0 ? 'checked' : '') + '><label class="form-check-label" for="dev-cred-' + cr.id + '">' + cr.name + ' <span class="text-muted">(' + cr.user + ')</span></label></div>').join('');
+    }
+
+    function getSelectedDeviceCredentialIds() { return Array.from(document.querySelectorAll('.device-cred-check:checked')).map(cb => cb.value); }
+
+    function openAddDeviceModal() {
+        if (!inventory.groups || inventory.groups.length === 0) { alert('Primero cree un grupo'); return; }
+        document.getElementById('device-edit-mode').value = 'add';
+        document.getElementById('device-modal-title').textContent = '➕ Agregar Dispositivo';
+        document.getElementById('device-modal-header').className = 'modal-header bg-primary text-white';
+        document.getElementById('device-hostname').value = ''; document.getElementById('device-ip').value = '';
+        document.getElementById('device-test-result').innerHTML = '';
+        loadVaultCredentials().then(() => { renderDeviceCredentials([], []); deviceModal.show(); });
+    }
+
+    function openEditDeviceModal(grp, host, ip, cids) {
+        document.getElementById('device-edit-mode').value = 'edit';
+        document.getElementById('device-original-group').value = grp;
+        document.getElementById('device-original-hostname').value = host;
+        document.getElementById('device-modal-title').textContent = '✏️ Editar Dispositivo';
+        document.getElementById('device-modal-header').className = 'modal-header bg-warning text-dark';
+        document.getElementById('device-group').value = grp; document.getElementById('device-hostname').value = host;
+        document.getElementById('device-ip').value = ip; document.getElementById('device-test-result').innerHTML = '';
+        var gObj = inventory.groups.find(g => g.name === grp), gCreds = gObj ? (gObj.credential_ids || []) : [];
+        loadVaultCredentials().then(() => { renderDeviceCredentials(cids || [], gCreds); deviceModal.show(); });
+    }
+
+    function testDeviceConnection() {
+        var ip = document.getElementById('device-ip').value.trim(), res = document.getElementById('device-test-result');
+        if (!ip) { res.innerHTML = '<span class="test-error">Ingrese IP</span>'; return; }
+        res.innerHTML = '<span class="text-muted">Probando...</span>';
+        fetch('/api/inventory/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ip: ip, port: 23 }) })
+            .then(r => r.json()).then(d => { res.innerHTML = d.success ? '<span class="test-success">✅ ' + d.message + '</span>' : '<span class="test-error">❌ ' + d.error + '</span>'; });
+    }
+
+    function saveDevice() {
+        var host = document.getElementById('device-hostname').value.trim(), ip = document.getElementById('device-ip').value.trim();
+        var grp = document.getElementById('device-group').value, cids = getSelectedDeviceCredentialIds();
+        if (!host || !ip) { alert('Complete todos los campos'); return; }
+        var mode = document.getElementById('device-edit-mode').value;
+        var data = { group: grp, hostname: host, ip: ip, credential_ids: cids };
+        if (mode === 'add') {
+            fetch('/api/inventory/device', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+                .then(r => r.json()).then(resp => { resp.error ? alert(resp.error) : location.reload(); });
+        } else {
+            var og = document.getElementById('device-original-group').value, oh = document.getElementById('device-original-hostname').value;
+            fetch('/api/inventory/device/' + og + '/' + oh, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+                .then(r => r.json()).then(resp => { resp.error ? alert(resp.error) : location.reload(); });
+        }
+    }
+
+    function deleteDevice(grp, host) {
+        if (!confirm('¿Eliminar ' + host + '?')) return;
+        fetch('/api/inventory/device/' + grp + '/' + host, { method: 'DELETE' }).then(r => r.json()).then(d => { d.error ? alert(d.error) : location.reload(); });
+    }
+</script>
+{% endblock %}

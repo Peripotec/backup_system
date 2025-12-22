@@ -310,6 +310,37 @@ def diff_view(vendor, hostname):
     return render_template('diff.html', vendor=vendor, hostname=hostname)
 
 # ==========================
+# INVENTORY PAGES
+# ==========================
+
+@app.route('/inventory')
+@requires_auth
+@requires_permission('view_inventory')
+def inventory_page():
+    """Redirect to devices by default."""
+    return redirect(url_for('inventory_devices'))
+
+@app.route('/inventory/devices')
+@requires_auth
+@requires_permission('view_inventory')
+def inventory_devices():
+    """Show devices management page."""
+    with open(INVENTORY_FILE, 'r', encoding='utf-8') as f:
+        content = f.read()
+    inv = load_inventory()
+    return render_template('devices.html', inventory=inv, content=content)
+
+@app.route('/inventory/groups')
+@requires_auth
+@requires_permission('view_inventory')
+def inventory_groups():
+    """Show groups management page."""
+    with open(INVENTORY_FILE, 'r', encoding='utf-8') as f:
+        content = f.read()
+    inv = load_inventory()
+    return render_template('groups.html', inventory=inv, content=content)
+
+# ==========================
 # API: BACKUP TRIGGER
 # ==========================
 
