@@ -282,6 +282,34 @@ def index():
     return render_template('dashboard.html', stats=stats, jobs=jobs, disk=disk_info, backup_status=backup_status, inventory=inv)
 
 # ==========================
+# DIFF / HISTORIAL
+# ==========================
+
+@app.route('/diff')
+@requires_auth
+@requires_permission('view_diff')
+def diff_index():
+    """Show historial index page with all devices."""
+    inv = load_inventory()
+    devices = []
+    for group in inv.get('groups', []):
+        for device in group.get('devices', []):
+            devices.append({
+                'hostname': device.get('hostname'),
+                'ip': device.get('ip'),
+                'vendor': group.get('vendor'),
+                'group': group.get('name')
+            })
+    return render_template('historial_index.html', devices=devices)
+
+@app.route('/diff/<vendor>/<hostname>')
+@requires_auth
+@requires_permission('view_diff')
+def diff_view(vendor, hostname):
+    """Show diff view for specific device."""
+    return render_template('diff.html', vendor=vendor, hostname=hostname)
+
+# ==========================
 # API: BACKUP TRIGGER
 # ==========================
 

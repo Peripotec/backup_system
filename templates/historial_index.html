@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Historial de Cambios{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-file-diff"></i> Historial de Cambios</span>
+        <input type="text" class="form-control form-control-sm w-25" id="device-search"
+            placeholder="🔍 Buscar dispositivo..." onkeyup="filterDevices()">
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover table-striped mb-0">
+            <thead class="table-dark">
+                <tr>
+                    <th>Dispositivo</th>
+                    <th>IP</th>
+                    <th>Grupo</th>
+                    <th>Vendor</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="devices-table">
+                {% for device in devices %}
+                <tr class="device-row" data-name="{{ device.hostname|lower }}">
+                    <td><strong>{{ device.hostname }}</strong></td>
+                    <td><code>{{ device.ip }}</code></td>
+                    <td><span class="badge bg-info">{{ device.group }}</span></td>
+                    <td>{{ device.vendor }}</td>
+                    <td>
+                        <a href="/diff/{{ device.vendor }}/{{ device.hostname }}" class="btn btn-sm btn-outline-primary"
+                            title="Ver historial">
+                            <i class="bi bi-file-diff"></i> Ver Diff
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="text-center text-muted">No hay dispositivos en el inventario.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="alert alert-info mt-3">
+    <strong>💡 Tip:</strong> El historial muestra los cambios entre versiones de configuración capturadas por el sistema
+    de backup.
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function filterDevices() {
+        var q = document.getElementById('device-search').value.toLowerCase();
+        document.querySelectorAll('.device-row').forEach(function (row) {
+            row.style.display = row.dataset.name.includes(q) ? '' : 'none';
+        });
+    }
+</script>
+{% endblock %}
