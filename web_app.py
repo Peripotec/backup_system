@@ -6,18 +6,91 @@ import json
 import threading
 import subprocess
 import secrets
+import hashlib
+import time
 from datetime import datetime, timedelta
 from functools import wraps
+from collections import defaultdict
 from settings import BACKUP_ROOT_DIR, INVENTORY_FILE, DB_FILE, REPO_DIR, ARCHIVE_DIR
 from core.db_manager import DBManager
 from core.config_manager import get_config_manager
 from core.logger import log
 
 app = Flask(__name__, static_folder='static', static_url_path='/static')
-app.secret_key = secrets.token_hex(32)  # Generate secure key on each restart
 
-# Session configuration - 7 days persistence
+# ===========================================
+# SECURITY CONFIGURATION
+# ===========================================
+
+# Persistent secret key (stored in file so sessions survive restarts)
+SECRET_KEY_FILE = os.path.join(os.path.dirname(DB_FILE), '.flask_secret')
+def get_or_create_secret_key():
+    if os.path.exists(SECRET_KEY_FILE):
+        with open(SECRET_KEY_FILE, 'r') as f:
+            return f.read().strip()
+    key = secrets.token_hex(32)
+    try:
+        with open(SECRET_KEY_FILE, 'w') as f:
+            f.write(key)
+        os.chmod(SECRET_KEY_FILE, 0o600)  # Only owner can read
+    except:
+        pass  # Fallback to in-memory key
+    return key
+
+app.secret_key = get_or_create_secret_key()
+
+# Session configuration
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
+app.config['SESSION_COOKIE_HTTPONLY'] = True      # Prevent JS access to session cookie
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'     # CSRF protection (Strict when SSL ready)
+app.config['SESSION_COOKIE_SECURE'] = False       # Set True when HTTPS is enabled
+app.config['SESSION_COOKIE_NAME'] = 'backup_session'
+
+# Rate limiting storage (in-memory, resets on restart)
+login_attempts = defaultdict(lambda: {'count': 0, 'blocked_until': None})
+MAX_LOGIN_ATTEMPTS = 5
+LOGIN_BLOCK_DURATION = 300  # 5 minutes
+
+# ===========================================
+# SECURITY MIDDLEWARE
+# ===========================================
+
+@app.after_request
+def add_security_headers(response):
+    """Add security headers to all responses."""
+    # Prevent clickjacking
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    # Prevent MIME type sniffing
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    # XSS Protection (legacy browsers)
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    # Referrer policy
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    # Content Security Policy (basic)
+    response.headers['Content-Security-Policy'] = "default-src 'self' https://cdn.jsdelivr.net; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data:; font-src 'self' https://cdn.jsdelivr.net"
+    return response
+
+def is_ip_blocked(ip):
+    """Check if IP is blocked due to too many failed attempts."""
+    data = login_attempts[ip]
+    if data['blocked_until']:
+        if time.time() < data['blocked_until']:
+            return True
+        # Block expired, reset
+        login_attempts[ip] = {'count': 0, 'blocked_until': None}
+    return False
+
+def record_failed_login(ip):
+    """Record a failed login attempt."""
+    login_attempts[ip]['count'] += 1
+    if login_attempts[ip]['count'] >= MAX_LOGIN_ATTEMPTS:
+        login_attempts[ip]['blocked_until'] = time.time() + LOGIN_BLOCK_DURATION
+        log.warning(f"IP {ip} blocked for {LOGIN_BLOCK_DURATION}s due to {MAX_LOGIN_ATTEMPTS} failed login attempts")
+
+def reset_login_attempts(ip):
+    """Reset login attempts after successful login."""
+    if ip in login_attempts:
+        del login_attempts[ip]
 
 # Global state for backup execution
 backup_status = {"running": False, "message": "", "progress": 0}
@@ -124,7 +197,15 @@ def login():
     if 'user_id' in session:
         return redirect(url_for('index'))
     
+    client_ip = request.remote_addr
     error = None
+    
+    # Check if IP is blocked
+    if is_ip_blocked(client_ip):
+        remaining = int(login_attempts[client_ip]['blocked_until'] - time.time())
+        error = f"Demasiados intentos fallidos. Intenta de nuevo en {remaining} segundos."
+        return render_template('login.html', error=error)
+    
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '')
@@ -134,6 +215,9 @@ def login():
         user = cfg.authenticate_user(username, password)
         
         if user:
+            # Successful login - reset attempts
+            reset_login_attempts(client_ip)
+            
             session['user_id'] = user['id']
             session['username'] = user['username']
             session['role'] = user['role']
@@ -141,12 +225,18 @@ def login():
             if remember:
                 session.permanent = True
             
-            log.info(f"User logged in: {username}")
+            log.info(f"User logged in: {username} from {client_ip}")
             next_url = request.args.get('next', '/')
             return redirect(next_url)
         else:
-            error = "Usuario o contraseña incorrectos"
-            log.warning(f"Failed login attempt for: {username}")
+            # Failed login - record attempt
+            record_failed_login(client_ip)
+            attempts_left = MAX_LOGIN_ATTEMPTS - login_attempts[client_ip]['count']
+            if attempts_left > 0:
+                error = f"Usuario o contraseña incorrectos. ({attempts_left} intentos restantes)"
+            else:
+                error = f"Cuenta bloqueada por {LOGIN_BLOCK_DURATION // 60} minutos."
+            log.warning(f"Failed login attempt for: {username} from {client_ip}")
     
     return render_template('login.html', error=error)
 
