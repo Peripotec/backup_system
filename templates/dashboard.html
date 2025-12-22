@@ -177,40 +177,89 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white py-2">
-                <h6 class="modal-title">🎯 Seleccionar Equipos</h6>
+                <h6 class="modal-title">🎯 Seleccionar Equipos para Backup</h6>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body" style="max-height: 400px; overflow-y: auto;">
-                <input type="text" class="form-control form-control-sm mb-2" id="device-search"
-                    placeholder="🔍 Buscar..." onkeyup="filterDevices()">
-                <div class="form-check mb-2">
-                    <input class="form-check-input" type="checkbox" id="select-all" onchange="toggleAll(this)">
-                    <label class="form-check-label fw-bold" for="select-all">🌐 Todos</label>
-                </div>
-                <hr class="my-2">
-                {% for group in inventory.groups %}
-                <div class="mb-2">
-                    <div class="d-flex align-items-center group-collapse" data-bs-toggle="collapse"
-                        data-bs-target="#collapse-{{ loop.index }}">
-                        <input class="form-check-input me-2 group-check" type="checkbox" data-group="{{ group.name }}"
-                            onclick="event.stopPropagation(); toggleGroup('{{ group.name }}')">
-                        <span class="fw-bold">📁 {{ group.name }}</span>
-                        <span class="badge bg-info ms-2">{{ group.vendor }}</span>
-                        <span class="badge bg-secondary ms-1">{{ group.devices|length }}</span>
-                        <span class="ms-auto">▼</span>
-                    </div>
-                    <div class="collapse device-list ms-4" id="collapse-{{ loop.index }}">
-                        {% for device in group.devices %}
-                        <div class="form-check device-item" data-name="{{ device.hostname|lower }}">
-                            <input class="form-check-input device-check" type="checkbox" data-group="{{ group.name }}"
-                                value="{{ device.hostname }}">
-                            <label class="form-check-label"><small>{{ device.hostname }} ({{ device.ip
-                                    }})</small></label>
+            <div class="modal-body p-0">
+                <!-- Filter Bar -->
+                <div class="bg-light border-bottom p-2">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-md-3">
+                            <select class="form-select form-select-sm" id="filter-localidad" onchange="applyFilters()">
+                                <option value="">📍 Localidad</option>
+                            </select>
                         </div>
-                        {% endfor %}
+                        <div class="col-md-2">
+                            <select class="form-select form-select-sm" id="filter-tipo" onchange="applyFilters()">
+                                <option value="">🏷️ Tipo</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <select class="form-select form-select-sm" id="filter-vendor" onchange="applyFilters()">
+                                <option value="">🏭 Vendor</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <select class="form-select form-select-sm" id="filter-criticidad" onchange="applyFilters()">
+                                <option value="">⚠️ Criticidad</option>
+                                <option value="alta">🔴 Alta</option>
+                                <option value="media">🟡 Media</option>
+                                <option value="baja">🟢 Baja</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control form-control-sm" id="device-search"
+                                placeholder="🔍 Buscar..." onkeyup="applyFilters()">
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mt-2">
+                        <div class="form-check mb-0">
+                            <input class="form-check-input" type="checkbox" id="select-all"
+                                onchange="toggleAllVisible(this)">
+                            <label class="form-check-label fw-bold" for="select-all">Seleccionar visibles</label>
+                        </div>
+                        <small class="text-muted" id="visible-count">0 dispositivos</small>
+                        <button class="btn btn-outline-secondary btn-sm py-0" onclick="clearFilters()">🗑️
+                            Limpiar</button>
                     </div>
                 </div>
-                {% endfor %}
+                <!-- Device Tree -->
+                <div style="max-height: 350px; overflow-y: auto;" class="p-2">
+                    {% for group in inventory.groups %}
+                    <div class="mb-2 group-container" data-vendor="{{ group.vendor|lower }}">
+                        <div class="d-flex align-items-center group-collapse" data-bs-toggle="collapse"
+                            data-bs-target="#collapse-{{ loop.index }}">
+                            <input class="form-check-input me-2 group-check" type="checkbox"
+                                data-group="{{ group.name }}"
+                                onclick="event.stopPropagation(); toggleGroup('{{ group.name }}')">
+                            <span class="fw-bold">📁 {{ group.name }}</span>
+                            <span class="badge bg-info ms-2">{{ group.vendor }}</span>
+                            <span class="badge bg-secondary ms-1 group-device-count">{{ group.devices|length }}</span>
+                            <span class="ms-auto">▼</span>
+                        </div>
+                        <div class="collapse device-list ms-4" id="collapse-{{ loop.index }}">
+                            {% for device in group.devices %}
+                            <div class="form-check device-item"
+                                data-name="{{ (device.sysname or device.hostname)|lower }}"
+                                data-localidad="{{ (device.localidad or '')|lower }}"
+                                data-tipo="{{ (device.tipo or '')|lower }}" data-vendor="{{ group.vendor|lower }}"
+                                data-criticidad="{{ (device.criticidad or '')|lower }}"
+                                data-tags="{{ (device.tags or [])|join(',') }}">
+                                <input class="form-check-input device-check" type="checkbox"
+                                    data-group="{{ group.name }}" value="{{ device.sysname or device.hostname }}">
+                                <label class="form-check-label">
+                                    <small>{{ device.sysname or device.hostname }} ({{ device.ip }})</small>
+                                    {% if device.criticidad == 'alta' %}<span class="badge bg-danger ms-1">Alta</span>{%
+                                    endif %}
+                                    {% if device.localidad %}<span class="badge bg-secondary ms-1">{{ device.localidad
+                                        }}</span>{% endif %}
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
             </div>
             <div class="modal-footer py-2">
                 <span class="me-auto text-muted">Seleccionados: <strong id="selected-count">0</strong></span>
@@ -228,10 +277,94 @@
     const backupModal = new bootstrap.Modal(document.getElementById('backupModal'));
     let isBackupRunning = false, lastLogCount = 0;
 
-    function toggleAll(cb) { document.querySelectorAll('.device-check, .group-check').forEach(el => el.checked = cb.checked); updateCount(); }
-    function toggleGroup(name) { var cb = document.querySelector('.group-check[data-group="' + name + '"]'); document.querySelectorAll('.device-check[data-group="' + name + '"]').forEach(el => el.checked = cb.checked); updateCount(); }
-    function updateCount() { var n = document.querySelectorAll('.device-check:checked').length; document.getElementById('selected-count').textContent = n; document.getElementById('btn-run').disabled = n === 0; }
-    function filterDevices() { var q = document.getElementById('device-search').value.toLowerCase(); document.querySelectorAll('.device-item').forEach(el => el.style.display = el.dataset.name.includes(q) ? '' : 'none'); }
+    // Populate filter dropdowns when modal opens
+    document.getElementById('backupModal').addEventListener('show.bs.modal', function () {
+        populateFilters();
+        applyFilters();
+    });
+
+    function populateFilters() {
+        const localidades = new Set(), tipos = new Set(), vendors = new Set();
+        document.querySelectorAll('.device-item').forEach(el => {
+            if (el.dataset.localidad) localidades.add(el.dataset.localidad);
+            if (el.dataset.tipo) tipos.add(el.dataset.tipo);
+            if (el.dataset.vendor) vendors.add(el.dataset.vendor);
+        });
+
+        // Populate localidad
+        const selLoc = document.getElementById('filter-localidad');
+        selLoc.innerHTML = '<option value="">📍 Localidad</option>';
+        [...localidades].sort().forEach(v => selLoc.innerHTML += '<option value="' + v + '">' + v.charAt(0).toUpperCase() + v.slice(1) + '</option>');
+
+        // Populate tipo
+        const selTipo = document.getElementById('filter-tipo');
+        selTipo.innerHTML = '<option value="">🏷️ Tipo</option>';
+        [...tipos].sort().forEach(v => selTipo.innerHTML += '<option value="' + v + '">' + v.charAt(0).toUpperCase() + v.slice(1) + '</option>');
+
+        // Populate vendor
+        const selVendor = document.getElementById('filter-vendor');
+        selVendor.innerHTML = '<option value="">🏭 Vendor</option>';
+        [...vendors].sort().forEach(v => selVendor.innerHTML += '<option value="' + v + '">' + v.charAt(0).toUpperCase() + v.slice(1) + '</option>');
+    }
+
+    function applyFilters() {
+        const fLocalidad = document.getElementById('filter-localidad').value.toLowerCase();
+        const fTipo = document.getElementById('filter-tipo').value.toLowerCase();
+        const fVendor = document.getElementById('filter-vendor').value.toLowerCase();
+        const fCriticidad = document.getElementById('filter-criticidad').value.toLowerCase();
+        const fSearch = document.getElementById('device-search').value.toLowerCase();
+
+        let visibleCount = 0;
+        document.querySelectorAll('.device-item').forEach(el => {
+            const matchLoc = !fLocalidad || el.dataset.localidad === fLocalidad;
+            const matchTipo = !fTipo || el.dataset.tipo === fTipo;
+            const matchVendor = !fVendor || el.dataset.vendor === fVendor;
+            const matchCrit = !fCriticidad || el.dataset.criticidad === fCriticidad;
+            const matchSearch = !fSearch || el.dataset.name.includes(fSearch);
+
+            const visible = matchLoc && matchTipo && matchVendor && matchCrit && matchSearch;
+            el.style.display = visible ? '' : 'none';
+            if (visible) visibleCount++;
+        });
+
+        // Update group visibility and counts
+        document.querySelectorAll('.group-container').forEach(group => {
+            const visibleDevices = group.querySelectorAll('.device-item:not([style*="display: none"])');
+            const countBadge = group.querySelector('.group-device-count');
+            if (countBadge) countBadge.textContent = visibleDevices.length;
+            group.style.display = visibleDevices.length > 0 ? '' : 'none';
+        });
+
+        document.getElementById('visible-count').textContent = visibleCount + ' dispositivos';
+        document.getElementById('select-all').checked = false;
+    }
+
+    function clearFilters() {
+        document.getElementById('filter-localidad').value = '';
+        document.getElementById('filter-tipo').value = '';
+        document.getElementById('filter-vendor').value = '';
+        document.getElementById('filter-criticidad').value = '';
+        document.getElementById('device-search').value = '';
+        applyFilters();
+    }
+
+    function toggleAllVisible(cb) {
+        document.querySelectorAll('.device-item:not([style*="display: none"]) .device-check').forEach(el => el.checked = cb.checked);
+        updateCount();
+    }
+
+    function toggleGroup(name) {
+        const cb = document.querySelector('.group-check[data-group="' + name + '"]');
+        document.querySelectorAll('.device-item:not([style*="display: none"]) .device-check[data-group="' + name + '"]').forEach(el => el.checked = cb.checked);
+        updateCount();
+    }
+
+    function updateCount() {
+        const n = document.querySelectorAll('.device-check:checked').length;
+        document.getElementById('selected-count').textContent = n;
+        document.getElementById('btn-run').disabled = n === 0;
+    }
+
     document.querySelectorAll('.device-check').forEach(el => el.addEventListener('change', updateCount));
 
     function runSelectedBackup() {
