@@ -99,6 +99,7 @@
                 <li class="nav-item"><a class="nav-link" href="/admin/vault">🔐 Vault</a></li>
                 <li class="nav-item"><a class="nav-link" href="/admin/settings">⚙️ Settings</a></li>
                 <li class="nav-item"><a class="nav-link active" href="/admin/users">👥 Usuarios</a></li>
+                <li class="nav-item"><a class="nav-link" href="/admin/roles">🎭 Roles</a></li>
                 <li class="nav-item"><span class="nav-link theme-toggle" onclick="toggleTheme()">🌓</span></li>
             </ul>
         </div>
@@ -261,6 +262,12 @@
                                             id="perm-manage_users" onchange="updateCustomRole()">
                                         <label class="form-check-label text-danger"
                                             for="perm-manage_users"><strong>Gestionar usuarios</strong></label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input perm-check" type="checkbox"
+                                            id="perm-manage_roles" onchange="updateCustomRole()">
+                                        <label class="form-check-label text-danger"
+                                            for="perm-manage_roles"><strong>Gestionar roles</strong></label>
                                     </div>
                                 </div>
                             </div>
@@ -510,12 +517,33 @@
             var input = document.getElementById('generated-token');
             input.select();
             input.setSelectionRange(0, 99999);
-            navigator.clipboard.writeText(input.value).then(function () {
-                document.getElementById('copy-btn').textContent = '✅ Copiado!';
-                setTimeout(function () {
-                    document.getElementById('copy-btn').textContent = '📋 Copiar';
-                }, 2000);
-            });
+
+            // Try modern clipboard API first, fallback for HTTP
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(input.value).then(function () {
+                    showCopySuccess();
+                }).catch(function () {
+                    fallbackCopy(input);
+                });
+            } else {
+                fallbackCopy(input);
+            }
+        }
+
+        function fallbackCopy(input) {
+            try {
+                document.execCommand('copy');
+                showCopySuccess();
+            } catch (e) {
+                alert('Copia manual: ' + input.value);
+            }
+        }
+
+        function showCopySuccess() {
+            document.getElementById('copy-btn').textContent = '✅ Copiado!';
+            setTimeout(function () {
+                document.getElementById('copy-btn').textContent = '📋 Copiar';
+            }, 2000);
         }
 
         function deleteToken(tokenId) {

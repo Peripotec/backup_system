@@ -132,7 +132,7 @@ ROLE_PERMISSIONS = {
               'edit_inventory', 'view_vault', 'edit_vault', 'view_settings', 'edit_settings'],
     'superadmin': ['view_dashboard', 'view_files', 'view_diff', 'run_backup', 'view_inventory', 
                    'edit_inventory', 'view_vault', 'edit_vault', 'view_settings', 'edit_settings',
-                   'manage_users']
+                   'manage_users', 'manage_roles']
 }
 
 def has_permission(user_or_role, permission):
