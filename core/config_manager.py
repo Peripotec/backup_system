@@ -76,6 +76,13 @@ class ConfigManager:
                 )
             ''')
             
+            # Migration: Add permissions column if it doesn't exist (for existing DBs)
+            try:
+                cursor.execute("SELECT permissions FROM users LIMIT 1")
+            except sqlite3.OperationalError:
+                log.info("Migrating database: adding permissions column to users table")
+                cursor.execute("ALTER TABLE users ADD COLUMN permissions TEXT DEFAULT '[]'")
+            
             conn.commit()
             log.debug("Config tables ensured")
         except Exception as e:
