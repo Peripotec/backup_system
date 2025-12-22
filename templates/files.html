@@ -38,11 +38,19 @@
         <div class="card">
             <div class="card-header bg-primary text-white"><i class="bi bi-folder"></i> Explorador</div>
             <div class="card-body p-2">
-                <input type="text" class="form-control form-control-sm mb-2" id="search-input"
-                    placeholder="🔍 Buscar..." onkeyup="filterFiles()">
+                <div class="d-flex gap-2 mb-2">
+                    <select class="form-select form-select-sm w-auto" id="view-type" onchange="changeView()">
+                        <option value="physical">📂 Por Grupo</option>
+                        <option value="localidad">📍 Por Localidad</option>
+                        <option value="tipo">🏷️ Por Tipo</option>
+                        <option value="vendor">🏭 Por Vendor</option>
+                    </select>
+                    <input type="text" class="form-control form-control-sm" id="search-input" placeholder="🔍 Buscar..."
+                        onkeyup="filterFiles()">
+                </div>
                 <nav>
                     <ol class="breadcrumb bg-light p-2 rounded mb-0" id="breadcrumb">
-                        <li class="breadcrumb-item"><a href="#" onclick="loadFiles('')">archive</a></li>
+                        <li class="breadcrumb-item"><a href="#" onclick="loadFiles('')">root</a></li>
                     </ol>
                 </nav>
             </div>
@@ -93,8 +101,15 @@
     let currentPath = '', allItems = [], selectedFile = '';
     const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
 
+    function changeView() {
+        loadFiles('');
+    }
+
     function updateBreadcrumb(path) {
-        var html = '<li class="breadcrumb-item"><a href="#" onclick="loadFiles(\'\')">archive</a></li>';
+        const view = document.getElementById('view-type').value;
+        const rootLabel = view === 'physical' ? 'archive' : view;
+
+        var html = '<li class="breadcrumb-item"><a href="#" onclick="loadFiles(\'\')">' + rootLabel + '</a></li>';
         if (path) {
             var parts = path.split('/').filter(p => p);
             var acc = '';
@@ -112,7 +127,11 @@
         currentPath = path;
         updateBreadcrumb(path);
         document.getElementById('search-input').value = '';
+
+        const view = document.getElementById('view-type').value;
         var url = path ? '/api/files/list/' + path : '/api/files/list';
+        url += '?view=' + view;
+
         fetch(url).then(r => r.json()).then(data => {
             if (data.error) { document.getElementById('file-list').innerHTML = '<li class="list-group-item text-danger">' + data.error + '</li>'; return; }
             allItems = data.items || [];

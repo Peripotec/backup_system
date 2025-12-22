@@ -798,23 +798,106 @@ def api_test_connection():
 @app.route('/api/files/list')
 @app.route('/api/files/list/<path:subpath>')
 def api_list_files(subpath=""):
+    view = request.args.get('view', 'physical')
     base = ARCHIVE_DIR
-    target = os.path.abspath(os.path.join(base, subpath))
-    if not target.startswith(os.path.abspath(base)):
-        return jsonify({"error": "Access denied"}), 403
     
-    if not os.path.exists(target):
-        return jsonify({"error": "Path not found"}), 404
+    # Helper to safe list directory
+    def list_dir_safe(path, relative_to):
+        target = os.path.abspath(os.path.join(base, path))
+        if not target.startswith(os.path.abspath(base)):
+            return jsonify({"error": "Access denied"}), 403
+        if not os.path.exists(target):
+            return jsonify({"error": "Path not found"}), 404
+        items = []
+        for entry in os.scandir(target):
+            items.append({
+                "name": entry.name,
+                "is_dir": entry.is_dir(),
+                "size": entry.stat().st_size if entry.is_file() else 0,
+                "mtime": datetime.fromtimestamp(entry.stat().st_mtime).isoformat()
+            })
+        return jsonify({"path": relative_to, "items": sorted(items, key=lambda x: (not x["is_dir"], x["name"]))})
+
+    if view == 'physical':
+        # Default physical browsing (Group/Device/Files)
+        return list_dir_safe(subpath, subpath)
+
+    # Virtual Views Logic
+    parts = subpath.split('/') if subpath else []
     
-    items = []
-    for entry in os.scandir(target):
-        items.append({
-            "name": entry.name,
-            "is_dir": entry.is_dir(),
-            "size": entry.stat().st_size if entry.is_file() else 0,
-            "mtime": datetime.fromtimestamp(entry.stat().st_mtime).isoformat()
+    # helper to get categories from inventory
+    def get_categories(key):
+        inv = load_inventory()
+        cats = set()
+        for g in inv.get('groups', []):
+            if key == 'vendor': 
+                cats.add(g.get('vendor', 'Unknown'))
+            else:
+                for d in g.get('devices', []):
+                    val = d.get(key)
+                    if val: cats.add(val)
+        return sorted(list(cats))
+        
+    # helper to get devices in category
+    def get_devices(cat_key, cat_val):
+        inv = load_inventory()
+        devices = []
+        for g in inv.get('groups', []):
+            g_vendor = g.get('vendor', '').lower()
+            for d in g.get('devices', []):
+                match = False
+                if cat_key == 'vendor': match = g_vendor == cat_val.lower()
+                else: match = (d.get(cat_key) or '').lower() == cat_val.lower()
+                
+                if match:
+                    devices.append(d.get('sysname') or d.get('hostname'))
+        return sorted(list(set(devices)))
+
+    # ROOT: List categories (virtual folders)
+    if not parts:
+        cats = []
+        if view == 'localidad': cats = get_categories('localidad')
+        elif view == 'tipo': cats = get_categories('tipo')
+        elif view == 'vendor': cats = get_categories('vendor')
+        
+        return jsonify({
+            "path": "",
+            "items": [{"name": c, "is_dir": True, "size": 0, "mtime": datetime.now().isoformat()} for c in cats]
         })
-    return jsonify({"path": subpath, "items": sorted(items, key=lambda x: (not x["is_dir"], x["name"]))})
+
+    # LEVEL 1: Category selected -> List devices (virtual folders)
+    category = parts[0]
+    if len(parts) == 1:
+        devices = get_devices(view, category)
+        return jsonify({
+            "path": category,
+            "items": [{"name": d, "is_dir": True, "size": 0, "mtime": datetime.now().isoformat()} for d in devices]
+        })
+
+    # LEVEL 2+: Device selected -> List actual files from physical path
+    device_name = parts[1]
+    
+    # Find physical path for device
+    inv = load_inventory()
+    phys_path = None
+    for g in inv.get('groups', []):
+        for d in g.get('devices', []):
+            if (d.get('sysname') or d.get('hostname')).lower() == device_name.lower():
+                # Assuming physical structure is GroupName/Hostname
+                # But hostname in folder might be different if sysname is used?
+                # Currently backup engine uses os.path.join(repo_dir, group_name, device['hostname'])
+                phys_path = os.path.join(g['name'], d['hostname'])
+                break
+        if phys_path: break
+    
+    if not phys_path:
+        return jsonify({"error": "Device path not found"}), 404
+        
+    # Subpath inside the device folder
+    remaining_path = os.path.join(*parts[2:]) if len(parts) > 2 else ""
+    full_phys_path = os.path.join(phys_path, remaining_path)
+    
+    return list_dir_safe(full_phys_path, subpath)
 
 @app.route('/api/files/content/<path:filepath>')
 def api_file_content(filepath):
