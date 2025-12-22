@@ -5,6 +5,7 @@ import sqlite3
 import os
 import secrets
 import hashlib
+import json
 from datetime import datetime
 from settings import DB_FILE
 from core.logger import log
@@ -54,6 +55,7 @@ class ConfigManager:
                     password_hash TEXT NOT NULL,
                     email TEXT,
                     role TEXT DEFAULT 'viewer',
+                    permissions TEXT DEFAULT '[]',
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     last_login DATETIME,
                     active INTEGER DEFAULT 1
@@ -195,16 +197,20 @@ class ConfigManager:
             return hash_obj.hexdigest() == stored_hash
         return False
     
-    def create_user(self, username, password, role='viewer', email=None):
+    def create_user(self, username, password, role='viewer', email=None, permissions=None):
         """Create a new user."""
         conn = self._get_connection()
         try:
             cursor = conn.cursor()
             password_hash = self._hash_password(password)
+            # If no permissions specified, use role defaults
+            if permissions is None:
+                permissions = self._get_default_permissions(role)
+            perms_json = json.dumps(permissions)
             cursor.execute('''
-                INSERT INTO users (username, password_hash, email, role)
-                VALUES (?, ?, ?, ?)
-            ''', (username, password_hash, email, role))
+                INSERT INTO users (username, password_hash, email, role, permissions)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (username, password_hash, email, role, perms_json))
             conn.commit()
             log.info(f"User created: {username} ({role})")
             return cursor.lastrowid
@@ -216,6 +222,19 @@ class ConfigManager:
             return None
         finally:
             conn.close()
+    
+    def _get_default_permissions(self, role):
+        """Get default permissions for a role."""
+        defaults = {
+            'viewer': ['view_dashboard', 'view_files', 'view_diff'],
+            'operator': ['view_dashboard', 'view_files', 'view_diff', 'run_backup', 'view_inventory'],
+            'admin': ['view_dashboard', 'view_files', 'view_diff', 'run_backup', 'view_inventory', 
+                      'edit_inventory', 'view_vault', 'edit_vault', 'view_settings', 'edit_settings'],
+            'superadmin': ['view_dashboard', 'view_files', 'view_diff', 'run_backup', 'view_inventory', 
+                           'edit_inventory', 'view_vault', 'edit_vault', 'view_settings', 'edit_settings',
+                           'manage_users'],
+        }
+        return defaults.get(role, ['view_dashboard', 'view_files', 'view_diff'])
     
     def get_user(self, username):
         """Get user by username."""
@@ -235,7 +254,15 @@ class ConfigManager:
             cursor = conn.cursor()
             cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,))
             row = cursor.fetchone()
-            return dict(row) if row else None
+            if row:
+                user = dict(row)
+                # Parse permissions JSON
+                try:
+                    user['permissions'] = json.loads(user.get('permissions') or '[]')
+                except:
+                    user['permissions'] = []
+                return user
+            return None
         finally:
             conn.close()
     
@@ -259,7 +286,7 @@ class ConfigManager:
         finally:
             conn.close()
     
-    def update_user(self, user_id, username=None, password=None, email=None, role=None, active=None):
+    def update_user(self, user_id, username=None, password=None, email=None, role=None, active=None, permissions=None):
         """Update user fields."""
         conn = self._get_connection()
         try:
@@ -282,6 +309,9 @@ class ConfigManager:
             if active is not None:
                 updates.append('active = ?')
                 values.append(1 if active else 0)
+            if permissions is not None:
+                updates.append('permissions = ?')
+                values.append(json.dumps(permissions))
             
             if updates:
                 values.append(user_id)
@@ -311,8 +341,17 @@ class ConfigManager:
         conn = self._get_connection()
         try:
             cursor = conn.cursor()
-            cursor.execute('SELECT id, username, email, role, created_at, last_login, active FROM users')
-            return [dict(row) for row in cursor.fetchall()]
+            cursor.execute('SELECT id, username, email, role, permissions, created_at, last_login, active FROM users')
+            users = []
+            for row in cursor.fetchall():
+                user = dict(row)
+                # Parse permissions JSON
+                try:
+                    user['permissions'] = json.loads(user.get('permissions') or '[]')
+                except:
+                    user['permissions'] = []
+                users.append(user)
+            return users
         finally:
             conn.close()
     

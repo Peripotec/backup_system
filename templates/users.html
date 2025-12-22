@@ -184,14 +184,92 @@
                         <div class="form-text" id="password-hint">Deja vacío para mantener la contraseña actual.</div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Rol</label>
-                        <select class="form-select" id="user-role">
+                        <label class="form-label">Rol (preset de permisos)</label>
+                        <select class="form-select" id="user-role" onchange="applyRolePreset()">
                             <option value="viewer">👁️ Viewer - Solo lectura</option>
                             <option value="operator">🔧 Operator - Ejecutar backups</option>
                             <option value="admin">⚙️ Admin - Configurar sistema</option>
                             <option value="superadmin">🛡️ Superadmin - Todo</option>
+                            <option value="custom">🎛️ Personalizado</option>
                         </select>
                     </div>
+
+                    <!-- Granular Permissions -->
+                    <div class="mb-3">
+                        <label class="form-label">Permisos Granulares</label>
+                        <div class="row">
+                            <div class="col-6">
+                                <div class="card bg-opacity-10 bg-primary p-2">
+                                    <small class="text-muted mb-2">📖 Visualización</small>
+                                    <div class="form-check">
+                                        <input class="form-check-input perm-check" type="checkbox"
+                                            id="perm-view_dashboard" onchange="updateCustomRole()">
+                                        <label class="form-check-label" for="perm-view_dashboard">Dashboard</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input perm-check" type="checkbox" id="perm-view_files"
+                                            onchange="updateCustomRole()">
+                                        <label class="form-check-label" for="perm-view_files">Archivos</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input perm-check" type="checkbox" id="perm-view_diff"
+                                            onchange="updateCustomRole()">
+                                        <label class="form-check-label" for="perm-view_diff">Comparar versiones</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input perm-check" type="checkbox"
+                                            id="perm-view_inventory" onchange="updateCustomRole()">
+                                        <label class="form-check-label" for="perm-view_inventory">Ver inventario</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input perm-check" type="checkbox" id="perm-view_vault"
+                                            onchange="updateCustomRole()">
+                                        <label class="form-check-label" for="perm-view_vault">Ver credenciales</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input perm-check" type="checkbox"
+                                            id="perm-view_settings" onchange="updateCustomRole()">
+                                        <label class="form-check-label" for="perm-view_settings">Ver
+                                            configuración</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="card bg-opacity-10 bg-warning p-2">
+                                    <small class="text-muted mb-2">✏️ Edición</small>
+                                    <div class="form-check">
+                                        <input class="form-check-input perm-check" type="checkbox" id="perm-run_backup"
+                                            onchange="updateCustomRole()">
+                                        <label class="form-check-label" for="perm-run_backup">Ejecutar backup</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input perm-check" type="checkbox"
+                                            id="perm-edit_inventory" onchange="updateCustomRole()">
+                                        <label class="form-check-label" for="perm-edit_inventory">Editar
+                                            inventario</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input perm-check" type="checkbox" id="perm-edit_vault"
+                                            onchange="updateCustomRole()">
+                                        <label class="form-check-label" for="perm-edit_vault">Editar
+                                            credenciales</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input perm-check" type="checkbox"
+                                            id="perm-edit_settings" onchange="updateCustomRole()">
+                                        <label class="form-check-label" for="perm-edit_settings">Editar config</label>
+                                    </div>
+                                    <div class="form-check mt-2 border-top pt-2">
+                                        <input class="form-check-input perm-check" type="checkbox"
+                                            id="perm-manage_users" onchange="updateCustomRole()">
+                                        <label class="form-check-label text-danger"
+                                            for="perm-manage_users"><strong>Gestionar usuarios</strong></label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="mb-3">
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" id="user-active" checked>
@@ -278,6 +356,7 @@
             document.getElementById('user-role').value = 'viewer';
             document.getElementById('user-active').checked = true;
             document.getElementById('password-hint').style.display = 'none';
+            applyRolePreset(); // Apply default viewer permissions
             userModal.show();
         }
 
@@ -291,9 +370,16 @@
             document.getElementById('user-username').value = user.username;
             document.getElementById('user-email').value = user.email || '';
             document.getElementById('user-password').value = '';
-            document.getElementById('user-role').value = user.role;
+            document.getElementById('user-role').value = user.role || 'custom';
             document.getElementById('user-active').checked = user.active;
             document.getElementById('password-hint').style.display = 'block';
+
+            // Load user permissions
+            if (user.permissions && user.permissions.length > 0) {
+                setPermissions(user.permissions);
+            } else {
+                applyRolePreset(); // Fallback to role preset
+            }
             userModal.show();
         }
 
@@ -304,7 +390,8 @@
                 email: document.getElementById('user-email').value.trim(),
                 password: document.getElementById('user-password').value,
                 role: document.getElementById('user-role').value,
-                active: document.getElementById('user-active').checked
+                active: document.getElementById('user-active').checked,
+                permissions: getSelectedPermissions()
             };
 
             if (!data.username) {
@@ -394,10 +481,28 @@
                     if (resp.error) {
                         alert(resp.error);
                     } else {
-                        alert('Token generado (cópialo ahora, no se mostrará de nuevo):\n\n' + resp.token);
+                        showTokenModal(resp.token);
                         loadTokens();
                     }
                 });
+        }
+
+        function showTokenModal(token) {
+            document.getElementById('generated-token').value = token;
+            var modal = new bootstrap.Modal(document.getElementById('tokenModal'));
+            modal.show();
+        }
+
+        function copyToken() {
+            var input = document.getElementById('generated-token');
+            input.select();
+            input.setSelectionRange(0, 99999);
+            navigator.clipboard.writeText(input.value).then(function () {
+                document.getElementById('copy-btn').textContent = '✅ Copiado!';
+                setTimeout(function () {
+                    document.getElementById('copy-btn').textContent = '📋 Copiar';
+                }, 2000);
+            });
         }
 
         function deleteToken(tokenId) {
@@ -410,7 +515,98 @@
                     else loadTokens();
                 });
         }
+
+        // Permission presets
+        var ROLE_PRESETS = {
+            'viewer': ['view_dashboard', 'view_files', 'view_diff'],
+            'operator': ['view_dashboard', 'view_files', 'view_diff', 'run_backup', 'view_inventory'],
+            'admin': ['view_dashboard', 'view_files', 'view_diff', 'run_backup', 'view_inventory',
+                'edit_inventory', 'view_vault', 'edit_vault', 'view_settings', 'edit_settings'],
+            'superadmin': ['view_dashboard', 'view_files', 'view_diff', 'run_backup', 'view_inventory',
+                'edit_inventory', 'view_vault', 'edit_vault', 'view_settings', 'edit_settings',
+                'manage_users'],
+            'custom': []
+        };
+
+        var ALL_PERMISSIONS = [
+            'view_dashboard', 'view_files', 'view_diff', 'view_inventory', 'view_vault', 'view_settings',
+            'run_backup', 'edit_inventory', 'edit_vault', 'edit_settings', 'manage_users'
+        ];
+
+        function applyRolePreset() {
+            var role = document.getElementById('user-role').value;
+            var preset = ROLE_PRESETS[role] || [];
+
+            ALL_PERMISSIONS.forEach(function (perm) {
+                var checkbox = document.getElementById('perm-' + perm);
+                if (checkbox) {
+                    checkbox.checked = preset.includes(perm);
+                }
+            });
+        }
+
+        function updateCustomRole() {
+            // When user manually changes permissions, switch to custom role
+            var currentRole = document.getElementById('user-role').value;
+            if (currentRole !== 'custom') {
+                var preset = ROLE_PRESETS[currentRole] || [];
+                var current = getSelectedPermissions();
+
+                // Check if current permissions differ from preset
+                var isDifferent = preset.length !== current.length ||
+                    !preset.every(function (p) { return current.includes(p); });
+
+                if (isDifferent) {
+                    document.getElementById('user-role').value = 'custom';
+                }
+            }
+        }
+
+        function getSelectedPermissions() {
+            var perms = [];
+            ALL_PERMISSIONS.forEach(function (perm) {
+                var checkbox = document.getElementById('perm-' + perm);
+                if (checkbox && checkbox.checked) {
+                    perms.push(perm);
+                }
+            });
+            return perms;
+        }
+
+        function setPermissions(permissions) {
+            ALL_PERMISSIONS.forEach(function (perm) {
+                var checkbox = document.getElementById('perm-' + perm);
+                if (checkbox) {
+                    checkbox.checked = permissions.includes(perm);
+                }
+            });
+        }
     </script>
+
+    <!-- Token Modal -->
+    <div class="modal fade" id="tokenModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title">🔑 Token Generado</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <strong>⚠️ Importante:</strong> Copia este token ahora. No se mostrará de nuevo.
+                    </div>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="generated-token" readonly>
+                        <button class="btn btn-primary" type="button" id="copy-btn" onclick="copyToken()">📋
+                            Copiar</button>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>

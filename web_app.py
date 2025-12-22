@@ -123,7 +123,7 @@ def requires_auth(f):
         return f(*args, **kwargs)
     return decorated
 
-# Role permission matrix (hierarchical: superadmin > admin > operator > viewer)
+# Role permission defaults (used when user doesn't have explicit permissions)
 ROLE_HIERARCHY = ['viewer', 'operator', 'admin', 'superadmin']
 ROLE_PERMISSIONS = {
     'viewer': ['view_dashboard', 'view_files', 'view_diff'],
@@ -135,9 +135,19 @@ ROLE_PERMISSIONS = {
                    'manage_users']
 }
 
-def has_permission(role, permission):
-    """Check if a role has a specific permission."""
-    return permission in ROLE_PERMISSIONS.get(role, [])
+def has_permission(user_or_role, permission):
+    """Check if user has a specific permission. Accepts user dict or role string."""
+    if isinstance(user_or_role, dict):
+        # User dict - check user's explicit permissions first
+        user_perms = user_or_role.get('permissions', [])
+        if user_perms:
+            return permission in user_perms
+        # Fallback to role defaults
+        role = user_or_role.get('role', 'viewer')
+        return permission in ROLE_PERMISSIONS.get(role, [])
+    else:
+        # Role string - use role defaults
+        return permission in ROLE_PERMISSIONS.get(user_or_role, [])
 
 def requires_role(*roles):
     """Decorator to require specific role(s)."""
@@ -160,7 +170,7 @@ def requires_permission(permission):
         @wraps(f)
         def decorated(*args, **kwargs):
             user = get_current_user()
-            if not user or not has_permission(user.get('role'), permission):
+            if not user or not has_permission(user, permission):
                 if request.path.startswith('/api/'):
                     return jsonify({"error": "Permisos insuficientes"}), 403
                 return redirect(url_for('access_denied'))
@@ -175,11 +185,10 @@ def get_db():
 def inject_user():
     """Inject current user and permission helpers into all templates."""
     user = get_current_user()
-    role = user.get('role') if user else None
     return {
         'current_user': user,
         'session': session,
-        'has_permission': lambda perm: has_permission(role, perm) if role else False,
+        'has_permission': lambda perm: has_permission(user, perm) if user else False,
         'ROLE_PERMISSIONS': ROLE_PERMISSIONS
     }
 
@@ -1011,11 +1020,12 @@ def api_create_user():
     password = data.get('password', '')
     email = data.get('email', '').strip()
     role = data.get('role', 'viewer')
+    permissions = data.get('permissions')  # List of permissions
     
     if not username or not password:
         return jsonify({"error": "Username and password required"}), 400
     
-    user_id = cfg.create_user(username, password, role, email)
+    user_id = cfg.create_user(username, password, role, email, permissions)
     if user_id:
         return jsonify({"status": "ok", "id": user_id})
     return jsonify({"error": "User already exists"}), 400
@@ -1037,7 +1047,8 @@ def api_update_user(user_id):
         password=password,
         email=data.get('email'),
         role=data.get('role'),
-        active=data.get('active')
+        active=data.get('active'),
+        permissions=data.get('permissions')  # List of permissions
     )
     return jsonify({"status": "ok"})
 
