@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Tipos de Dispositivo{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-diagram-3"></i> Tipos de Dispositivo</span>
+        <button class="btn btn-light btn-sm" onclick="openAddModal()">➕ Agregar Tipo</button>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover table-striped mb-0">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Descripción</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="types-table"></tbody>
+        </table>
+    </div>
+</div>
+
+<div class="alert alert-info mt-3">
+    <strong>💡 Tip:</strong> Los tipos de dispositivo categorizan el hardware (switch, router, OLT, firewall, etc.).
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="typeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white" id="modal-header">
+                <h5 class="modal-title" id="modal-title">➕ Agregar Tipo</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="edit-mode" value="add">
+                <input type="hidden" id="original-id" value="">
+                <div class="mb-3"><label class="form-label">ID *</label><input type="text" class="form-control"
+                        id="type-id" placeholder="switch" required>
+                    <div class="form-text">Identificador único (minúsculas, sin espacios)</div>
+                </div>
+                <div class="mb-3"><label class="form-label">Nombre *</label><input type="text" class="form-control"
+                        id="type-name" placeholder="Switch" required></div>
+                <div class="mb-3"><label class="form-label">Descripción</label><textarea class="form-control"
+                        id="type-desc" rows="2" placeholder="Conmutadores de capa 2/3"></textarea></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-info" onclick="saveType()">💾 Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    var types = [];
+    var typeModal;
+
+    document.addEventListener('DOMContentLoaded', function () {
+        typeModal = new bootstrap.Modal(document.getElementById('typeModal'));
+        loadTypes();
+    });
+
+    function loadTypes() {
+        fetch('/api/device_types').then(r => r.json()).then(data => {
+            types = data;
+            renderTable();
+        });
+    }
+
+    function renderTable() {
+        var tbody = document.getElementById('types-table');
+        tbody.innerHTML = '';
+        if (types.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No hay tipos. Agregue uno para comenzar.</td></tr>'; return; }
+        types.forEach(t => {
+            tbody.innerHTML += '<tr><td><code>' + t.id + '</code></td><td><strong>' + t.name + '</strong></td><td><small class="text-muted">' + (t.description || '-') + '</small></td><td><span class="btn-action" style="cursor:pointer" onclick="openEditModal(\'' + t.id + '\')">✏️</span><span class="btn-action" style="cursor:pointer" onclick="deleteType(\'' + t.id + '\')">🗑️</span></td></tr>';
+        });
+    }
+
+    function openAddModal() {
+        document.getElementById('edit-mode').value = 'add';
+        document.getElementById('modal-title').textContent = '➕ Agregar Tipo';
+        document.getElementById('type-id').value = ''; document.getElementById('type-id').disabled = false;
+        document.getElementById('type-name').value = '';
+        document.getElementById('type-desc').value = '';
+        typeModal.show();
+    }
+
+    function openEditModal(id) {
+        var t = types.find(x => x.id === id); if (!t) return;
+        document.getElementById('edit-mode').value = 'edit';
+        document.getElementById('original-id').value = id;
+        document.getElementById('modal-title').textContent = '✏️ Editar Tipo';
+        document.getElementById('type-id').value = id; document.getElementById('type-id').disabled = true;
+        document.getElementById('type-name').value = t.name;
+        document.getElementById('type-desc').value = t.description || '';
+        typeModal.show();
+    }
+
+    function saveType() {
+        var id = document.getElementById('type-id').value.trim().toLowerCase().replace(/\s+/g, '_');
+        var name = document.getElementById('type-name').value.trim();
+        var desc = document.getElementById('type-desc').value.trim();
+        if (!id || !name) { alert('ID y nombre son requeridos'); return; }
+
+        var mode = document.getElementById('edit-mode').value;
+        var data = { id: id, name: name, description: desc };
+
+        if (mode === 'add') {
+            fetch('/api/device_types', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+                .then(r => r.json()).then(resp => { resp.error ? alert(resp.error) : (typeModal.hide(), loadTypes()); });
+        } else {
+            var oid = document.getElementById('original-id').value;
+            fetch('/api/device_types/' + oid, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+                .then(r => r.json()).then(resp => { resp.error ? alert(resp.error) : (typeModal.hide(), loadTypes()); });
+        }
+    }
+
+    function deleteType(id) {
+        if (!confirm('¿Eliminar tipo "' + id + '"?')) return;
+        fetch('/api/device_types/' + id, { method: 'DELETE' }).then(r => r.json()).then(resp => { resp.error ? alert(resp.error) : loadTypes(); });
+    }
+</script>
+{% endblock %}

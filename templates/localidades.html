@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}Localidades{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-geo-alt"></i> Localidades</span>
+        <button class="btn btn-light btn-sm" onclick="openAddModal()">➕ Agregar Localidad</button>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover table-striped mb-0">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Zona</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="loc-table"></tbody>
+        </table>
+    </div>
+</div>
+
+<div class="alert alert-info mt-3">
+    <strong>💡 Tip:</strong> Las localidades permiten organizar dispositivos por ubicación geográfica. Las zonas
+    (Troncal Norte/Sur/Este/Oeste) agrupan localidades.
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="locModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white" id="modal-header">
+                <h5 class="modal-title" id="modal-title">➕ Agregar Localidad</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="edit-mode" value="add">
+                <input type="hidden" id="original-id" value="">
+                <div class="mb-3"><label class="form-label">ID *</label><input type="text" class="form-control"
+                        id="loc-id" placeholder="rafaela" required>
+                    <div class="form-text">Identificador único (minúsculas)</div>
+                </div>
+                <div class="mb-3"><label class="form-label">Nombre *</label><input type="text" class="form-control"
+                        id="loc-name" placeholder="Rafaela" required></div>
+                <div class="mb-3"><label class="form-label">Zona</label><select class="form-select"
+                        id="loc-zona"></select></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="saveLoc()">💾 Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    var localidades = [], zonas = [];
+    var locModal;
+
+    document.addEventListener('DOMContentLoaded', function () {
+        locModal = new bootstrap.Modal(document.getElementById('locModal'));
+        loadZonas();
+        loadLocs();
+    });
+
+    function loadZonas() {
+        fetch('/api/zonas').then(r => r.json()).then(data => {
+            zonas = data;
+            var sel = document.getElementById('loc-zona');
+            sel.innerHTML = '<option value="">Sin zona</option>' + data.map(z => '<option value="' + z + '">' + z + '</option>').join('');
+        });
+    }
+
+    function loadLocs() {
+        fetch('/api/localidades').then(r => r.json()).then(data => {
+            localidades = data;
+            renderTable();
+        });
+    }
+
+    function renderTable() {
+        var tbody = document.getElementById('loc-table');
+        tbody.innerHTML = '';
+        if (localidades.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No hay localidades. Agregue una para comenzar.</td></tr>'; return; }
+        localidades.forEach(l => {
+            var zonaBadge = l.zona ? '<span class="badge bg-primary">' + l.zona + '</span>' : '<span class="text-muted">-</span>';
+            tbody.innerHTML += '<tr><td><code>' + l.id + '</code></td><td><strong>' + l.name + '</strong></td><td>' + zonaBadge + '</td><td><span class="btn-action" style="cursor:pointer" onclick="openEditModal(\'' + l.id + '\')">✏️</span><span class="btn-action" style="cursor:pointer" onclick="deleteLoc(\'' + l.id + '\')">🗑️</span></td></tr>';
+        });
+    }
+
+    function openAddModal() {
+        document.getElementById('edit-mode').value = 'add';
+        document.getElementById('modal-title').textContent = '➕ Agregar Localidad';
+        document.getElementById('loc-id').value = ''; document.getElementById('loc-id').disabled = false;
+        document.getElementById('loc-name').value = '';
+        document.getElementById('loc-zona').value = '';
+        locModal.show();
+    }
+
+    function openEditModal(id) {
+        var l = localidades.find(x => x.id === id); if (!l) return;
+        document.getElementById('edit-mode').value = 'edit';
+        document.getElementById('original-id').value = id;
+        document.getElementById('modal-title').textContent = '✏️ Editar Localidad';
+        document.getElementById('loc-id').value = id; document.getElementById('loc-id').disabled = true;
+        document.getElementById('loc-name').value = l.name;
+        document.getElementById('loc-zona').value = l.zona || '';
+        locModal.show();
+    }
+
+    function saveLoc() {
+        var id = document.getElementById('loc-id').value.trim().toLowerCase().replace(/\s+/g, '_');
+        var name = document.getElementById('loc-name').value.trim();
+        var zona = document.getElementById('loc-zona').value;
+        if (!id || !name) { alert('ID y nombre son requeridos'); return; }
+
+        var mode = document.getElementById('edit-mode').value;
+        var data = { id: id, name: name, zona: zona };
+
+        if (mode === 'add') {
+            fetch('/api/localidades', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+                .then(r => r.json()).then(resp => { resp.error ? alert(resp.error) : (locModal.hide(), loadLocs()); });
+        } else {
+            var oid = document.getElementById('original-id').value;
+            fetch('/api/localidades/' + oid, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+                .then(r => r.json()).then(resp => { resp.error ? alert(resp.error) : (locModal.hide(), loadLocs()); });
+        }
+    }
+
+    function deleteLoc(id) {
+        if (!confirm('¿Eliminar localidad "' + id + '"?')) return;
+        fetch('/api/localidades/' + id, { method: 'DELETE' }).then(r => r.json()).then(resp => { resp.error ? alert(resp.error) : loadLocs(); });
+    }
+</script>
+{% endblock %}

@@ -1237,6 +1237,211 @@ def api_delete_role(role_id):
         return jsonify({"status": "ok", "message": message})
     return jsonify({"error": message}), 400
 
+# ==========================
+# CATALOG: DEVICE TYPES
+# ==========================
+
+@app.route('/admin/tipos')
+@requires_auth
+@requires_permission('view_inventory')
+def tipos_page():
+    """Show device types management page."""
+    return render_template('tipos.html')
+
+@app.route('/api/device_types')
+@requires_auth
+def api_get_device_types():
+    db = get_db()
+    return jsonify(db.get_device_types())
+
+@app.route('/api/device_types', methods=['POST'])
+@requires_auth
+@requires_permission('edit_inventory')
+def api_create_device_type():
+    data = request.json
+    type_id = data.get('id', '').strip().lower().replace(' ', '_')
+    name = data.get('name', '').strip()
+    description = data.get('description', '').strip()
+    
+    if not type_id or not name:
+        return jsonify({"error": "ID y nombre son requeridos"}), 400
+    
+    db = get_db()
+    if db.create_device_type(type_id, name, description):
+        return jsonify({"status": "ok"})
+    return jsonify({"error": "El tipo ya existe"}), 400
+
+@app.route('/api/device_types/<type_id>', methods=['PUT'])
+@requires_auth
+@requires_permission('edit_inventory')
+def api_update_device_type(type_id):
+    data = request.json
+    name = data.get('name', '').strip()
+    description = data.get('description', '').strip()
+    
+    if not name:
+        return jsonify({"error": "Nombre es requerido"}), 400
+    
+    db = get_db()
+    if db.update_device_type(type_id, name, description):
+        return jsonify({"status": "ok"})
+    return jsonify({"error": "Tipo no encontrado"}), 404
+
+@app.route('/api/device_types/<type_id>', methods=['DELETE'])
+@requires_auth
+@requires_permission('edit_inventory')
+def api_delete_device_type(type_id):
+    db = get_db()
+    if db.delete_device_type(type_id):
+        return jsonify({"status": "ok"})
+    return jsonify({"error": "Tipo no encontrado"}), 404
+
+# ==========================
+# CATALOG: DEVICE MODELS
+# ==========================
+
+@app.route('/admin/modelos')
+@requires_auth
+@requires_permission('view_inventory')
+def modelos_page():
+    """Show device models management page."""
+    return render_template('modelos.html')
+
+@app.route('/api/device_models')
+@requires_auth
+def api_get_device_models():
+    vendor = request.args.get('vendor')
+    db = get_db()
+    return jsonify(db.get_device_models(vendor))
+
+@app.route('/api/device_models', methods=['POST'])
+@requires_auth
+@requires_permission('edit_inventory')
+def api_create_device_model():
+    data = request.json
+    model_id = data.get('id', '').strip().lower().replace(' ', '_')
+    name = data.get('name', '').strip()
+    vendor = data.get('vendor', '').strip()
+    description = data.get('description', '').strip()
+    
+    if not model_id or not name or not vendor:
+        return jsonify({"error": "ID, nombre y vendor son requeridos"}), 400
+    
+    db = get_db()
+    if db.create_device_model(model_id, name, vendor, description):
+        return jsonify({"status": "ok"})
+    return jsonify({"error": "El modelo ya existe"}), 400
+
+@app.route('/api/device_models/<model_id>', methods=['PUT'])
+@requires_auth
+@requires_permission('edit_inventory')
+def api_update_device_model(model_id):
+    data = request.json
+    name = data.get('name', '').strip()
+    vendor = data.get('vendor', '').strip()
+    description = data.get('description', '').strip()
+    
+    if not name or not vendor:
+        return jsonify({"error": "Nombre y vendor son requeridos"}), 400
+    
+    db = get_db()
+    if db.update_device_model(model_id, name, vendor, description):
+        return jsonify({"status": "ok"})
+    return jsonify({"error": "Modelo no encontrado"}), 404
+
+@app.route('/api/device_models/<model_id>', methods=['DELETE'])
+@requires_auth
+@requires_permission('edit_inventory')
+def api_delete_device_model(model_id):
+    db = get_db()
+    if db.delete_device_model(model_id):
+        return jsonify({"status": "ok"})
+    return jsonify({"error": "Modelo no encontrado"}), 404
+
+# ==========================
+# API: TAGS AUTOCOMPLETE
+# ==========================
+
+@app.route('/api/tags')
+@requires_auth
+def api_get_tags():
+    """Get unique tags from all devices."""
+    inv = load_inventory()
+    tags = set()
+    for group in inv.get('groups', []):
+        for device in group.get('devices', []):
+            for tag in device.get('tags', []):
+                tags.add(tag)
+    return jsonify(sorted(list(tags)))
+
+# ==========================
+# CATALOG: LOCALIDADES
+# ==========================
+
+ZONAS = ['Troncal Norte', 'Troncal Sur', 'Troncal Este', 'Troncal Oeste']
+
+@app.route('/api/zonas')
+@requires_auth
+def api_get_zonas():
+    """Get available zonas."""
+    return jsonify(ZONAS)
+
+@app.route('/admin/localidades')
+@requires_auth
+@requires_permission('view_inventory')
+def localidades_page():
+    """Show localidades management page."""
+    return render_template('localidades.html')
+
+@app.route('/api/localidades')
+@requires_auth
+def api_get_localidades():
+    zona = request.args.get('zona')
+    db = get_db()
+    return jsonify(db.get_localidades(zona))
+
+@app.route('/api/localidades', methods=['POST'])
+@requires_auth
+@requires_permission('edit_inventory')
+def api_create_localidad():
+    data = request.json
+    loc_id = data.get('id', '').strip().lower().replace(' ', '_')
+    name = data.get('name', '').strip()
+    zona = data.get('zona', '').strip()
+    
+    if not loc_id or not name:
+        return jsonify({"error": "ID y nombre son requeridos"}), 400
+    
+    db = get_db()
+    if db.create_localidad(loc_id, name, zona):
+        return jsonify({"status": "ok"})
+    return jsonify({"error": "La localidad ya existe"}), 400
+
+@app.route('/api/localidades/<loc_id>', methods=['PUT'])
+@requires_auth
+@requires_permission('edit_inventory')
+def api_update_localidad(loc_id):
+    data = request.json
+    name = data.get('name', '').strip()
+    zona = data.get('zona', '').strip()
+    
+    if not name:
+        return jsonify({"error": "Nombre es requerido"}), 400
+    
+    db = get_db()
+    if db.update_localidad(loc_id, name, zona):
+        return jsonify({"status": "ok"})
+    return jsonify({"error": "Localidad no encontrada"}), 404
+
+@app.route('/api/localidades/<loc_id>', methods=['DELETE'])
+@requires_auth
+@requires_permission('edit_inventory')
+def api_delete_localidad(loc_id):
+    db = get_db()
+    if db.delete_localidad(loc_id):
+        return jsonify({"status": "ok"})
+    return jsonify({"error": "Localidad no encontrada"}), 404
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
 

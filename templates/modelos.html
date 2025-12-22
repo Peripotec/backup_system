@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block title %}Modelos de Dispositivo{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-purple text-white d-flex justify-content-between align-items-center"
+        style="background: #6f42c1;">
+        <span><i class="bi bi-cpu"></i> Modelos de Dispositivo</span>
+        <button class="btn btn-light btn-sm" onclick="openAddModal()">➕ Agregar Modelo</button>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover table-striped mb-0">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Vendor</th>
+                    <th>Descripción</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="models-table"></tbody>
+        </table>
+    </div>
+</div>
+
+<div class="alert alert-info mt-3">
+    <strong>💡 Tip:</strong> Los modelos especifican el hardware exacto (S5720-52X-SI, ZXA10 C300M, etc.).
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="modelModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header text-white" id="modal-header" style="background: #6f42c1;">
+                <h5 class="modal-title" id="modal-title">➕ Agregar Modelo</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="edit-mode" value="add">
+                <input type="hidden" id="original-id" value="">
+                <div class="mb-3"><label class="form-label">ID *</label><input type="text" class="form-control"
+                        id="model-id" placeholder="s5720" required>
+                    <div class="form-text">Identificador único (minúsculas)</div>
+                </div>
+                <div class="mb-3"><label class="form-label">Nombre *</label><input type="text" class="form-control"
+                        id="model-name" placeholder="S5720-52X-SI" required></div>
+                <div class="mb-3"><label class="form-label">Vendor *</label><select class="form-select"
+                        id="model-vendor" required></select></div>
+                <div class="mb-3"><label class="form-label">Descripción</label><textarea class="form-control"
+                        id="model-desc" rows="2" placeholder="Switch 48 puertos GE + 4 SFP+"></textarea></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn text-white" style="background: #6f42c1;" onclick="saveModel()">💾
+                    Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    var models = [], vendors = [];
+    var modelModal;
+
+    document.addEventListener('DOMContentLoaded', function () {
+        modelModal = new bootstrap.Modal(document.getElementById('modelModal'));
+        loadVendors();
+        loadModels();
+    });
+
+    function loadVendors() {
+        fetch('/api/vendors').then(r => r.json()).then(data => {
+            vendors = data;
+            var sel = document.getElementById('model-vendor');
+            sel.innerHTML = '<option value="">Seleccione...</option>' + data.map(v => '<option value="' + v + '">' + v.charAt(0).toUpperCase() + v.slice(1) + '</option>').join('');
+        });
+    }
+
+    function loadModels() {
+        fetch('/api/device_models').then(r => r.json()).then(data => {
+            models = data;
+            renderTable();
+        });
+    }
+
+    function renderTable() {
+        var tbody = document.getElementById('models-table');
+        tbody.innerHTML = '';
+        if (models.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No hay modelos. Agregue uno para comenzar.</td></tr>'; return; }
+        models.forEach(m => {
+            tbody.innerHTML += '<tr><td><code>' + m.id + '</code></td><td><strong>' + m.name + '</strong></td><td><span class="badge bg-primary">' + m.vendor + '</span></td><td><small class="text-muted">' + (m.description || '-') + '</small></td><td><span class="btn-action" style="cursor:pointer" onclick="openEditModal(\'' + m.id + '\')">✏️</span><span class="btn-action" style="cursor:pointer" onclick="deleteModel(\'' + m.id + '\')">🗑️</span></td></tr>';
+        });
+    }
+
+    function openAddModal() {
+        document.getElementById('edit-mode').value = 'add';
+        document.getElementById('modal-title').textContent = '➕ Agregar Modelo';
+        document.getElementById('model-id').value = ''; document.getElementById('model-id').disabled = false;
+        document.getElementById('model-name').value = '';
+        document.getElementById('model-vendor').value = '';
+        document.getElementById('model-desc').value = '';
+        modelModal.show();
+    }
+
+    function openEditModal(id) {
+        var m = models.find(x => x.id === id); if (!m) return;
+        document.getElementById('edit-mode').value = 'edit';
+        document.getElementById('original-id').value = id;
+        document.getElementById('modal-title').textContent = '✏️ Editar Modelo';
+        document.getElementById('model-id').value = id; document.getElementById('model-id').disabled = true;
+        document.getElementById('model-name').value = m.name;
+        document.getElementById('model-vendor').value = m.vendor;
+        document.getElementById('model-desc').value = m.description || '';
+        modelModal.show();
+    }
+
+    function saveModel() {
+        var id = document.getElementById('model-id').value.trim().toLowerCase().replace(/\s+/g, '_');
+        var name = document.getElementById('model-name').value.trim();
+        var vendor = document.getElementById('model-vendor').value;
+        var desc = document.getElementById('model-desc').value.trim();
+        if (!id || !name || !vendor) { alert('ID, nombre y vendor son requeridos'); return; }
+
+        var mode = document.getElementById('edit-mode').value;
+        var data = { id: id, name: name, vendor: vendor, description: desc };
+
+        if (mode === 'add') {
+            fetch('/api/device_models', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+                .then(r => r.json()).then(resp => { resp.error ? alert(resp.error) : (modelModal.hide(), loadModels()); });
+        } else {
+            var oid = document.getElementById('original-id').value;
+            fetch('/api/device_models/' + oid, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+                .then(r => r.json()).then(resp => { resp.error ? alert(resp.error) : (modelModal.hide(), loadModels()); });
+        }
+    }
+
+    function deleteModel(id) {
+        if (!confirm('¿Eliminar modelo "' + id + '"?')) return;
+        fetch('/api/device_models/' + id, { method: 'DELETE' }).then(r => r.json()).then(resp => { resp.error ? alert(resp.error) : loadModels(); });
+    }
+</script>
+{% endblock %}
