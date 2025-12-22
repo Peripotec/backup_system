@@ -1,307 +1,174 @@
-<!DOCTYPE html>
-<html lang="es">
+{% extends "base.html" %}
+{% block title %}Configuración del Sistema{% endblock %}
 
-<head>
-    <meta charset="UTF-8">
-    <title>Configuración del Sistema</title>
-    <link rel="icon" type="image/png" href="/static/favicon.png">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        :root {
-            --bg-body: #f0f2f5;
-            --bg-card: #fff;
-            --bg-navbar: #212529;
-            --text-primary: #212529;
-            --text-muted: #6c757d;
-            --border-color: #dee2e6;
-        }
+{% block head %}
+<style>
+    .nav-tabs .nav-link {
+        color: var(--text-muted);
+    }
 
-        [data-theme="dark"] {
-            --bg-body: #0f172a;
-            --bg-card: #1e293b;
-            --bg-navbar: #0f172a;
-            --text-primary: #f1f5f9;
-            --text-muted: #94a3b8;
-            --border-color: #334155;
-        }
+    .nav-tabs .nav-link.active {
+        background: var(--bg-card);
+        color: var(--text-primary);
+        border-color: var(--border-color);
+    }
 
-        body {
-            background: var(--bg-body);
-            color: var(--text-primary);
-            transition: all 0.3s;
-        }
+    .form-label {
+        font-weight: 500;
+    }
 
-        .navbar {
-            background: var(--bg-navbar) !important;
-            border-bottom: 1px solid var(--border-color);
-        }
+    .save-indicator {
+        display: none;
+        color: #28a745;
+    }
+</style>
+{% endblock %}
 
-        .card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-        }
+{% block content %}
+<div class="card">
+    <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-gear"></i> Configuración del Sistema</span>
+        <span class="save-indicator" id="save-indicator">✓ Guardado</span>
+    </div>
+    <div class="card-body">
+        <ul class="nav nav-tabs" role="tablist">
+            <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#backup">📅
+                    Backup</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#retention">🗂️
+                    Retención</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#email">📧 Email</button>
+            </li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#system">🖥️
+                    Sistema</button></li>
+        </ul>
 
-        .nav-tabs .nav-link {
-            color: var(--text-muted);
-        }
-
-        .nav-tabs .nav-link.active {
-            background: var(--bg-card);
-            color: var(--text-primary);
-            border-color: var(--border-color);
-        }
-
-        [data-theme="dark"] .form-control,
-        [data-theme="dark"] .form-select {
-            background: #334155;
-            color: var(--text-primary);
-            border-color: var(--border-color);
-        }
-
-        .form-label {
-            font-weight: 500;
-        }
-
-        .theme-toggle {
-            cursor: pointer;
-            font-size: 1.3rem;
-            transition: transform 0.3s;
-        }
-
-        .theme-toggle:hover {
-            transform: rotate(180deg);
-        }
-
-        .save-indicator {
-            display: none;
-            color: #28a745;
-        }
-    </style>
-</head>
-
-<body>
-
-    <nav class="navbar navbar-dark mb-4">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="/">🛡️ Backup System</a>
-            <ul class="navbar-nav flex-row gap-3">
-                <li class="nav-item"><a class="nav-link" href="/">Dashboard</a></li>
-                <li class="nav-item"><a class="nav-link" href="/inventory">Inventario</a></li>
-                <li class="nav-item"><a class="nav-link" href="/files">Archivos</a></li>
-                <li class="nav-item"><a class="nav-link" href="/admin/vault">🔐 Vault</a></li>
-                <li class="nav-item"><a class="nav-link active" href="/admin/settings">⚙️ Settings</a></li>
-                <li class="nav-item"><a class="nav-link" href="/admin/users">👥 Usuarios</a></li>
-                <li class="nav-item"><span class="nav-link theme-toggle" onclick="toggleTheme()">🌓</span></li>
-            </ul>
+        <div class="tab-content p-4">
+            <!-- Backup -->
+            <div class="tab-pane fade show active" id="backup">
+                <h5>Programación de Backups</h5>
+                <div class="row mb-3">
+                    <div class="col-md-6"><label class="form-label">Horario Global</label><input type="text"
+                            class="form-control" id="global_schedule" placeholder="02:00, 14:00">
+                        <div class="form-text">Separados por coma.</div>
+                    </div>
+                    <div class="col-md-6"><label class="form-label">Backups Automáticos</label><select
+                            class="form-select" id="backup_enabled">
+                            <option value="true">Habilitado</option>
+                            <option value="false">Deshabilitado</option>
+                        </select></div>
+                </div>
+            </div>
+            <!-- Retention -->
+            <div class="tab-pane fade" id="retention">
+                <h5>Retención</h5>
+                <div class="row mb-3">
+                    <div class="col-md-6"><label class="form-label">Días de Retención</label><input type="number"
+                            class="form-control" id="archive_retention_days" min="1" max="365"></div>
+                    <div class="col-md-6"><label class="form-label">Auto-Limpieza</label><select class="form-select"
+                            id="cleanup_enabled">
+                            <option value="true">Habilitado</option>
+                            <option value="false">Deshabilitado</option>
+                        </select></div>
+                </div>
+            </div>
+            <!-- Email -->
+            <div class="tab-pane fade" id="email">
+                <h5>Configuración SMTP</h5>
+                <div class="row mb-3">
+                    <div class="col-md-6"><label class="form-label">Servidor SMTP</label><input type="text"
+                            class="form-control" id="smtp_host" placeholder="smtp.gmail.com"></div>
+                    <div class="col-md-6"><label class="form-label">Puerto</label><input type="number"
+                            class="form-control" id="smtp_port" placeholder="587"></div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6"><label class="form-label">Usuario</label><input type="text"
+                            class="form-control" id="smtp_user"></div>
+                    <div class="col-md-6"><label class="form-label">Contraseña</label><input type="password"
+                            class="form-control" id="smtp_pass">
+                        <div class="form-text">Deja vacío para mantener.</div>
+                    </div>
+                </div>
+                <div class="mb-3"><label class="form-label">Destinatarios</label><input type="text" class="form-control"
+                        id="email_recipients" placeholder="admin@example.com"></div>
+                <div class="row mb-3">
+                    <div class="col-md-6"><label class="form-label">Notificar Errores</label><select class="form-select"
+                            id="notify_on_error">
+                            <option value="true">Sí</option>
+                            <option value="false">No</option>
+                        </select></div>
+                    <div class="col-md-6"><label class="form-label">Notificar Éxito</label><select class="form-select"
+                            id="notify_on_success">
+                            <option value="true">Sí</option>
+                            <option value="false">No</option>
+                        </select></div>
+                </div>
+            </div>
+            <!-- System -->
+            <div class="tab-pane fade" id="system">
+                <h5>Sistema</h5>
+                <div class="row mb-3">
+                    <div class="col-md-6"><label class="form-label">Servidor TFTP</label><input type="text"
+                            class="form-control" id="tftp_server" placeholder="192.168.1.100"></div>
+                    <div class="col-md-6"><label class="form-label">Nivel de Log</label><select class="form-select"
+                            id="log_level">
+                            <option value="DEBUG">DEBUG</option>
+                            <option value="INFO">INFO</option>
+                            <option value="WARNING">WARNING</option>
+                            <option value="ERROR">ERROR</option>
+                        </select></div>
+                </div>
+            </div>
         </div>
-    </nav>
 
-    <div class="container">
-        <div class="card">
-            <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
-                <span>⚙️ Configuración del Sistema</span>
-                <span class="save-indicator" id="save-indicator">✓ Guardado</span>
-            </div>
-            <div class="card-body">
-                <ul class="nav nav-tabs" id="settingsTabs" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="backup-tab" data-bs-toggle="tab" data-bs-target="#backup"
-                            type="button">📅 Backup</button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="retention-tab" data-bs-toggle="tab" data-bs-target="#retention"
-                            type="button">🗂️ Retención</button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="email-tab" data-bs-toggle="tab" data-bs-target="#email"
-                            type="button">📧 Email</button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="system-tab" data-bs-toggle="tab" data-bs-target="#system"
-                            type="button">🖥️ Sistema</button>
-                    </li>
-                </ul>
-
-                <div class="tab-content p-4" id="settingsTabContent">
-                    <!-- BACKUP TAB -->
-                    <div class="tab-pane fade show active" id="backup" role="tabpanel">
-                        <h5>Programación de Backups</h5>
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Horario Global</label>
-                                <input type="text" class="form-control" id="global_schedule" placeholder="02:00, 14:00">
-                                <div class="form-text">Horarios separados por coma. Los grupos sin schedule propio
-                                    heredan este.</div>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Backups Automáticos</label>
-                                <select class="form-select" id="backup_enabled">
-                                    <option value="true">Habilitado</option>
-                                    <option value="false">Deshabilitado</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- RETENTION TAB -->
-                    <div class="tab-pane fade" id="retention" role="tabpanel">
-                        <h5>Retención de Archivos</h5>
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Días de Retención</label>
-                                <input type="number" class="form-control" id="archive_retention_days" min="1" max="365">
-                                <div class="form-text">Archivos en /archive más antiguos serán eliminados
-                                    automáticamente.</div>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Auto-Limpieza</label>
-                                <select class="form-select" id="cleanup_enabled">
-                                    <option value="true">Habilitado</option>
-                                    <option value="false">Deshabilitado</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- EMAIL TAB -->
-                    <div class="tab-pane fade" id="email" role="tabpanel">
-                        <h5>Configuración SMTP</h5>
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Servidor SMTP</label>
-                                <input type="text" class="form-control" id="smtp_host" placeholder="smtp.gmail.com">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Puerto</label>
-                                <input type="number" class="form-control" id="smtp_port" placeholder="587">
-                            </div>
-                        </div>
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Usuario</label>
-                                <input type="text" class="form-control" id="smtp_user" placeholder="user@gmail.com">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Contraseña</label>
-                                <input type="password" class="form-control" id="smtp_pass" placeholder="••••••••">
-                                <div class="form-text">Deja vacío para mantener la contraseña actual.</div>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Destinatarios</label>
-                            <input type="text" class="form-control" id="email_recipients"
-                                placeholder="admin@example.com, ops@example.com">
-                            <div class="form-text">Separados por coma.</div>
-                        </div>
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Notificar en Errores</label>
-                                <select class="form-select" id="notify_on_error">
-                                    <option value="true">Sí</option>
-                                    <option value="false">No</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Notificar en Éxito</label>
-                                <select class="form-select" id="notify_on_success">
-                                    <option value="true">Sí</option>
-                                    <option value="false">No</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- SYSTEM TAB -->
-                    <div class="tab-pane fade" id="system" role="tabpanel">
-                        <h5>Configuración del Sistema</h5>
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Servidor TFTP</label>
-                                <input type="text" class="form-control" id="tftp_server" placeholder="192.168.1.100">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Nivel de Log</label>
-                                <select class="form-select" id="log_level">
-                                    <option value="DEBUG">DEBUG</option>
-                                    <option value="INFO">INFO</option>
-                                    <option value="WARNING">WARNING</option>
-                                    <option value="ERROR">ERROR</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="d-flex justify-content-end mt-3">
-                    <button class="btn btn-primary" onclick="saveSettings()">💾 Guardar Configuración</button>
-                </div>
-            </div>
+        <div class="d-flex justify-content-end mt-3">
+            <button class="btn btn-primary" onclick="saveSettings()">💾 Guardar Configuración</button>
         </div>
     </div>
+</div>
+{% endblock %}
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Theme
-        function toggleTheme() {
-            var t = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-            document.documentElement.setAttribute('data-theme', t);
-            localStorage.setItem('theme', t);
-        }
-        (function () { document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'light'); })();
+{% block scripts %}
+<script>
+    var settings = {{ settings | tojson | safe }};
 
-        var settings = {{ settings | tojson | safe }};
+    document.addEventListener('DOMContentLoaded', function () { loadSettingsToForm(); });
 
-        document.addEventListener('DOMContentLoaded', function () {
-            loadSettingsToForm();
-        });
+    function loadSettingsToForm() {
+        ['global_schedule', 'backup_enabled', 'archive_retention_days', 'cleanup_enabled',
+            'smtp_host', 'smtp_port', 'smtp_user', 'email_recipients',
+            'notify_on_error', 'notify_on_success', 'tftp_server', 'log_level'].forEach(f => {
+                var el = document.getElementById(f);
+                if (el && settings[f] !== undefined) el.value = settings[f];
+            });
+    }
 
-        function loadSettingsToForm() {
-            var fields = ['global_schedule', 'backup_enabled', 'archive_retention_days', 'cleanup_enabled',
-                'smtp_host', 'smtp_port', 'smtp_user', 'email_recipients',
-                'notify_on_error', 'notify_on_success', 'tftp_server', 'log_level'];
+    function saveSettings() {
+        var data = {
+            global_schedule: document.getElementById('global_schedule').value,
+            backup_enabled: document.getElementById('backup_enabled').value,
+            archive_retention_days: document.getElementById('archive_retention_days').value,
+            cleanup_enabled: document.getElementById('cleanup_enabled').value,
+            smtp_host: document.getElementById('smtp_host').value,
+            smtp_port: document.getElementById('smtp_port').value,
+            smtp_user: document.getElementById('smtp_user').value,
+            smtp_pass: document.getElementById('smtp_pass').value,
+            email_recipients: document.getElementById('email_recipients').value,
+            notify_on_error: document.getElementById('notify_on_error').value,
+            notify_on_success: document.getElementById('notify_on_success').value,
+            tftp_server: document.getElementById('tftp_server').value,
+            log_level: document.getElementById('log_level').value
+        };
 
-            fields.forEach(function (field) {
-                var el = document.getElementById(field);
-                if (el && settings[field] !== undefined) {
-                    el.value = settings[field];
+        fetch('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+            .then(r => r.json())
+            .then(resp => {
+                if (resp.error) alert('Error: ' + resp.error);
+                else {
+                    var ind = document.getElementById('save-indicator');
+                    ind.style.display = 'inline';
+                    setTimeout(() => ind.style.display = 'none', 2000);
                 }
             });
-        }
-
-        function saveSettings() {
-            var data = {
-                global_schedule: document.getElementById('global_schedule').value,
-                backup_enabled: document.getElementById('backup_enabled').value,
-                archive_retention_days: document.getElementById('archive_retention_days').value,
-                cleanup_enabled: document.getElementById('cleanup_enabled').value,
-                smtp_host: document.getElementById('smtp_host').value,
-                smtp_port: document.getElementById('smtp_port').value,
-                smtp_user: document.getElementById('smtp_user').value,
-                smtp_pass: document.getElementById('smtp_pass').value,
-                email_recipients: document.getElementById('email_recipients').value,
-                notify_on_error: document.getElementById('notify_on_error').value,
-                notify_on_success: document.getElementById('notify_on_success').value,
-                tftp_server: document.getElementById('tftp_server').value,
-                log_level: document.getElementById('log_level').value
-            };
-
-            fetch('/api/settings', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            })
-                .then(function (r) { return r.json(); })
-                .then(function (resp) {
-                    if (resp.error) {
-                        alert('Error: ' + resp.error);
-                    } else {
-                        var indicator = document.getElementById('save-indicator');
-                        indicator.style.display = 'inline';
-                        setTimeout(function () { indicator.style.display = 'none'; }, 2000);
-                    }
-                });
-        }
-    </script>
-</body>
-
-</html>
+    }
+</script>
+{% endblock %}

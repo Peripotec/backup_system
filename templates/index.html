@@ -1,257 +1,171 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
+{% block title %}Dashboard - Backups{% endblock %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BACKUPS</title>
-    <link rel="icon" type="image/png" href="/static/favicon.png">
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f9;
-            color: #333;
-            margin: 0;
-            padding: 0;
-        }
+{% block head %}
+<style>
+    #directory-structure {
+        padding: 15px;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+    }
 
-        h1 {
-            background-color: #0078d4;
-            color: white;
-            padding: 15px;
-            text-align: center;
-            margin: 0;
-        }
+    #search-bar {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
 
-        #directory-structure {
-            margin: 20px;
-            padding: 10px;
-            border: 1px solid #ccc;
-            background-color: #fff;
-            border-radius: 5px;
-            max-width: 1000px;
-            margin-left: auto;
-            margin-right: auto;
-        }
+    #search-bar input {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid var(--border-color);
+        border-radius: 5px;
+        background: var(--bg-card);
+        color: var(--text-primary);
+    }
 
-        #search-bar {
-            margin: 20px auto;
-            max-width: 1000px;
-            padding: 10px;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
+    ul {
+        list-style: none;
+        padding-left: 20px;
+        margin: 0;
+    }
 
-        input[type="text"] {
-            width: 80%;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            font-size: 16px;
-        }
+    li {
+        padding: 8px 0;
+        cursor: pointer;
+    }
 
-        button {
-            margin-left: 10px;
-            padding: 10px 20px;
-            background-color: #0078d4;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-        }
+    .file {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 140px;
+        padding: 15px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-card);
+        text-align: center;
+    }
 
-        button:hover {
-            background-color: #005a9e;
-        }
+    .file-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        padding: 10px 0;
+    }
 
-        ul {
-            list-style: none;
-            padding-left: 20px;
-        }
+    .file-size {
+        font-size: 12px;
+        color: var(--text-muted);
+    }
 
-        li {
-            padding: 8px 0;
-            cursor: pointer;
-            transition: background-color 0.3s, box-shadow 0.3s;
-        }
+    .file a {
+        color: var(--accent);
+        text-decoration: none;
+        word-break: break-all;
+    }
 
-        .file {
-            cursor: default;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            width: 140px;
-            height: 140px;
-            margin: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            background-color: #f9f9f9;
-            text-align: center;
-        }
+    .file a:hover {
+        text-decoration: underline;
+    }
 
-        .directory::before {
-            content: "📁 ";
-        }
+    .directory::before {
+        content: "📁 ";
+    }
+</style>
+{% endblock %}
 
-        .file-icon {
-            font-size: 24px;
-            margin-bottom: 5px;
-        }
+{% block content %}
+<h4 class="mb-4"><i class="bi bi-speedometer2"></i> Dashboard de Backups</h4>
 
-        .directory:hover,
-        .file:hover {
-            background-color: #e7f1ff;
-            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
-        }
-
-        .highlight {
-            background-color: #fffae6;
-            box-shadow: 0 0 5px #ffae42;
-        }
-
-        a {
-            text-decoration: none;
-            color: #0078d4;
-            width: 100%;
-            display: block;
-            word-wrap: break-word;
-            white-space: normal;
-            overflow-wrap: break-word;
-        }
-
-        a:hover {
-            text-decoration: underline;
-        }
-
-        .file-size {
-            font-size: 12px;
-            color: #555;
-            margin-top: 5px;
-        }
-
-        .file-grid {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            padding: 0;
-        }
-    </style>
-</head>
-
-<body>
-    <h1>BACKUPS</h1>
-    <div id="directory-structure">
-        <div id="search-results" style="display: none;">
-            <h2>📁 Búsqueda</h2>
-            <div class="file-grid" id="search-file-grid"></div>
-        </div>
-        <div id="search-bar">
-            <input type="text" id="search-input" placeholder="Buscar archivo..." />
-            <button onclick="searchFiles()">Buscar</button>
-        </div>
-        <ul>
-            <li onclick="toggleDirectory('recientes')">📁 Recientes</li>
-            <li onclick="toggleDirectory('unicos')">📁 Únicos</li>
-            <li onclick="toggleDirectory('historico')">📁 Historico</li>
-        </ul>
+<div id="directory-structure">
+    <div id="search-bar">
+        <input type="text" id="search-input" placeholder="Buscar archivo..."
+            onkeypress="if(event.key==='Enter')searchFiles()">
+        <button class="btn btn-primary" onclick="searchFiles()"><i class="bi bi-search"></i> Buscar</button>
     </div>
-    <script>
-        let allDirectories = {};
 
-        function toggleDirectory(dirName, callback) {
-            const containerId = `dir-${dirName}`;
-            const container = document.getElementById(containerId);
-            if (container) {
-                container.remove();
+    <div id="search-results" style="display: none;">
+        <h5>📁 Resultados de búsqueda</h5>
+        <div class="file-grid" id="search-file-grid"></div>
+    </div>
+
+    <ul>
+        <li onclick="toggleDirectory('recientes')">📁 Recientes</li>
+        <li onclick="toggleDirectory('unicos')">📁 Únicos</li>
+        <li onclick="toggleDirectory('historico')">📁 Histórico</li>
+    </ul>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let allDirectories = {};
+
+    function toggleDirectory(dirName, callback) {
+        const containerId = `dir-${dirName}`;
+        const container = document.getElementById(containerId);
+        if (container) {
+            container.remove();
+            if (callback) callback();
+            return;
+        }
+        fetch(`/directory?dir=${encodeURIComponent(dirName)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) { alert(data.error); return; }
+                const html = `
+                <ul id="${containerId}">
+                    ${data.directories.map(dir => `<li class="directory" onclick="toggleDirectory('${dirName}/${dir}')">${dir}</li>`).join('')}
+                    <div class="file-grid">
+                        ${data.files.map(file => `
+                            <li class="file" data-path="${dirName}/${file.name}">
+                                <span>📄</span>
+                                <a href="/download/${dirName}/${file.name}" title="${file.name}">${file.name}</a>
+                                <span class="file-size">${formatFileSize(file.size)}</span>
+                            </li>`).join('')}
+                    </div>
+                </ul>`;
+                document.querySelector(`[onclick="toggleDirectory('${dirName}')"]`).insertAdjacentHTML('afterend', html);
+                allDirectories[dirName] = { directories: data.directories, files: data.files.map(file => dirName + '/' + file.name) };
                 if (callback) callback();
-                return;
-            }
-            fetch(`/directory?dir=${encodeURIComponent(dirName)}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.error) {
-                        alert(data.error);
-                        return;
-                    }
-                    const html = `
-                    <ul id="${containerId}">
-                        ${data.directories.map(dir => `<li class="directory" onclick="toggleDirectory('${dirName}/${dir}')">${dir}</li>`).join('')}
-                        <div class="file-grid">
-                            ${data.files.map(file => `
-                                <li class="file" data-path="${dirName}/${file.name}">
-                                    <span class="file-icon">📄</span>
-                                    <a href="/download/${dirName}/${file.name}" title="${file.name}">${file.name}</a>
-                                    <span class="file-size">${formatFileSize(file.size)}</span>
-                                </li>`).join('')}
-                        </div>
-                    </ul>
-                `;
-                    document.querySelector(`[onclick="toggleDirectory('${dirName}')"]`).insertAdjacentHTML('afterend', html);
+            })
+            .catch(error => console.error('Error loading directory:', error));
+    }
 
-                    // Store directories and files for search
-                    allDirectories[dirName] = {
-                        directories: data.directories,
-                        files: data.files.map(file => dirName + '/' + file.name)
-                    };
-                    if (callback) callback();
-                })
-                .catch(error => console.error('Error loading the directory:', error));
-        }
+    function formatFileSize(size) {
+        const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        let unitIndex = 0;
+        let newSize = size;
+        while (newSize >= 1024 && unitIndex < units.length - 1) { newSize /= 1024; unitIndex++; }
+        return newSize.toFixed(2) + ' ' + units[unitIndex];
+    }
 
-        function formatFileSize(size) {
-            const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-            let unitIndex = 0;
-            let newSize = size;
-            while (newSize >= 1024 && unitIndex < units.length - 1) {
-                newSize /= 1024;
-                unitIndex++;
-            }
-            return newSize.toFixed(2) + ' ' + units[unitIndex];
-        }
+    document.addEventListener('DOMContentLoaded', function () {
+        toggleDirectory('recientes');
+        toggleDirectory('historico');
+    });
 
-        // Automatically expand directories on page load
-        document.addEventListener('DOMContentLoaded', function () {
-            toggleDirectory('recientes');
-            toggleDirectory('historico');
-        });
+    function searchFiles() {
+        const searchValue = document.getElementById('search-input').value.toLowerCase().trim();
+        if (searchValue === "") { document.getElementById('search-results').style.display = 'none'; return; }
 
-        function searchFiles() {
-            clearHighlights();
-            const searchValue = document.getElementById('search-input').value.toLowerCase().trim();
-            if (searchValue === "") {
-                document.getElementById('search-results').style.display = 'none';
-                return;
-            }
-
-            fetch(`/search?query=${encodeURIComponent(searchValue)}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.results.length > 0) {
-                        document.getElementById('search-results').style.display = 'block';
-                        const searchFileGrid = document.getElementById('search-file-grid');
-                        searchFileGrid.innerHTML = data.results.map(file => `
+        fetch(`/search?query=${encodeURIComponent(searchValue)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.results.length > 0) {
+                    document.getElementById('search-results').style.display = 'block';
+                    document.getElementById('search-file-grid').innerHTML = data.results.map(file => `
                         <li class="file" data-path="${file.path}">
-                            <span class="file-icon">📄</span>
+                            <span>📄</span>
                             <a href="/download/${file.path}" title="${file.name}">${file.name}</a>
                             <span class="file-size">${formatFileSize(file.size)}</span>
-                        </li>
-                    `).join('');
-                    } else {
-                        document.getElementById('search-results').style.display = 'none';
-                    }
-                })
-                .catch(error => console.error('Error searching files:', error));
-        }
-
-        function clearHighlights() {
-            document.querySelectorAll('.highlight').forEach(el => el.classList.remove('highlight'));
-        }
-    </script>
-</body>
-
-</html>
+                        </li>`).join('');
+                } else { document.getElementById('search-results').style.display = 'none'; }
+            })
+            .catch(error => console.error('Error searching files:', error));
+    }
+</script>
+{% endblock %}

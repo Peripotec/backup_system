@@ -1,576 +1,334 @@
-<!DOCTYPE html>
-<html lang="es">
+{% extends "base.html" %}
+{% block title %}Gestión de Inventario{% endblock %}
 
-<head>
-    <meta charset="UTF-8">
-    <title>Gestión de Inventario</title>
-    <link rel="icon" type="image/png" href="/static/favicon.png">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        :root {
-            --bg-body: #f0f2f5;
-            --bg-card: #fff;
-            --bg-navbar: #212529;
-            --text-primary: #212529;
-            --text-muted: #6c757d;
-            --border-color: #dee2e6;
-        }
+{% block head %}
+<style>
+    .btn-action {
+        cursor: pointer;
+        margin-right: 5px;
+    }
 
-        [data-theme="dark"] {
-            --bg-body: #0f172a;
-            --bg-card: #1e293b;
-            --bg-navbar: #0f172a;
-            --text-primary: #f1f5f9;
-            --text-muted: #94a3b8;
-            --border-color: #334155;
-        }
+    .test-success {
+        color: #22c55e;
+    }
 
-        body {
-            background: var(--bg-body);
-            color: var(--text-primary);
-            transition: all 0.3s;
-        }
+    .test-error {
+        color: #ef4444;
+    }
 
-        .navbar {
-            background: var(--bg-navbar) !important;
-            border-bottom: 1px solid var(--border-color);
-        }
+    .nav-tabs .nav-link {
+        color: var(--text-muted);
+    }
 
-        .card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-        }
+    .nav-tabs .nav-link.active {
+        background: var(--bg-card);
+        color: var(--text-primary);
+        border-color: var(--border-color);
+    }
+</style>
+{% endblock %}
 
-        .text-muted {
-            color: var(--text-muted) !important;
-        }
+{% block content %}
+<!-- Tabs -->
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tab-devices">📱 Dispositivos</a></li>
+    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-groups">📁 Grupos</a></li>
+</ul>
 
-        .table {
-            color: var(--text-primary);
-        }
-
-        [data-theme="dark"] .table {
-            --bs-table-bg: var(--bg-card);
-            --bs-table-striped-bg: #283548;
-        }
-
-        [data-theme="dark"] .table-dark {
-            --bs-table-bg: #334155;
-        }
-
-        [data-theme="dark"] .modal-content {
-            background: var(--bg-card);
-            color: var(--text-primary);
-        }
-
-        [data-theme="dark"] .form-control,
-        [data-theme="dark"] .form-select {
-            background: #334155;
-            color: var(--text-primary);
-            border-color: var(--border-color);
-        }
-
-        [data-theme="dark"] .form-control:focus,
-        [data-theme="dark"] .form-select:focus {
-            background: #3d4a5c;
-            color: var(--text-primary);
-        }
-
-        .btn-action {
-            cursor: pointer;
-            margin-right: 5px;
-        }
-
-        .test-success {
-            color: #22c55e;
-        }
-
-        .test-error {
-            color: #ef4444;
-        }
-
-        .theme-toggle {
-            cursor: pointer;
-            font-size: 1.3rem;
-            transition: transform 0.3s;
-        }
-
-        .theme-toggle:hover {
-            transform: rotate(180deg);
-        }
-
-        .nav-tabs .nav-link {
-            color: var(--text-muted);
-        }
-
-        .nav-tabs .nav-link.active {
-            background: var(--bg-card);
-            color: var(--text-primary);
-            border-color: var(--border-color);
-        }
-    </style>
-</head>
-
-<body>
-
-    <nav class="navbar navbar-dark mb-4">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="/">🛡️ Backup System</a>
-            <ul class="navbar-nav flex-row gap-3">
-                <li class="nav-item"><a class="nav-link" href="/">Dashboard</a></li>
-                <li class="nav-item"><a class="nav-link active" href="/inventory">Inventario</a></li>
-                <li class="nav-item"><a class="nav-link" href="/files">Archivos</a></li>
-                <li class="nav-item"><a class="nav-link" href="/admin/vault">🔐 Vault</a></li>
-                <li class="nav-item"><a class="nav-link" href="/admin/settings">⚙️ Settings</a></li>
-                <li class="nav-item"><a class="nav-link" href="/admin/users">👥 Usuarios</a></li>
-                <li class="nav-item"><span class="nav-link theme-toggle" onclick="toggleTheme()">🌓</span></li>
-            </ul>
-        </div>
-    </nav>
-
-    <div class="container">
-        <!-- Tabs -->
-        <ul class="nav nav-tabs mb-3">
-            <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tab-devices">📱 Dispositivos</a>
-            </li>
-            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-groups">📁 Grupos</a></li>
-        </ul>
-
-        <div class="tab-content">
-            <!-- Tab Dispositivos -->
-            <div class="tab-pane fade show active" id="tab-devices">
-                <div class="card mb-4">
-                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                        <span>📋 Dispositivos Registrados</span>
-                        <button class="btn btn-light btn-sm" onclick="openAddDeviceModal()">➕ Agregar
-                            Dispositivo</button>
-                    </div>
-                    <div class="card-body p-0">
-                        <table class="table table-hover table-striped mb-0">
-                            <thead class="table-dark">
-                                <tr>
-                                    <th>Hostname</th>
-                                    <th>IP</th>
-                                    <th>Grupo</th>
-                                    <th>Vendor</th>
-                                    <th>Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody id="device-table"></tbody>
-                        </table>
-                    </div>
-                </div>
+<div class="tab-content">
+    <!-- Tab Dispositivos -->
+    <div class="tab-pane fade show active" id="tab-devices">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <span>📋 Dispositivos Registrados</span>
+                <button class="btn btn-light btn-sm" onclick="openAddDeviceModal()">➕ Agregar Dispositivo</button>
             </div>
-
-            <!-- Tab Grupos -->
-            <div class="tab-pane fade" id="tab-groups">
-                <div class="card mb-4">
-                    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
-                        <span>📁 Grupos de Equipos</span>
-                        <button class="btn btn-light btn-sm" onclick="openAddGroupModal()">➕ Agregar Grupo</button>
-                    </div>
-                    <div class="card-body p-0">
-                        <table class="table table-hover table-striped mb-0">
-                            <thead class="table-dark">
-                                <tr>
-                                    <th>Nombre</th>
-                                    <th>Vendor</th>
-                                    <th>Usuario</th>
-                                    <th>Dispositivos</th>
-                                    <th>Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody id="group-table"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- YAML Panel -->
-        <div class="card">
-            <div class="card-header bg-secondary text-white" data-bs-toggle="collapse" data-bs-target="#yamlPanel"
-                style="cursor: pointer;">
-                ⚙️ Edición Avanzada (YAML) - Click para expandir
-            </div>
-            <div class="collapse" id="yamlPanel">
-                <div class="card-body">
-                    <form method="POST">
-                        <textarea class="form-control" name="yaml_content" rows="15"
-                            style="font-family: monospace; font-size: 11px;">{{ content }}</textarea>
-                        <button type="submit" class="btn btn-warning mt-2">💾 Guardar YAML</button>
-                    </form>
-                </div>
+            <div class="card-body p-0">
+                <table class="table table-hover table-striped mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Hostname</th>
+                            <th>IP</th>
+                            <th>Grupo</th>
+                            <th>Vendor</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="device-table"></tbody>
+                </table>
             </div>
         </div>
     </div>
-
-    <!-- Device Modal -->
-    <div class="modal fade" id="deviceModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-primary text-white" id="device-modal-header">
-                    <h5 class="modal-title" id="device-modal-title">➕ Agregar Dispositivo</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <input type="hidden" id="device-edit-mode" value="add">
-                    <input type="hidden" id="device-original-group" value="">
-                    <input type="hidden" id="device-original-hostname" value="">
-                    <div class="mb-3">
-                        <label class="form-label">Grupo *</label>
-                        <select class="form-select" id="device-group" required></select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Hostname *</label>
-                        <input type="text" class="form-control" id="device-hostname" placeholder="Router Core 1"
-                            required pattern="[A-Za-z0-9_ -]+">
-                        <div class="form-text">Letras, números, espacios, guiones.</div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">IP *</label>
-                        <div class="input-group">
-                            <input type="text" class="form-control" id="device-ip" placeholder="192.168.1.1" required
-                                pattern="^(\d{1,3}\.){3}\d{1,3}$">
-                            <button class="btn btn-outline-secondary" type="button" onclick="testDeviceConnection()">🔌
-                                Test</button>
-                        </div>
-                        <div id="device-test-result" class="form-text"></div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Credenciales (override)</label>
-                        <div class="form-text mb-2">Opcional: seleccione para usar credenciales específicas en lugar de
-                            las del grupo.</div>
-                        <div id="device-credentials-container" class="ps-2"></div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" onclick="saveDevice()">Guardar</button>
-                </div>
+    <!-- Tab Grupos -->
+    <div class="tab-pane fade" id="tab-groups">
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                <span>📁 Grupos de Equipos</span>
+                <button class="btn btn-light btn-sm" onclick="openAddGroupModal()">➕ Agregar Grupo</button>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-hover table-striped mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Vendor</th>
+                            <th>Usuario</th>
+                            <th>Dispositivos</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="group-table"></tbody>
+                </table>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Group Modal -->
-    <div class="modal fade" id="groupModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-success text-white" id="group-modal-header">
-                    <h5 class="modal-title" id="group-modal-title">➕ Agregar Grupo</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+<!-- YAML Panel -->
+<div class="card">
+    <div class="card-header bg-secondary text-white" data-bs-toggle="collapse" data-bs-target="#yamlPanel"
+        style="cursor: pointer;">
+        ⚙️ Edición Avanzada (YAML) - Click para expandir
+    </div>
+    <div class="collapse" id="yamlPanel">
+        <div class="card-body">
+            <form method="POST">
+                <textarea class="form-control" name="yaml_content" rows="15"
+                    style="font-family: monospace; font-size: 11px;">{{ content }}</textarea>
+                <button type="submit" class="btn btn-warning mt-2">💾 Guardar YAML</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Device Modal -->
+<div class="modal fade" id="deviceModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white" id="device-modal-header">
+                <h5 class="modal-title" id="device-modal-title">➕ Agregar Dispositivo</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="device-edit-mode" value="add">
+                <input type="hidden" id="device-original-group" value="">
+                <input type="hidden" id="device-original-hostname" value="">
+                <div class="mb-3"><label class="form-label">Grupo *</label><select class="form-select" id="device-group"
+                        required></select></div>
+                <div class="mb-3"><label class="form-label">Hostname *</label><input type="text" class="form-control"
+                        id="device-hostname" required></div>
+                <div class="mb-3">
+                    <label class="form-label">IP *</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="device-ip" placeholder="192.168.1.1" required>
+                        <button class="btn btn-outline-secondary" type="button" onclick="testDeviceConnection()">🔌
+                            Test</button>
+                    </div>
+                    <div id="device-test-result" class="form-text"></div>
                 </div>
-                <div class="modal-body">
-                    <input type="hidden" id="group-edit-mode" value="add">
-                    <input type="hidden" id="group-original-name" value="">
-                    <div class="mb-3">
-                        <label class="form-label">Nombre del Grupo *</label>
-                        <input type="text" class="form-control" id="group-name" placeholder="Huawei Test" required
-                            pattern="[A-Za-z0-9_ -]+">
-                        <div class="form-text">Letras, números, espacios, guiones.</div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Vendor *</label>
-                        <select class="form-select" id="group-vendor" required></select>
-                    </div>
-                    <hr>
-                    <h6>🔐 Credenciales del Vault</h6>
-                    <div class="mb-3" id="vault-credentials-container">
-                        <div class="text-muted">Cargando credenciales...</div>
-                    </div>
-                    <div class="form-text">
-                        <a href="/admin/vault" target="_blank">➕ Agregar nuevas credenciales al vault</a>
-                    </div>
+                <div class="mb-3">
+                    <label class="form-label">Credenciales (override)</label>
+                    <div id="device-credentials-container" class="ps-2"></div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-success" onclick="saveGroup()">Guardar Grupo</button>
-                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="saveDevice()">Guardar</button>
             </div>
         </div>
     </div>
+</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Theme toggle
-        function toggleTheme() {
-            var t = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-            document.documentElement.setAttribute('data-theme', t);
-            localStorage.setItem('theme', t);
-        }
-        (function () { document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'light'); })();
+<!-- Group Modal -->
+<div class="modal fade" id="groupModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white" id="group-modal-header">
+                <h5 class="modal-title" id="group-modal-title">➕ Agregar Grupo</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="group-edit-mode" value="add">
+                <input type="hidden" id="group-original-name" value="">
+                <div class="mb-3"><label class="form-label">Nombre *</label><input type="text" class="form-control"
+                        id="group-name" required></div>
+                <div class="mb-3"><label class="form-label">Vendor *</label><select class="form-select"
+                        id="group-vendor" required></select></div>
+                <hr>
+                <h6>🔐 Credenciales del Vault</h6>
+                <div class="mb-3" id="vault-credentials-container">
+                    <div class="text-muted">Cargando...</div>
+                </div>
+                <div class="form-text"><a href="/admin/vault" target="_blank">➕ Agregar credenciales al vault</a></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="saveGroup()">Guardar Grupo</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
 
-        var inventory = {{ inventory | tojson | safe }};
-        var vendors = [];
-        var deviceModal, groupModal;
+{% block scripts %}
+<script>
+    var inventory = {{ inventory | tojson | safe }};
+    var vendors = [], vaultCredentials = [];
+    var deviceModal, groupModal;
 
-        document.addEventListener('DOMContentLoaded', function () {
-            deviceModal = new bootstrap.Modal(document.getElementById('deviceModal'));
-            groupModal = new bootstrap.Modal(document.getElementById('groupModal'));
-            loadVendors();
-            renderDevices();
-            renderGroups();
+    document.addEventListener('DOMContentLoaded', function () {
+        deviceModal = new bootstrap.Modal(document.getElementById('deviceModal'));
+        groupModal = new bootstrap.Modal(document.getElementById('groupModal'));
+        loadVendors(); renderDevices(); renderGroups();
+    });
+
+    function loadVendors() {
+        fetch('/api/vendors').then(r => r.json()).then(data => {
+            vendors = data;
+            var sel = document.getElementById('group-vendor');
+            sel.innerHTML = data.map(v => '<option value="' + v + '">' + v.charAt(0).toUpperCase() + v.slice(1) + '</option>').join('');
         });
+    }
 
-        function loadVendors() {
-            fetch('/api/vendors').then(function (r) { return r.json(); }).then(function (data) {
-                vendors = data;
-                var select = document.getElementById('group-vendor');
-                select.innerHTML = '';
-                data.forEach(function (v) {
-                    select.innerHTML += '<option value="' + v + '">' + v.charAt(0).toUpperCase() + v.slice(1) + '</option>';
-                });
+    function renderDevices() {
+        var tbody = document.getElementById('device-table'), gSel = document.getElementById('device-group');
+        tbody.innerHTML = ''; gSel.innerHTML = '';
+        if (!inventory.groups || inventory.groups.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No hay grupos.</td></tr>'; return; }
+        inventory.groups.forEach(g => { gSel.innerHTML += '<option value="' + g.name + '">' + g.name + ' (' + g.vendor + ')</option>'; });
+        var has = false;
+        inventory.groups.forEach(g => {
+            if (!g.devices || g.devices.length === 0) return;
+            has = true;
+            g.devices.forEach(d => {
+                var cids = d.credential_ids ? JSON.stringify(d.credential_ids).replace(/"/g, '&quot;') : '[]';
+                var badge = d.credential_ids && d.credential_ids.length > 0 ? '<span class="badge bg-warning ms-1">🔑</span>' : '';
+                tbody.innerHTML += '<tr><td><strong>' + d.hostname + '</strong>' + badge + '</td><td><code>' + d.ip + '</code></td><td><span class="badge bg-info">' + g.name + '</span></td><td>' + g.vendor + '</td><td><span class="btn-action" onclick="openEditDeviceModal(\'' + g.name + '\', \'' + d.hostname + '\', \'' + d.ip + '\', ' + cids + ')">✏️</span><span class="btn-action" onclick="deleteDevice(\'' + g.name + '\', \'' + d.hostname + '\')">🗑️</span></td></tr>';
             });
+        });
+        if (!has) tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Sin dispositivos.</td></tr>';
+    }
+
+    function renderGroups() {
+        var tbody = document.getElementById('group-table');
+        tbody.innerHTML = '';
+        if (!inventory.groups || inventory.groups.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No hay grupos.</td></tr>'; return; }
+        inventory.groups.forEach(g => {
+            var dc = g.devices ? g.devices.length : 0;
+            tbody.innerHTML += '<tr><td><strong>' + g.name + '</strong></td><td><span class="badge bg-primary">' + g.vendor + '</span></td><td>' + (g.credentials ? g.credentials.user : '-') + '</td><td>' + dc + '</td><td><span class="btn-action" onclick="openEditGroupModal(\'' + g.name + '\')">✏️</span><span class="btn-action" onclick="deleteGroup(\'' + g.name + '\')">🗑️</span></td></tr>';
+        });
+    }
+
+    function loadVaultCredentials() { return fetch('/api/vault').then(r => r.json()).then(data => { vaultCredentials = data; return data; }); }
+
+    function renderDeviceCredentials(sel, grpCreds) {
+        var c = document.getElementById('device-credentials-container'); sel = sel || []; grpCreds = grpCreds || [];
+        if (vaultCredentials.length === 0) { c.innerHTML = '<div class="text-muted">No hay credenciales.</div>'; return; }
+        c.innerHTML = '<div class="form-text mb-1"><small>Heredadas: ' + (grpCreds.join(', ') || 'ninguna') + '</small></div>' +
+            vaultCredentials.map(cr => '<div class="form-check"><input class="form-check-input device-cred-check" type="checkbox" value="' + cr.id + '" id="dev-cred-' + cr.id + '" ' + (sel.indexOf(cr.id) >= 0 ? 'checked' : '') + '><label class="form-check-label" for="dev-cred-' + cr.id + '">' + cr.name + ' <span class="text-muted">(' + cr.user + ')</span></label></div>').join('');
+    }
+
+    function getSelectedDeviceCredentialIds() { return Array.from(document.querySelectorAll('.device-cred-check:checked')).map(cb => cb.value); }
+
+    function openAddDeviceModal() {
+        if (!inventory.groups || inventory.groups.length === 0) { alert('Primero cree un grupo'); return; }
+        document.getElementById('device-edit-mode').value = 'add';
+        document.getElementById('device-modal-title').textContent = '➕ Agregar Dispositivo';
+        document.getElementById('device-modal-header').className = 'modal-header bg-primary text-white';
+        document.getElementById('device-hostname').value = ''; document.getElementById('device-ip').value = '';
+        document.getElementById('device-test-result').innerHTML = '';
+        loadVaultCredentials().then(() => { renderDeviceCredentials([], []); deviceModal.show(); });
+    }
+
+    function openEditDeviceModal(grp, host, ip, cids) {
+        document.getElementById('device-edit-mode').value = 'edit';
+        document.getElementById('device-original-group').value = grp;
+        document.getElementById('device-original-hostname').value = host;
+        document.getElementById('device-modal-title').textContent = '✏️ Editar Dispositivo';
+        document.getElementById('device-modal-header').className = 'modal-header bg-warning text-dark';
+        document.getElementById('device-group').value = grp; document.getElementById('device-hostname').value = host;
+        document.getElementById('device-ip').value = ip; document.getElementById('device-test-result').innerHTML = '';
+        var gObj = inventory.groups.find(g => g.name === grp), gCreds = gObj ? (gObj.credential_ids || []) : [];
+        loadVaultCredentials().then(() => { renderDeviceCredentials(cids || [], gCreds); deviceModal.show(); });
+    }
+
+    function testDeviceConnection() {
+        var ip = document.getElementById('device-ip').value.trim(), res = document.getElementById('device-test-result');
+        if (!ip) { res.innerHTML = '<span class="test-error">Ingrese IP</span>'; return; }
+        res.innerHTML = '<span class="text-muted">Probando...</span>';
+        fetch('/api/inventory/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ip: ip, port: 23 }) })
+            .then(r => r.json()).then(d => { res.innerHTML = d.success ? '<span class="test-success">✅ ' + d.message + '</span>' : '<span class="test-error">❌ ' + d.error + '</span>'; });
+    }
+
+    function saveDevice() {
+        var host = document.getElementById('device-hostname').value.trim(), ip = document.getElementById('device-ip').value.trim();
+        var grp = document.getElementById('device-group').value, cids = getSelectedDeviceCredentialIds();
+        if (!host || !ip) { alert('Complete todos los campos'); return; }
+        var mode = document.getElementById('device-edit-mode').value;
+        var data = { group: grp, hostname: host, ip: ip, credential_ids: cids };
+        if (mode === 'add') {
+            fetch('/api/inventory/device', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+                .then(r => r.json()).then(resp => { resp.error ? alert(resp.error) : location.reload(); });
+        } else {
+            var og = document.getElementById('device-original-group').value, oh = document.getElementById('device-original-hostname').value;
+            fetch('/api/inventory/device/' + og + '/' + oh, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+                .then(r => r.json()).then(resp => { resp.error ? alert(resp.error) : location.reload(); });
         }
+    }
 
-        function renderDevices() {
-            var tbody = document.getElementById('device-table');
-            tbody.innerHTML = '';
+    function deleteDevice(grp, host) {
+        if (!confirm('¿Eliminar ' + host + '?')) return;
+        fetch('/api/inventory/device/' + grp + '/' + host, { method: 'DELETE' }).then(r => r.json()).then(d => { d.error ? alert(d.error) : location.reload(); });
+    }
 
-            // Update group dropdown
-            var groupSelect = document.getElementById('device-group');
-            groupSelect.innerHTML = '';
+    function renderVaultCheckboxes(sel) {
+        var c = document.getElementById('vault-credentials-container'); sel = sel || [];
+        if (vaultCredentials.length === 0) { c.innerHTML = '<div class="text-muted">No hay credenciales. <a href="/admin/vault">Agregar</a></div>'; return; }
+        c.innerHTML = vaultCredentials.map(cr => '<div class="form-check"><input class="form-check-input vault-cred-check" type="checkbox" value="' + cr.id + '" id="cred-' + cr.id + '" ' + (sel.indexOf(cr.id) >= 0 ? 'checked' : '') + '><label class="form-check-label" for="cred-' + cr.id + '"><strong>' + cr.name + '</strong> <span class="text-muted">(' + cr.user + ')</span></label></div>').join('');
+    }
 
-            if (!inventory.groups || inventory.groups.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No hay grupos. Primero cree un grupo.</td></tr>';
-                return;
-            }
+    function getSelectedCredentialIds() { return Array.from(document.querySelectorAll('.vault-cred-check:checked')).map(c => c.value); }
 
-            inventory.groups.forEach(function (g) {
-                groupSelect.innerHTML += '<option value="' + g.name + '">' + g.name + ' (' + g.vendor + ')</option>';
-            });
+    function openAddGroupModal() {
+        document.getElementById('group-edit-mode').value = 'add';
+        document.getElementById('group-modal-title').textContent = '➕ Agregar Grupo';
+        document.getElementById('group-modal-header').className = 'modal-header bg-success text-white';
+        document.getElementById('group-name').value = ''; document.getElementById('group-name').disabled = false;
+        loadVaultCredentials().then(() => { renderVaultCheckboxes([]); groupModal.show(); });
+    }
 
-            var hasDevices = false;
-            inventory.groups.forEach(function (group) {
-                if (!group.devices || group.devices.length === 0) return;
-                hasDevices = true;
-                group.devices.forEach(function (device) {
-                    var credIds = device.credential_ids ? JSON.stringify(device.credential_ids).replace(/"/g, '&quot;') : '[]';
-                    var hasOverride = device.credential_ids && device.credential_ids.length > 0;
-                    var overrideBadge = hasOverride ? '<span class="badge bg-warning ms-1" title="Credenciales override">🔑</span>' : '';
-                    tbody.innerHTML += '<tr><td><strong>' + device.hostname + '</strong>' + overrideBadge + '</td><td><code>' + device.ip + '</code></td><td><span class="badge bg-info">' + group.name + '</span></td><td>' + group.vendor + '</td><td><span class="btn-action" onclick="openEditDeviceModal(\'' + group.name + '\', \'' + device.hostname + '\', \'' + device.ip + '\', ' + credIds + ')" title="Editar">✏️</span><span class="btn-action" onclick="deleteDevice(\'' + group.name + '\', \'' + device.hostname + '\')" title="Eliminar">🗑️</span></td></tr>';
-                });
-            });
-            if (!hasDevices) tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Sin dispositivos. Agregue dispositivos a los grupos.</td></tr>';
+    function openEditGroupModal(name) {
+        var g = inventory.groups.find(gr => gr.name === name); if (!g) return;
+        document.getElementById('group-edit-mode').value = 'edit';
+        document.getElementById('group-original-name').value = name;
+        document.getElementById('group-modal-title').textContent = '✏️ Editar Grupo';
+        document.getElementById('group-modal-header').className = 'modal-header bg-warning text-dark';
+        document.getElementById('group-name').value = name; document.getElementById('group-name').disabled = true;
+        document.getElementById('group-vendor').value = g.vendor;
+        loadVaultCredentials().then(() => { renderVaultCheckboxes(g.credential_ids || []); groupModal.show(); });
+    }
+
+    function saveGroup() {
+        var name = document.getElementById('group-name').value.trim(), vendor = document.getElementById('group-vendor').value;
+        var cids = getSelectedCredentialIds();
+        if (!name || !vendor) { alert('Nombre y vendor requeridos'); return; }
+        if (cids.length === 0) { alert('Seleccione credenciales'); return; }
+        var mode = document.getElementById('group-edit-mode').value;
+        var data = { name: name, vendor: vendor, credential_ids: cids };
+        if (mode === 'add') {
+            fetch('/api/inventory/group', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+                .then(r => r.json()).then(resp => { resp.error ? alert(resp.error) : location.reload(); });
+        } else {
+            var on = document.getElementById('group-original-name').value;
+            fetch('/api/inventory/group/' + on, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+                .then(r => r.json()).then(resp => { resp.error ? alert(resp.error) : location.reload(); });
         }
+    }
 
-        function renderGroups() {
-            var tbody = document.getElementById('group-table');
-            tbody.innerHTML = '';
-
-            if (!inventory.groups || inventory.groups.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No hay grupos. Cree uno para comenzar.</td></tr>';
-                return;
-            }
-
-            inventory.groups.forEach(function (g) {
-                var deviceCount = g.devices ? g.devices.length : 0;
-                tbody.innerHTML += '<tr><td><strong>' + g.name + '</strong></td><td><span class="badge bg-primary">' + g.vendor + '</span></td><td>' + (g.credentials ? g.credentials.user : '-') + '</td><td>' + deviceCount + '</td><td><span class="btn-action" onclick="openEditGroupModal(\'' + g.name + '\')" title="Editar">✏️</span><span class="btn-action" onclick="deleteGroup(\'' + g.name + '\')" title="Eliminar">🗑️</span></td></tr>';
-            });
-        }
-
-        // Device functions
-        function renderDeviceCredentials(selectedIds, groupCredIds) {
-            var container = document.getElementById('device-credentials-container');
-            selectedIds = selectedIds || [];
-            groupCredIds = groupCredIds || [];
-
-            if (vaultCredentials.length === 0) {
-                container.innerHTML = '<div class="text-muted">No hay credenciales en el vault.</div>';
-                return;
-            }
-
-            var html = '<div class="form-text mb-1"><small>Heredadas del grupo: ' + (groupCredIds.join(', ') || 'ninguna') + '</small></div>';
-            vaultCredentials.forEach(function (c) {
-                var checked = selectedIds.indexOf(c.id) >= 0 ? 'checked' : '';
-                html += '<div class="form-check"><input class="form-check-input device-cred-check" type="checkbox" value="' + c.id + '" id="dev-cred-' + c.id + '" ' + checked + '><label class="form-check-label" for="dev-cred-' + c.id + '">' + c.name + ' <span class="text-muted">(' + c.user + ')</span></label></div>';
-            });
-            container.innerHTML = html;
-        }
-
-        function getSelectedDeviceCredentialIds() {
-            var checked = document.querySelectorAll('.device-cred-check:checked');
-            return Array.from(checked).map(function (cb) { return cb.value; });
-        }
-
-        function openAddDeviceModal() {
-            if (!inventory.groups || inventory.groups.length === 0) {
-                alert('Primero cree un grupo');
-                return;
-            }
-            document.getElementById('device-edit-mode').value = 'add';
-            document.getElementById('device-modal-title').textContent = '➕ Agregar Dispositivo';
-            document.getElementById('device-modal-header').className = 'modal-header bg-primary text-white';
-            document.getElementById('device-hostname').value = '';
-            document.getElementById('device-ip').value = '';
-            document.getElementById('device-test-result').innerHTML = '';
-
-            loadVaultCredentials().then(function () {
-                renderDeviceCredentials([], []);
-                deviceModal.show();
-            });
-        }
-
-        function openEditDeviceModal(group, hostname, ip, credentialIds) {
-            document.getElementById('device-edit-mode').value = 'edit';
-            document.getElementById('device-original-group').value = group;
-            document.getElementById('device-original-hostname').value = hostname;
-            document.getElementById('device-modal-title').textContent = '✏️ Editar Dispositivo';
-            document.getElementById('device-modal-header').className = 'modal-header bg-warning text-dark';
-            document.getElementById('device-group').value = group;
-            document.getElementById('device-hostname').value = hostname;
-            document.getElementById('device-ip').value = ip;
-            document.getElementById('device-test-result').innerHTML = '';
-
-            // Get group's credential_ids for reference
-            var groupObj = inventory.groups.find(function (g) { return g.name === group; });
-            var groupCredIds = groupObj ? (groupObj.credential_ids || []) : [];
-
-            loadVaultCredentials().then(function () {
-                renderDeviceCredentials(credentialIds || [], groupCredIds);
-                deviceModal.show();
-            });
-        }
-
-        function testDeviceConnection() {
-            var ip = document.getElementById('device-ip').value.trim();
-            var result = document.getElementById('device-test-result');
-            if (!ip) { result.innerHTML = '<span class="test-error">Ingrese IP</span>'; return; }
-            result.innerHTML = '<span class="text-muted">Probando...</span>';
-            fetch('/api/inventory/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ip: ip, port: 23 }) })
-                .then(function (r) { return r.json(); })
-                .then(function (data) { result.innerHTML = data.success ? '<span class="test-success">✅ ' + data.message + '</span>' : '<span class="test-error">❌ ' + data.error + '</span>'; });
-        }
-
-        function saveDevice() {
-            var hostname = document.getElementById('device-hostname').value.trim();
-            var ip = document.getElementById('device-ip').value.trim();
-            var group = document.getElementById('device-group').value;
-            var credentialIds = getSelectedDeviceCredentialIds();
-
-            if (!hostname || !ip) { alert('Complete todos los campos'); return; }
-            if (!/^[A-Za-z0-9_ -]+$/.test(hostname)) { alert('Hostname inválido'); return; }
-            if (!/^(\d{1,3}\.){3}\d{1,3}$/.test(ip)) { alert('IP inválida'); return; }
-
-            var mode = document.getElementById('device-edit-mode').value;
-            var data = { group: group, hostname: hostname, ip: ip, credential_ids: credentialIds };
-
-            if (mode === 'add') {
-                fetch('/api/inventory/device', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
-                    .then(function (r) { return r.json(); }).then(function (resp) { resp.error ? alert(resp.error) : location.reload(); });
-            } else {
-                var origGroup = document.getElementById('device-original-group').value;
-                var origHostname = document.getElementById('device-original-hostname').value;
-                fetch('/api/inventory/device/' + origGroup + '/' + origHostname, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
-                    .then(function (r) { return r.json(); }).then(function (resp) { resp.error ? alert(resp.error) : location.reload(); });
-            }
-        }
-
-        function deleteDevice(groupName, hostname) {
-            if (!confirm('¿Eliminar ' + hostname + '?')) return;
-            fetch('/api/inventory/device/' + groupName + '/' + hostname, { method: 'DELETE' })
-                .then(function (r) { return r.json(); }).then(function (data) { data.error ? alert(data.error) : location.reload(); });
-        }
-
-        // Group functions
-        var vaultCredentials = [];
-
-        function loadVaultCredentials() {
-            return fetch('/api/vault').then(function (r) { return r.json(); }).then(function (data) {
-                vaultCredentials = data;
-                return data;
-            });
-        }
-
-        function renderVaultCheckboxes(selectedIds) {
-            var container = document.getElementById('vault-credentials-container');
-            selectedIds = selectedIds || [];
-
-            if (vaultCredentials.length === 0) {
-                container.innerHTML = '<div class="text-muted">No hay credenciales. <a href="/admin/vault">Agregar una</a></div>';
-                return;
-            }
-
-            var html = '';
-            vaultCredentials.forEach(function (c) {
-                var checked = selectedIds.indexOf(c.id) >= 0 ? 'checked' : '';
-                html += '<div class="form-check"><input class="form-check-input vault-cred-check" type="checkbox" value="' + c.id + '" id="cred-' + c.id + '" ' + checked + '><label class="form-check-label" for="cred-' + c.id + '"><strong>' + c.name + '</strong> <span class="text-muted">(' + c.user + ')</span></label></div>';
-            });
-            container.innerHTML = html;
-        }
-
-        function getSelectedCredentialIds() {
-            var checks = document.querySelectorAll('.vault-cred-check:checked');
-            var ids = [];
-            checks.forEach(function (c) { ids.push(c.value); });
-            return ids;
-        }
-
-        function openAddGroupModal() {
-            document.getElementById('group-edit-mode').value = 'add';
-            document.getElementById('group-modal-title').textContent = '➕ Agregar Grupo';
-            document.getElementById('group-modal-header').className = 'modal-header bg-success text-white';
-            document.getElementById('group-name').value = '';
-            document.getElementById('group-name').disabled = false;
-
-            loadVaultCredentials().then(function () {
-                renderVaultCheckboxes([]);
-                groupModal.show();
-            });
-        }
-
-        function openEditGroupModal(groupName) {
-            var group = inventory.groups.find(function (g) { return g.name === groupName; });
-            if (!group) return;
-
-            document.getElementById('group-edit-mode').value = 'edit';
-            document.getElementById('group-original-name').value = groupName;
-            document.getElementById('group-modal-title').textContent = '✏️ Editar Grupo';
-            document.getElementById('group-modal-header').className = 'modal-header bg-warning text-dark';
-            document.getElementById('group-name').value = groupName;
-            document.getElementById('group-name').disabled = true;
-            document.getElementById('group-vendor').value = group.vendor;
-
-            var selectedIds = group.credential_ids || [];
-            loadVaultCredentials().then(function () {
-                renderVaultCheckboxes(selectedIds);
-                groupModal.show();
-            });
-        }
-
-        function saveGroup() {
-            var name = document.getElementById('group-name').value.trim();
-            var vendor = document.getElementById('group-vendor').value;
-            var credentialIds = getSelectedCredentialIds();
-
-            if (!name || !vendor) { alert('Nombre y vendor son requeridos'); return; }
-            if (!/^[A-Za-z0-9_ -]+$/.test(name)) { alert('Nombre inválido (solo letras, números, espacios, guiones)'); return; }
-            if (credentialIds.length === 0) { alert('Seleccione al menos una credencial del vault'); return; }
-
-            var mode = document.getElementById('group-edit-mode').value;
-            var data = { name: name, vendor: vendor, credential_ids: credentialIds };
-
-            if (mode === 'add') {
-                fetch('/api/inventory/group', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
-                    .then(function (r) { return r.json(); }).then(function (resp) { resp.error ? alert(resp.error) : location.reload(); });
-            } else {
-                var origName = document.getElementById('group-original-name').value;
-                fetch('/api/inventory/group/' + origName, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
-                    .then(function (r) { return r.json(); }).then(function (resp) { resp.error ? alert(resp.error) : location.reload(); });
-            }
-        }
-
-        function deleteGroup(groupName) {
-            var group = inventory.groups.find(function (g) { return g.name === groupName; });
-            var deviceCount = group && group.devices ? group.devices.length : 0;
-            var msg = '¿Eliminar grupo "' + groupName + '"?';
-            if (deviceCount > 0) msg += '\n\n⚠️ ATENCIÓN: Esto eliminará ' + deviceCount + ' dispositivo(s)!';
-            if (!confirm(msg)) return;
-
-            fetch('/api/inventory/group/' + groupName, { method: 'DELETE' })
-                .then(function (r) { return r.json(); }).then(function (data) { data.error ? alert(data.error) : location.reload(); });
-        }
-    </script>
-</body>
-
-</html>
+    function deleteGroup(name) {
+        var g = inventory.groups.find(gr => gr.name === name), dc = g && g.devices ? g.devices.length : 0;
+        var msg = '¿Eliminar grupo "' + name + '"?' + (dc > 0 ? '\n\n⚠️ Eliminará ' + dc + ' dispositivo(s)!' : '');
+        if (!confirm(msg)) return;
+        fetch('/api/inventory/group/' + name, { method: 'DELETE' }).then(r => r.json()).then(d => { d.error ? alert(d.error) : location.reload(); });
+    }
+</script>
+{% endblock %}

@@ -1,303 +1,144 @@
-<!DOCTYPE html>
-<html lang="es">
+{% extends "base.html" %}
+{% block title %}Bóveda de Credenciales{% endblock %}
 
-<head>
-    <meta charset="UTF-8">
-    <title>Bóveda de Credenciales</title>
-    <link rel="icon" type="image/png" href="/static/favicon.png">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        :root {
-            --bg-body: #f0f2f5;
-            --bg-card: #fff;
-            --bg-navbar: #212529;
-            --text-primary: #212529;
-            --text-muted: #6c757d;
-            --border-color: #dee2e6;
-        }
+{% block head %}
+<style>
+    .btn-action {
+        cursor: pointer;
+        margin-right: 5px;
+    }
+</style>
+{% endblock %}
 
-        [data-theme="dark"] {
-            --bg-body: #0f172a;
-            --bg-card: #1e293b;
-            --bg-navbar: #0f172a;
-            --text-primary: #f1f5f9;
-            --text-muted: #94a3b8;
-            --border-color: #334155;
-        }
-
-        body {
-            background: var(--bg-body);
-            color: var(--text-primary);
-            transition: all 0.3s;
-        }
-
-        .navbar {
-            background: var(--bg-navbar) !important;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-        }
-
-        .text-muted {
-            color: var(--text-muted) !important;
-        }
-
-        .table {
-            color: var(--text-primary);
-        }
-
-        [data-theme="dark"] .table {
-            --bs-table-bg: var(--bg-card);
-            --bs-table-striped-bg: #283548;
-        }
-
-        [data-theme="dark"] .table-dark {
-            --bs-table-bg: #334155;
-        }
-
-        [data-theme="dark"] .modal-content {
-            background: var(--bg-card);
-            color: var(--text-primary);
-        }
-
-        [data-theme="dark"] .form-control {
-            background: #334155;
-            color: var(--text-primary);
-            border-color: var(--border-color);
-        }
-
-        .btn-action {
-            cursor: pointer;
-            margin-right: 5px;
-        }
-
-        .theme-toggle {
-            cursor: pointer;
-            font-size: 1.3rem;
-            transition: transform 0.3s;
-        }
-
-        .theme-toggle:hover {
-            transform: rotate(180deg);
-        }
-    </style>
-</head>
-
-<body>
-
-    <nav class="navbar navbar-dark mb-4">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="/">🛡️ Backup System</a>
-            <ul class="navbar-nav flex-row gap-3">
-                <li class="nav-item"><a class="nav-link" href="/">Dashboard</a></li>
-                <li class="nav-item"><a class="nav-link" href="/inventory">Inventario</a></li>
-                <li class="nav-item"><a class="nav-link" href="/files">Archivos</a></li>
-                <li class="nav-item"><a class="nav-link active" href="/admin/vault">🔐 Vault</a></li>
-                <li class="nav-item"><a class="nav-link" href="/admin/settings">⚙️ Settings</a></li>
-                <li class="nav-item"><a class="nav-link" href="/admin/users">👥 Usuarios</a></li>
-                <li class="nav-item"><span class="nav-link theme-toggle" onclick="toggleTheme()">🌓</span></li>
-            </ul>
-        </div>
-    </nav>
-
-    <div class="container">
-        <div class="card">
-            <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
-                <span>🔐 Bóveda de Credenciales</span>
-                <button class="btn btn-dark btn-sm" onclick="openAddModal()">➕ Agregar Credencial</button>
-            </div>
-            <div class="card-body p-0">
-                <table class="table table-hover table-striped mb-0">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>ID</th>
-                            <th>Nombre</th>
-                            <th>Usuario</th>
-                            <th>Contraseña</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody id="vault-table"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <div class="alert alert-info mt-3">
-            <strong>💡 Tip:</strong> Las credenciales agregadas aquí pueden seleccionarse al crear/editar grupos. Los
-            passwords se almacenan cifrados y nunca se transmiten al navegador.
-        </div>
+{% block content %}
+<div class="card">
+    <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-key"></i> Bóveda de Credenciales</span>
+        <button class="btn btn-dark btn-sm" onclick="openAddModal()">➕ Agregar Credencial</button>
     </div>
+    <div class="card-body p-0">
+        <table class="table table-hover table-striped mb-0">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Usuario</th>
+                    <th>Contraseña</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="vault-table"></tbody>
+        </table>
+    </div>
+</div>
 
-    <!-- Modal -->
-    <div class="modal fade" id="credModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-warning text-dark" id="modal-header">
-                    <h5 class="modal-title" id="modal-title">➕ Agregar Credencial</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <input type="hidden" id="edit-mode" value="add">
-                    <input type="hidden" id="original-id" value="">
+<div class="alert alert-info mt-3">
+    <strong>💡 Tip:</strong> Las credenciales se cifran y nunca se transmiten al navegador. Selecciónalas al crear
+    grupos.
+</div>
 
-                    <div class="mb-3">
-                        <label class="form-label">ID *</label>
-                        <input type="text" class="form-control" id="cred-id" placeholder="noc_standard" required
-                            pattern="[a-z0-9_-]+">
-                        <div class="form-text">Identificador único (minúsculas, sin espacios)</div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Nombre Amigable *</label>
-                        <input type="text" class="form-control" id="cred-name" placeholder="NOC Standard" required>
-                        <div class="form-text">Nombre descriptivo para identificar la credencial</div>
-                    </div>
-                    <hr>
-                    <div class="mb-3">
-                        <label class="form-label">Usuario</label>
-                        <input type="text" class="form-control" id="cred-user" placeholder="admin">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Contraseña</label>
-                        <div class="input-group">
-                            <input type="password" class="form-control" id="cred-pass" placeholder="••••••••">
-                            <button class="btn btn-outline-secondary" type="button"
-                                onclick="togglePass('cred-pass')">👁️</button>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Contraseña Extra (enable/cmdline)</label>
-                        <div class="input-group">
-                            <input type="password" class="form-control" id="cred-extra" placeholder="••••••••">
-                            <button class="btn btn-outline-secondary" type="button"
-                                onclick="togglePass('cred-extra')">👁️</button>
-                        </div>
-                        <div class="form-text">Opcional. Para modo enable o cmdline-mode.</div>
-                    </div>
+<!-- Modal -->
+<div class="modal fade" id="credModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="modal-title">➕ Agregar Credencial</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="edit-mode" value="add">
+                <input type="hidden" id="original-id" value="">
+                <div class="mb-3"><label class="form-label">ID *</label><input type="text" class="form-control"
+                        id="cred-id" placeholder="noc_standard" required>
+                    <div class="form-text">Identificador único (minúsculas)</div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-warning" onclick="saveCredential()">💾 Guardar</button>
+                <div class="mb-3"><label class="form-label">Nombre *</label><input type="text" class="form-control"
+                        id="cred-name" placeholder="NOC Standard" required></div>
+                <hr>
+                <div class="mb-3"><label class="form-label">Usuario</label><input type="text" class="form-control"
+                        id="cred-user" placeholder="admin"></div>
+                <div class="mb-3">
+                    <label class="form-label">Contraseña</label>
+                    <div class="input-group"><input type="password" class="form-control" id="cred-pass"><button
+                            class="btn btn-outline-secondary" type="button"
+                            onclick="togglePass('cred-pass')">👁️</button></div>
                 </div>
+                <div class="mb-3">
+                    <label class="form-label">Contraseña Extra (enable)</label>
+                    <div class="input-group"><input type="password" class="form-control" id="cred-extra"><button
+                            class="btn btn-outline-secondary" type="button"
+                            onclick="togglePass('cred-extra')">👁️</button></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-warning" onclick="saveCredential()">💾 Guardar</button>
             </div>
         </div>
     </div>
+</div>
+{% endblock %}
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Theme
-        function toggleTheme() {
-            var t = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-            document.documentElement.setAttribute('data-theme', t);
-            localStorage.setItem('theme', t);
-        }
-        (function () { document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'light'); })();
+{% block scripts %}
+<script>
+    var credentials = {{ credentials | tojson | safe }};
+    var credModal;
 
-        var credentials = {{ credentials | tojson | safe }};
-        var credModal;
+    document.addEventListener('DOMContentLoaded', function () { credModal = new bootstrap.Modal(document.getElementById('credModal')); renderTable(); });
 
-        document.addEventListener('DOMContentLoaded', function () {
-            credModal = new bootstrap.Modal(document.getElementById('credModal'));
-            renderTable();
+    function renderTable() {
+        var tbody = document.getElementById('vault-table');
+        tbody.innerHTML = '';
+        if (!credentials || credentials.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No hay credenciales.</td></tr>'; return; }
+        credentials.forEach(c => {
+            tbody.innerHTML += '<tr><td><code>' + c.id + '</code></td><td><strong>' + c.name + '</strong></td><td>' + c.user + '</td><td><span class="text-muted">••••••••</span></td><td><span class="btn-action" onclick="openEditModal(\'' + c.id + '\')">✏️</span><span class="btn-action" onclick="deleteCredential(\'' + c.id + '\')">🗑️</span></td></tr>';
         });
+    }
 
-        function renderTable() {
-            var tbody = document.getElementById('vault-table');
-            tbody.innerHTML = '';
+    function togglePass(id) { var f = document.getElementById(id); f.type = f.type === 'password' ? 'text' : 'password'; }
 
-            if (!credentials || credentials.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No hay credenciales. Agregue una para comenzar.</td></tr>';
-                return;
-            }
+    function openAddModal() {
+        document.getElementById('edit-mode').value = 'add';
+        document.getElementById('modal-title').textContent = '➕ Agregar Credencial';
+        document.getElementById('cred-id').value = ''; document.getElementById('cred-id').disabled = false;
+        document.getElementById('cred-name').value = ''; document.getElementById('cred-user').value = '';
+        document.getElementById('cred-pass').value = ''; document.getElementById('cred-extra').value = '';
+        credModal.show();
+    }
 
-            credentials.forEach(function (c) {
-                tbody.innerHTML += '<tr><td><code>' + c.id + '</code></td><td><strong>' + c.name + '</strong></td><td>' + c.user + '</td><td><span class="text-muted">••••••••</span></td><td><span class="btn-action" onclick="openEditModal(\'' + c.id + '\')" title="Editar">✏️</span><span class="btn-action" onclick="deleteCredential(\'' + c.id + '\')" title="Eliminar">🗑️</span></td></tr>';
-            });
+    function openEditModal(id) {
+        var c = credentials.find(cr => cr.id === id); if (!c) return;
+        document.getElementById('edit-mode').value = 'edit';
+        document.getElementById('original-id').value = id;
+        document.getElementById('modal-title').textContent = '✏️ Editar Credencial';
+        document.getElementById('cred-id').value = id; document.getElementById('cred-id').disabled = true;
+        document.getElementById('cred-name').value = c.name; document.getElementById('cred-user').value = c.user;
+        document.getElementById('cred-pass').value = ''; document.getElementById('cred-extra').value = '';
+        credModal.show();
+    }
+
+    function saveCredential() {
+        var id = document.getElementById('cred-id').value.trim().toLowerCase().replace(/\s+/g, '_');
+        var name = document.getElementById('cred-name').value.trim();
+        var user = document.getElementById('cred-user').value.trim();
+        var pass = document.getElementById('cred-pass').value;
+        var extra = document.getElementById('cred-extra').value;
+        if (!id || !name) { alert('ID y Nombre requeridos'); return; }
+        var mode = document.getElementById('edit-mode').value;
+        var data = { id: id, name: name, user: user, pass: pass, extra_pass: extra };
+        if (mode === 'add') {
+            fetch('/api/vault', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+                .then(r => r.json()).then(resp => { resp.error ? alert(resp.error) : location.reload(); });
+        } else {
+            var oid = document.getElementById('original-id').value;
+            fetch('/api/vault/' + oid, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+                .then(r => r.json()).then(resp => { resp.error ? alert(resp.error) : location.reload(); });
         }
+    }
 
-        function togglePass(fieldId) {
-            var field = document.getElementById(fieldId);
-            field.type = field.type === 'password' ? 'text' : 'password';
-        }
-
-        function openAddModal() {
-            document.getElementById('edit-mode').value = 'add';
-            document.getElementById('modal-title').textContent = '➕ Agregar Credencial';
-            document.getElementById('cred-id').value = '';
-            document.getElementById('cred-id').disabled = false;
-            document.getElementById('cred-name').value = '';
-            document.getElementById('cred-user').value = '';
-            document.getElementById('cred-pass').value = '';
-            document.getElementById('cred-extra').value = '';
-            credModal.show();
-        }
-
-        function openEditModal(credId) {
-            var cred = credentials.find(function (c) { return c.id === credId; });
-            if (!cred) return;
-
-            document.getElementById('edit-mode').value = 'edit';
-            document.getElementById('original-id').value = credId;
-            document.getElementById('modal-title').textContent = '✏️ Editar Credencial';
-            document.getElementById('cred-id').value = credId;
-            document.getElementById('cred-id').disabled = true;
-            document.getElementById('cred-name').value = cred.name;
-            document.getElementById('cred-user').value = cred.user;
-            document.getElementById('cred-pass').value = '';  // Don't show password
-            document.getElementById('cred-extra').value = '';
-            credModal.show();
-        }
-
-        function saveCredential() {
-            var id = document.getElementById('cred-id').value.trim().toLowerCase().replace(/\s+/g, '_');
-            var name = document.getElementById('cred-name').value.trim();
-            var user = document.getElementById('cred-user').value.trim();
-            var pass = document.getElementById('cred-pass').value;
-            var extra = document.getElementById('cred-extra').value;
-
-            if (!id || !name) {
-                alert('ID y Nombre son requeridos');
-                return;
-            }
-
-            var mode = document.getElementById('edit-mode').value;
-            var data = { id: id, name: name, user: user, pass: pass, extra_pass: extra };
-
-            if (mode === 'add') {
-                fetch('/api/vault', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                }).then(function (r) { return r.json(); }).then(function (resp) {
-                    if (resp.error) alert(resp.error);
-                    else location.reload();
-                });
-            } else {
-                var origId = document.getElementById('original-id').value;
-                fetch('/api/vault/' + origId, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                }).then(function (r) { return r.json(); }).then(function (resp) {
-                    if (resp.error) alert(resp.error);
-                    else location.reload();
-                });
-            }
-        }
-
-        function deleteCredential(credId) {
-            if (!confirm('¿Eliminar credencial "' + credId + '"?')) return;
-
-            fetch('/api/vault/' + credId, { method: 'DELETE' })
-                .then(function (r) { return r.json(); })
-                .then(function (resp) {
-                    if (resp.error) alert(resp.error);
-                    else location.reload();
-                });
-        }
-    </script>
-</body>
-
-</html>
+    function deleteCredential(id) {
+        if (!confirm('¿Eliminar "' + id + '"?')) return;
+        fetch('/api/vault/' + id, { method: 'DELETE' }).then(r => r.json()).then(resp => { resp.error ? alert(resp.error) : location.reload(); });
+    }
+</script>
+{% endblock %}
