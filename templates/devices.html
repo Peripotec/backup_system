@@ -15,6 +15,62 @@
     .test-error {
         color: #ef4444;
     }
+
+    .tag-badge {
+        font-size: 0.75rem;
+        margin-right: 3px;
+    }
+
+    .tag-input-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        padding: 5px;
+        border: 1px solid #dee2e6;
+        border-radius: 5px;
+        min-height: 38px;
+    }
+
+    .tag-input-container input {
+        border: none;
+        outline: none;
+        flex: 1;
+        min-width: 100px;
+    }
+
+    .tag-item {
+        display: inline-flex;
+        align-items: center;
+        background: #0d6efd;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 3px;
+        font-size: 0.85rem;
+    }
+
+    .tag-item .remove {
+        cursor: pointer;
+        margin-left: 5px;
+    }
+
+    .autocomplete-dropdown {
+        position: absolute;
+        background: white;
+        border: 1px solid #ddd;
+        max-height: 150px;
+        overflow-y: auto;
+        z-index: 1000;
+        width: 100%;
+    }
+
+    .autocomplete-item {
+        padding: 5px 10px;
+        cursor: pointer;
+    }
+
+    .autocomplete-item:hover {
+        background: #f0f0f0;
+    }
 </style>
 {% endblock %}
 
@@ -28,10 +84,12 @@
         <table class="table table-hover table-striped mb-0">
             <thead class="table-dark">
                 <tr>
-                    <th>Hostname</th>
+                    <th>Sysname</th>
+                    <th>Nombre</th>
                     <th>IP</th>
+                    <th>Localidad</th>
+                    <th>Tipo</th>
                     <th>Grupo</th>
-                    <th>Vendor</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
@@ -42,7 +100,7 @@
 
 <!-- Device Modal -->
 <div class="modal fade" id="deviceModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white" id="device-modal-header">
                 <h5 class="modal-title" id="device-modal-title">➕ Agregar Dispositivo</h5>
@@ -51,28 +109,99 @@
             <div class="modal-body">
                 <input type="hidden" id="device-edit-mode" value="add">
                 <input type="hidden" id="device-original-group" value="">
-                <input type="hidden" id="device-original-hostname" value="">
-                <div class="mb-3"><label class="form-label">Grupo *</label><select class="form-select" id="device-group"
-                        required></select></div>
-                <div class="mb-3"><label class="form-label">Hostname *</label><input type="text" class="form-control"
-                        id="device-hostname" required></div>
-                <div class="mb-3">
-                    <label class="form-label">IP *</label>
-                    <div class="input-group">
-                        <input type="text" class="form-control" id="device-ip" placeholder="192.168.1.1" required>
-                        <button class="btn btn-outline-secondary" type="button" onclick="testDeviceConnection()">🔌
-                            Test</button>
+                <input type="hidden" id="device-original-sysname" value="">
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Grupo *</label>
+                            <select class="form-select" id="device-group" required onchange="onGroupChange()"></select>
+                        </div>
                     </div>
-                    <div id="device-test-result" class="form-text"></div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Sysname * (ID)</label>
+                            <input type="text" class="form-control" id="device-sysname" required>
+                            <div class="form-text text-warning" id="sysname-warning" style="display:none;">⚠️ Inmutable
+                                una vez creado</div>
+                        </div>
+                    </div>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label">Credenciales (override)</label>
-                    <div id="device-credentials-container" class="ps-2"></div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Nombre (descripción)</label>
+                            <input type="text" class="form-control" id="device-nombre" placeholder="Nombre descriptivo">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">IP *</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="device-ip" placeholder="192.168.1.1"
+                                    required>
+                                <button class="btn btn-outline-secondary" type="button"
+                                    onclick="testDeviceConnection()">🔌 Test</button>
+                            </div>
+                            <div id="device-test-result" class="form-text"></div>
+                        </div>
+                    </div>
                 </div>
+
+                <hr>
+                <h6>📍 Segmentación</h6>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">Localidad</label>
+                            <select class="form-select" id="device-localidad"></select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">Tipo</label>
+                            <select class="form-select" id="device-tipo"></select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">Modelo</label>
+                            <select class="form-select" id="device-modelo"></select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">Criticidad</label>
+                            <select class="form-select" id="device-criticidad">
+                                <option value="">Sin definir</option>
+                                <option value="alta">🔴 Alta</option>
+                                <option value="media">🟡 Media</option>
+                                <option value="baja">🟢 Baja</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-8">
+                        <div class="mb-3">
+                            <label class="form-label">Tags</label>
+                            <div class="tag-input-container" id="tags-container">
+                                <input type="text" id="tag-input" placeholder="Escriba y presione Enter...">
+                            </div>
+                            <div class="autocomplete-dropdown" id="tag-autocomplete" style="display:none;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr>
+                <h6>🔐 Credenciales (override)</h6>
+                <div id="device-credentials-container" class="ps-2"></div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" onclick="saveDevice()">Guardar</button>
+                <button type="button" class="btn btn-primary" onclick="saveDevice()">💾 Guardar</button>
             </div>
         </div>
     </div>
@@ -82,33 +211,100 @@
 {% block scripts %}
 <script>
     var inventory = {{ inventory | tojson | safe }};
-    var vaultCredentials = [];
+    var vaultCredentials = [], deviceTypes = [], deviceModels = [], localidades = [], existingTags = [];
+    var selectedTags = [];
     var deviceModal;
 
     document.addEventListener('DOMContentLoaded', function () {
         deviceModal = new bootstrap.Modal(document.getElementById('deviceModal'));
+        loadCatalogs();
         renderDevices();
+        setupTagInput();
     });
+
+    function loadCatalogs() {
+        fetch('/api/device_types').then(r => r.json()).then(d => { deviceTypes = d; renderTypeDropdown(); });
+        fetch('/api/device_models').then(r => r.json()).then(d => { deviceModels = d; });
+        fetch('/api/localidades').then(r => r.json()).then(d => { localidades = d; renderLocalidadDropdown(); });
+        fetch('/api/tags').then(r => r.json()).then(d => { existingTags = d; });
+    }
+
+    function renderTypeDropdown() {
+        var sel = document.getElementById('device-tipo');
+        sel.innerHTML = '<option value="">Seleccionar...</option>' + deviceTypes.map(t => '<option value="' + t.id + '">' + t.name + '</option>').join('');
+    }
+
+    function renderLocalidadDropdown() {
+        var sel = document.getElementById('device-localidad');
+        sel.innerHTML = '<option value="">Seleccionar...</option>' + localidades.map(l => '<option value="' + l.id + '">' + l.name + (l.zona ? ' (' + l.zona + ')' : '') + '</option>').join('');
+    }
+
+    function onGroupChange() {
+        var grp = document.getElementById('device-group').value;
+        var gObj = inventory.groups.find(g => g.name === grp);
+        var vendor = gObj ? gObj.vendor : null;
+        var sel = document.getElementById('device-modelo');
+        var filtered = vendor ? deviceModels.filter(m => m.vendor === vendor) : deviceModels;
+        sel.innerHTML = '<option value="">Seleccionar...</option>' + filtered.map(m => '<option value="' + m.id + '">' + m.name + '</option>').join('');
+    }
 
     function renderDevices() {
         var tbody = document.getElementById('device-table'), gSel = document.getElementById('device-group');
         tbody.innerHTML = ''; gSel.innerHTML = '';
-        if (!inventory.groups || inventory.groups.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No hay grupos. <a href="/inventory/groups">Cree uno primero</a>.</td></tr>';
-            return;
-        }
+        if (!inventory.groups || inventory.groups.length === 0) { tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No hay grupos. <a href="/inventory/groups">Cree uno primero</a>.</td></tr>'; return; }
         inventory.groups.forEach(g => { gSel.innerHTML += '<option value="' + g.name + '">' + g.name + ' (' + g.vendor + ')</option>'; });
         var has = false;
         inventory.groups.forEach(g => {
             if (!g.devices || g.devices.length === 0) return;
             has = true;
             g.devices.forEach(d => {
-                var cids = d.credential_ids ? JSON.stringify(d.credential_ids).replace(/"/g, '&quot;') : '[]';
-                var badge = d.credential_ids && d.credential_ids.length > 0 ? '<span class="badge bg-warning ms-1">🔑</span>' : '';
-                tbody.innerHTML += '<tr><td><strong>' + d.hostname + '</strong>' + badge + '</td><td><code>' + d.ip + '</code></td><td><span class="badge bg-info">' + g.name + '</span></td><td>' + g.vendor + '</td><td><span class="btn-action" onclick="openEditDeviceModal(\'' + g.name + '\', \'' + d.hostname + '\', \'' + d.ip + '\', ' + cids + ')">✏️</span><span class="btn-action" onclick="deleteDevice(\'' + g.name + '\', \'' + d.hostname + '\')">🗑️</span></td></tr>';
+                var sysname = d.sysname || d.hostname;
+                var nombre = d.nombre || '';
+                var localidad = d.localidad || '-';
+                var tipo = d.tipo || '-';
+                var tags = d.tags ? d.tags.map(t => '<span class="badge bg-secondary tag-badge">' + t + '</span>').join('') : '';
+                tbody.innerHTML += '<tr><td><strong>' + sysname + '</strong></td><td>' + nombre + '</td><td><code>' + d.ip + '</code></td><td>' + localidad + '</td><td>' + tipo + '</td><td><span class="badge bg-info">' + g.name + '</span></td><td><span class="btn-action" onclick=\'openEditDeviceModal(' + JSON.stringify(g.name) + ', ' + JSON.stringify(d) + ')\'>✏️</span><span class="btn-action" onclick="deleteDevice(\'' + g.name + '\', \'' + sysname + '\')">🗑️</span></td></tr>';
             });
         });
-        if (!has) tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Sin dispositivos. Agregue dispositivos.</td></tr>';
+        if (!has) tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Sin dispositivos.</td></tr>';
+    }
+
+    function setupTagInput() {
+        var input = document.getElementById('tag-input');
+        var dropdown = document.getElementById('tag-autocomplete');
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && this.value.trim()) {
+                e.preventDefault();
+                addTag(this.value.trim());
+                this.value = '';
+                dropdown.style.display = 'none';
+            }
+        });
+        input.addEventListener('input', function () {
+            var val = this.value.toLowerCase();
+            if (!val) { dropdown.style.display = 'none'; return; }
+            var matches = existingTags.filter(t => t.toLowerCase().includes(val) && !selectedTags.includes(t));
+            if (matches.length === 0) { dropdown.style.display = 'none'; return; }
+            dropdown.innerHTML = matches.map(t => '<div class="autocomplete-item" onclick="addTag(\'' + t + '\')">' + t + '</div>').join('');
+            dropdown.style.display = 'block';
+        });
+    }
+
+    function addTag(tag) {
+        if (selectedTags.includes(tag)) return;
+        selectedTags.push(tag);
+        renderTags();
+        document.getElementById('tag-input').value = '';
+        document.getElementById('tag-autocomplete').style.display = 'none';
+    }
+
+    function removeTag(tag) { selectedTags = selectedTags.filter(t => t !== tag); renderTags(); }
+
+    function renderTags() {
+        var container = document.getElementById('tags-container');
+        var input = document.getElementById('tag-input');
+        container.innerHTML = selectedTags.map(t => '<span class="tag-item">' + t + '<span class="remove" onclick="removeTag(\'' + t + '\')">×</span></span>').join('');
+        container.appendChild(input);
     }
 
     function loadVaultCredentials() { return fetch('/api/vault').then(r => r.json()).then(data => { vaultCredentials = data; return data; }); }
@@ -116,7 +312,7 @@
     function renderDeviceCredentials(sel, grpCreds) {
         var c = document.getElementById('device-credentials-container'); sel = sel || []; grpCreds = grpCreds || [];
         if (vaultCredentials.length === 0) { c.innerHTML = '<div class="text-muted">No hay credenciales.</div>'; return; }
-        c.innerHTML = '<div class="form-text mb-1"><small>Heredadas: ' + (grpCreds.join(', ') || 'ninguna') + '</small></div>' +
+        c.innerHTML = '<div class="form-text mb-1"><small>Heredadas del grupo: ' + (grpCreds.join(', ') || 'ninguna') + '</small></div>' +
             vaultCredentials.map(cr => '<div class="form-check"><input class="form-check-input device-cred-check" type="checkbox" value="' + cr.id + '" id="dev-cred-' + cr.id + '" ' + (sel.indexOf(cr.id) >= 0 ? 'checked' : '') + '><label class="form-check-label" for="dev-cred-' + cr.id + '">' + cr.name + ' <span class="text-muted">(' + cr.user + ')</span></label></div>').join('');
     }
 
@@ -127,21 +323,41 @@
         document.getElementById('device-edit-mode').value = 'add';
         document.getElementById('device-modal-title').textContent = '➕ Agregar Dispositivo';
         document.getElementById('device-modal-header').className = 'modal-header bg-primary text-white';
-        document.getElementById('device-hostname').value = ''; document.getElementById('device-ip').value = '';
+        document.getElementById('device-sysname').value = ''; document.getElementById('device-sysname').disabled = false;
+        document.getElementById('sysname-warning').style.display = 'block';
+        document.getElementById('device-nombre').value = '';
+        document.getElementById('device-ip').value = '';
+        document.getElementById('device-localidad').value = '';
+        document.getElementById('device-tipo').value = '';
+        document.getElementById('device-modelo').value = '';
+        document.getElementById('device-criticidad').value = '';
+        selectedTags = []; renderTags();
         document.getElementById('device-test-result').innerHTML = '';
+        onGroupChange();
         loadVaultCredentials().then(() => { renderDeviceCredentials([], []); deviceModal.show(); });
     }
 
-    function openEditDeviceModal(grp, host, ip, cids) {
+    function openEditDeviceModal(grp, device) {
         document.getElementById('device-edit-mode').value = 'edit';
         document.getElementById('device-original-group').value = grp;
-        document.getElementById('device-original-hostname').value = host;
+        document.getElementById('device-original-sysname').value = device.sysname || device.hostname;
         document.getElementById('device-modal-title').textContent = '✏️ Editar Dispositivo';
         document.getElementById('device-modal-header').className = 'modal-header bg-warning text-dark';
-        document.getElementById('device-group').value = grp; document.getElementById('device-hostname').value = host;
-        document.getElementById('device-ip').value = ip; document.getElementById('device-test-result').innerHTML = '';
+        document.getElementById('device-group').value = grp;
+        document.getElementById('device-sysname').value = device.sysname || device.hostname;
+        document.getElementById('device-sysname').disabled = true;
+        document.getElementById('sysname-warning').style.display = 'none';
+        document.getElementById('device-nombre').value = device.nombre || '';
+        document.getElementById('device-ip').value = device.ip;
+        document.getElementById('device-localidad').value = device.localidad || '';
+        document.getElementById('device-tipo').value = device.tipo || '';
+        onGroupChange();
+        setTimeout(() => { document.getElementById('device-modelo').value = device.modelo || ''; }, 100);
+        document.getElementById('device-criticidad').value = device.criticidad || '';
+        selectedTags = device.tags ? [...device.tags] : []; renderTags();
+        document.getElementById('device-test-result').innerHTML = '';
         var gObj = inventory.groups.find(g => g.name === grp), gCreds = gObj ? (gObj.credential_ids || []) : [];
-        loadVaultCredentials().then(() => { renderDeviceCredentials(cids || [], gCreds); deviceModal.show(); });
+        loadVaultCredentials().then(() => { renderDeviceCredentials(device.credential_ids || [], gCreds); deviceModal.show(); });
     }
 
     function testDeviceConnection() {
@@ -153,24 +369,47 @@
     }
 
     function saveDevice() {
-        var host = document.getElementById('device-hostname').value.trim(), ip = document.getElementById('device-ip').value.trim();
-        var grp = document.getElementById('device-group').value, cids = getSelectedDeviceCredentialIds();
-        if (!host || !ip) { alert('Complete todos los campos'); return; }
+        var sysname = document.getElementById('device-sysname').value.trim();
+        var nombre = document.getElementById('device-nombre').value.trim();
+        var ip = document.getElementById('device-ip').value.trim();
+        var grp = document.getElementById('device-group').value;
+        var localidad = document.getElementById('device-localidad').value;
+        var tipo = document.getElementById('device-tipo').value;
+        var modelo = document.getElementById('device-modelo').value;
+        var criticidad = document.getElementById('device-criticidad').value;
+        var cids = getSelectedDeviceCredentialIds();
+
+        if (!sysname || !ip) { alert('Sysname e IP son requeridos'); return; }
+
         var mode = document.getElementById('device-edit-mode').value;
-        var data = { group: grp, hostname: host, ip: ip, credential_ids: cids };
+        var data = {
+            group: grp,
+            sysname: sysname,
+            hostname: sysname, // Compatibility
+            nombre: nombre,
+            ip: ip,
+            localidad: localidad,
+            tipo: tipo,
+            modelo: modelo,
+            criticidad: criticidad,
+            tags: selectedTags,
+            credential_ids: cids
+        };
+
         if (mode === 'add') {
             fetch('/api/inventory/device', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
                 .then(r => r.json()).then(resp => { resp.error ? alert(resp.error) : location.reload(); });
         } else {
-            var og = document.getElementById('device-original-group').value, oh = document.getElementById('device-original-hostname').value;
-            fetch('/api/inventory/device/' + og + '/' + oh, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+            var og = document.getElementById('device-original-group').value;
+            var os = document.getElementById('device-original-sysname').value;
+            fetch('/api/inventory/device/' + og + '/' + os, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
                 .then(r => r.json()).then(resp => { resp.error ? alert(resp.error) : location.reload(); });
         }
     }
 
-    function deleteDevice(grp, host) {
-        if (!confirm('¿Eliminar ' + host + '?')) return;
-        fetch('/api/inventory/device/' + grp + '/' + host, { method: 'DELETE' }).then(r => r.json()).then(d => { d.error ? alert(d.error) : location.reload(); });
+    function deleteDevice(grp, sysname) {
+        if (!confirm('¿Eliminar ' + sysname + '?')) return;
+        fetch('/api/inventory/device/' + grp + '/' + sysname, { method: 'DELETE' }).then(r => r.json()).then(d => { d.error ? alert(d.error) : location.reload(); });
     }
 </script>
 {% endblock %}

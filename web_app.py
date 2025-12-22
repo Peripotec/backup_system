@@ -637,15 +637,45 @@ def api_add_device():
     data = request.json
     inv = load_inventory()
     group_name = data.get("group")
+    sysname = data.get("sysname") or data.get("hostname")
+    
+    if not sysname:
+        return jsonify({"error": "Sysname es requerido"}), 400
+    
+    # Build device object with all fields
+    device = {
+        "sysname": sysname,
+        "hostname": sysname,  # Compatibility
+        "ip": data.get("ip")
+    }
+    
+    # Add optional fields if provided
+    if data.get("nombre"):
+        device["nombre"] = data["nombre"]
+    if data.get("localidad"):
+        device["localidad"] = data["localidad"]
+    if data.get("tipo"):
+        device["tipo"] = data["tipo"]
+    if data.get("modelo"):
+        device["modelo"] = data["modelo"]
+    if data.get("criticidad"):
+        device["criticidad"] = data["criticidad"]
+    if data.get("tags"):
+        device["tags"] = data["tags"]
+    if data.get("credential_ids"):
+        device["credential_ids"] = data["credential_ids"]
+    
     for g in inv["groups"]:
         if g["name"] == group_name:
-            g["devices"].append({
-                "hostname": data.get("hostname"),
-                "ip": data.get("ip")
-            })
+            # Check for duplicate sysname
+            for d in g["devices"]:
+                existing_sysname = d.get("sysname") or d.get("hostname")
+                if existing_sysname == sysname:
+                    return jsonify({"error": "Sysname ya existe en este grupo"}), 400
+            g["devices"].append(device)
             save_inventory(inv)
             return jsonify({"status": "ok", "message": "Dispositivo agregado"})
-    return jsonify({"error": "Group not found"}), 404
+    return jsonify({"error": "Grupo no encontrado"}), 404
 
 @app.route('/api/inventory/device/<group_name>/<hostname>', methods=['DELETE'])
 @requires_auth
@@ -653,45 +683,65 @@ def api_delete_device(group_name, hostname):
     inv = load_inventory()
     for g in inv["groups"]:
         if g["name"] == group_name:
-            g["devices"] = [d for d in g["devices"] if d["hostname"] != hostname]
+            g["devices"] = [d for d in g["devices"] if (d.get("sysname") or d.get("hostname")) != hostname]
             save_inventory(inv)
             return jsonify({"status": "ok", "message": "Dispositivo eliminado"})
-    return jsonify({"error": "Not found"}), 404
+    return jsonify({"error": "No encontrado"}), 404
 
 @app.route('/api/inventory/device/<group_name>/<hostname>', methods=['PUT'])
 @requires_auth
 def api_edit_device(group_name, hostname):
-    """Edit an existing device. Supports moving to different group."""
+    """Edit an existing device. Supports moving to different group. Sysname is immutable."""
     data = request.json
     inv = load_inventory()
     
     new_group = data.get("group", group_name)
-    new_hostname = data.get("hostname", hostname)
     new_ip = data.get("ip")
-    new_credential_ids = data.get("credential_ids")  # Optional device-level override
     
     # Find and remove device from original group
     device_data = None
     for g in inv["groups"]:
         if g["name"] == group_name:
             for i, d in enumerate(g["devices"]):
-                if d["hostname"] == hostname:
+                existing_sysname = d.get("sysname") or d.get("hostname")
+                if existing_sysname == hostname:
                     device_data = g["devices"].pop(i)
                     break
             break
     
     if not device_data:
-        return jsonify({"error": "Device not found"}), 404
+        return jsonify({"error": "Dispositivo no encontrado"}), 404
     
-    # Update device data
-    device_data["hostname"] = new_hostname
+    # Keep sysname immutable
+    original_sysname = device_data.get("sysname") or device_data.get("hostname")
+    device_data["sysname"] = original_sysname
+    device_data["hostname"] = original_sysname  # Compatibility
+    
+    # Update mutable fields
     if new_ip:
         device_data["ip"] = new_ip
-    if new_credential_ids is not None:
-        if new_credential_ids:
-            device_data["credential_ids"] = new_credential_ids
+    
+    # Update optional fields
+    for field in ["nombre", "localidad", "tipo", "modelo", "criticidad"]:
+        if field in data:
+            if data[field]:
+                device_data[field] = data[field]
+            elif field in device_data:
+                del device_data[field]
+    
+    # Handle tags
+    if "tags" in data:
+        if data["tags"]:
+            device_data["tags"] = data["tags"]
+        elif "tags" in device_data:
+            del device_data["tags"]
+    
+    # Handle credential_ids
+    if "credential_ids" in data:
+        if data["credential_ids"]:
+            device_data["credential_ids"] = data["credential_ids"]
         elif "credential_ids" in device_data:
-            del device_data["credential_ids"]  # Remove override if empty
+            del device_data["credential_ids"]
     
     # Add to target group (same or different)
     for g in inv["groups"]:
@@ -705,7 +755,7 @@ def api_edit_device(group_name, hostname):
         if g["name"] == group_name:
             g["devices"].append(device_data)
     save_inventory(inv)
-    return jsonify({"error": "Target group not found"}), 404
+    return jsonify({"error": "Grupo destino no encontrado"}), 404
 
 @app.route('/api/inventory/test', methods=['POST'])
 @requires_auth
