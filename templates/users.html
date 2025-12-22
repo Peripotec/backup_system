@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Gestión de Usuarios</title>
+    <link rel="icon" type="image/png" href="/static/favicon.png">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-body: #f0f2f5;
+            --bg-card: #fff;
+            --bg-navbar: #212529;
+            --text-primary: #212529;
+            --text-muted: #6c757d;
+            --border-color: #dee2e6;
+        }
+
+        [data-theme="dark"] {
+            --bg-body: #0f172a;
+            --bg-card: #1e293b;
+            --bg-navbar: #0f172a;
+            --text-primary: #f1f5f9;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+        }
+
+        body {
+            background: var(--bg-body);
+            color: var(--text-primary);
+            transition: all 0.3s;
+        }
+
+        .navbar {
+            background: var(--bg-navbar) !important;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+        }
+
+        .table {
+            color: var(--text-primary);
+        }
+
+        [data-theme="dark"] .table {
+            --bs-table-bg: var(--bg-card);
+            --bs-table-striped-bg: #283548;
+        }
+
+        [data-theme="dark"] .table-dark {
+            --bs-table-bg: #334155;
+        }
+
+        [data-theme="dark"] .modal-content {
+            background: var(--bg-card);
+            color: var(--text-primary);
+        }
+
+        [data-theme="dark"] .form-control,
+        [data-theme="dark"] .form-select {
+            background: #334155;
+            color: var(--text-primary);
+            border-color: var(--border-color);
+        }
+
+        .btn-action {
+            cursor: pointer;
+            margin-right: 5px;
+        }
+
+        .theme-toggle {
+            cursor: pointer;
+            font-size: 1.3rem;
+            transition: transform 0.3s;
+        }
+
+        .theme-toggle:hover {
+            transform: rotate(180deg);
+        }
+
+        .role-badge {
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav class="navbar navbar-dark mb-4">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">🛡️ Backup System</a>
+            <ul class="navbar-nav flex-row gap-3">
+                <li class="nav-item"><a class="nav-link" href="/">Dashboard</a></li>
+                <li class="nav-item"><a class="nav-link" href="/inventory">Inventario</a></li>
+                <li class="nav-item"><a class="nav-link" href="/files">Archivos</a></li>
+                <li class="nav-item"><a class="nav-link" href="/admin/vault">🔐 Vault</a></li>
+                <li class="nav-item"><a class="nav-link" href="/admin/settings">⚙️ Settings</a></li>
+                <li class="nav-item"><a class="nav-link active" href="/admin/users">👥 Usuarios</a></li>
+                <li class="nav-item"><span class="nav-link theme-toggle" onclick="toggleTheme()">🌓</span></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="card">
+            <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                <span>👥 Gestión de Usuarios</span>
+                <button class="btn btn-light btn-sm" onclick="openAddModal()">➕ Agregar Usuario</button>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-hover table-striped mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Usuario</th>
+                            <th>Email</th>
+                            <th>Rol</th>
+                            <th>Último Acceso</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-table"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- API Tokens Section -->
+        <div class="card mt-4">
+            <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                <span>🔑 API Tokens</span>
+                <button class="btn btn-dark btn-sm" onclick="createToken()">➕ Generar Token</button>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-hover table-striped mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Creado</th>
+                            <th>Expira</th>
+                            <th>Último Uso</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tokens-table"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="alert alert-info mt-3">
+            <strong>ℹ️ Roles:</strong>
+            <span class="badge bg-danger ms-2">superadmin</span> Todo + gestión de admins
+            <span class="badge bg-warning text-dark ms-2">admin</span> Settings, vault, inventory
+            <span class="badge bg-primary ms-2">operator</span> Ejecutar backups, ver logs
+            <span class="badge bg-secondary ms-2">viewer</span> Solo lectura
+        </div>
+    </div>
+
+    <!-- User Modal -->
+    <div class="modal fade" id="userModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white" id="modal-header">
+                    <h5 class="modal-title" id="modal-title">➕ Agregar Usuario</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="edit-mode" value="add">
+                    <input type="hidden" id="user-id" value="">
+
+                    <div class="mb-3">
+                        <label class="form-label">Usuario *</label>
+                        <input type="text" class="form-control" id="user-username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" id="user-email">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Contraseña *</label>
+                        <input type="password" class="form-control" id="user-password">
+                        <div class="form-text" id="password-hint">Deja vacío para mantener la contraseña actual.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Rol</label>
+                        <select class="form-select" id="user-role">
+                            <option value="viewer">👁️ Viewer - Solo lectura</option>
+                            <option value="operator">🔧 Operator - Ejecutar backups</option>
+                            <option value="admin">⚙️ Admin - Configurar sistema</option>
+                            <option value="superadmin">🛡️ Superadmin - Todo</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="user-active" checked>
+                            <label class="form-check-label" for="user-active">Usuario Activo</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-info" onclick="saveUser()">💾 Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Theme
+        function toggleTheme() {
+            var t = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', t);
+            localStorage.setItem('theme', t);
+        }
+        (function () { document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'light'); })();
+
+        var users = {{ users | tojson | safe }};
+        var roles = {{ roles | tojson | safe }};
+        var userModal;
+
+        document.addEventListener('DOMContentLoaded', function () {
+            userModal = new bootstrap.Modal(document.getElementById('userModal'));
+            renderUsers();
+            loadTokens();
+        });
+
+        function getRoleBadge(role) {
+            var colors = {
+                'superadmin': 'danger',
+                'admin': 'warning text-dark',
+                'operator': 'primary',
+                'viewer': 'secondary'
+            };
+            return '<span class="badge bg-' + (colors[role] || 'secondary') + ' role-badge">' + role + '</span>';
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            var d = new Date(dateStr);
+            return d.toLocaleDateString() + ' ' + d.toLocaleTimeString();
+        }
+
+        function renderUsers() {
+            var tbody = document.getElementById('users-table');
+            tbody.innerHTML = '';
+
+            if (!users || users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No hay usuarios.</td></tr>';
+                return;
+            }
+
+            users.forEach(function (u) {
+                var statusBadge = u.active ? '<span class="badge bg-success">Activo</span>' : '<span class="badge bg-danger">Inactivo</span>';
+                var canEdit = u.id !== 1 || users.length === 1; // Can always edit if only user
+                tbody.innerHTML += '<tr>' +
+                    '<td><strong>' + u.username + '</strong></td>' +
+                    '<td>' + (u.email || '-') + '</td>' +
+                    '<td>' + getRoleBadge(u.role) + '</td>' +
+                    '<td><small>' + formatDate(u.last_login) + '</small></td>' +
+                    '<td>' + statusBadge + '</td>' +
+                    '<td>' +
+                    '<span class="btn-action" onclick="openEditModal(' + u.id + ')" title="Editar">✏️</span>' +
+                    (u.id !== 1 ? '<span class="btn-action" onclick="deleteUser(' + u.id + ')" title="Eliminar">🗑️</span>' : '') +
+                    '</td></tr>';
+            });
+        }
+
+        function openAddModal() {
+            document.getElementById('edit-mode').value = 'add';
+            document.getElementById('user-id').value = '';
+            document.getElementById('modal-title').textContent = '➕ Agregar Usuario';
+            document.getElementById('user-username').value = '';
+            document.getElementById('user-email').value = '';
+            document.getElementById('user-password').value = '';
+            document.getElementById('user-role').value = 'viewer';
+            document.getElementById('user-active').checked = true;
+            document.getElementById('password-hint').style.display = 'none';
+            userModal.show();
+        }
+
+        function openEditModal(userId) {
+            var user = users.find(function (u) { return u.id === userId; });
+            if (!user) return;
+
+            document.getElementById('edit-mode').value = 'edit';
+            document.getElementById('user-id').value = userId;
+            document.getElementById('modal-title').textContent = '✏️ Editar Usuario';
+            document.getElementById('user-username').value = user.username;
+            document.getElementById('user-email').value = user.email || '';
+            document.getElementById('user-password').value = '';
+            document.getElementById('user-role').value = user.role;
+            document.getElementById('user-active').checked = user.active;
+            document.getElementById('password-hint').style.display = 'block';
+            userModal.show();
+        }
+
+        function saveUser() {
+            var mode = document.getElementById('edit-mode').value;
+            var data = {
+                username: document.getElementById('user-username').value.trim(),
+                email: document.getElementById('user-email').value.trim(),
+                password: document.getElementById('user-password').value,
+                role: document.getElementById('user-role').value,
+                active: document.getElementById('user-active').checked
+            };
+
+            if (!data.username) {
+                alert('El usuario es requerido');
+                return;
+            }
+
+            if (mode === 'add' && !data.password) {
+                alert('La contraseña es requerida para nuevos usuarios');
+                return;
+            }
+
+            if (mode === 'add') {
+                fetch('/api/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                })
+                    .then(function (r) { return r.json(); })
+                    .then(function (resp) {
+                        if (resp.error) alert(resp.error);
+                        else location.reload();
+                    });
+            } else {
+                var userId = document.getElementById('user-id').value;
+                fetch('/api/users/' + userId, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                })
+                    .then(function (r) { return r.json(); })
+                    .then(function (resp) {
+                        if (resp.error) alert(resp.error);
+                        else location.reload();
+                    });
+            }
+        }
+
+        function deleteUser(userId) {
+            if (!confirm('¿Eliminar este usuario?')) return;
+
+            fetch('/api/users/' + userId, { method: 'DELETE' })
+                .then(function (r) { return r.json(); })
+                .then(function (resp) {
+                    if (resp.error) alert(resp.error);
+                    else location.reload();
+                });
+        }
+
+        // API Tokens
+        function loadTokens() {
+            fetch('/api/tokens')
+                .then(function (r) { return r.json(); })
+                .then(function (tokens) {
+                    renderTokens(tokens);
+                });
+        }
+
+        function renderTokens(tokens) {
+            var tbody = document.getElementById('tokens-table');
+            if (!tokens || tokens.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No hay tokens. Genera uno para acceso API.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = '';
+            tokens.forEach(function (t) {
+                tbody.innerHTML += '<tr>' +
+                    '<td>' + (t.name || 'API Token') + '</td>' +
+                    '<td><small>' + formatDate(t.created_at) + '</small></td>' +
+                    '<td><small>' + (t.expires_at ? formatDate(t.expires_at) : 'Nunca') + '</small></td>' +
+                    '<td><small>' + formatDate(t.last_used) + '</small></td>' +
+                    '<td><span class="btn-action" onclick="deleteToken(' + t.id + ')" title="Revocar">🗑️</span></td>' +
+                    '</tr>';
+            });
+        }
+
+        function createToken() {
+            var name = prompt('Nombre del token (opcional):');
+            fetch('/api/tokens', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name || 'API Token' })
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (resp) {
+                    if (resp.error) {
+                        alert(resp.error);
+                    } else {
+                        alert('Token generado (cópialo ahora, no se mostrará de nuevo):\n\n' + resp.token);
+                        loadTokens();
+                    }
+                });
+        }
+
+        function deleteToken(tokenId) {
+            if (!confirm('¿Revocar este token?')) return;
+
+            fetch('/api/tokens/' + tokenId, { method: 'DELETE' })
+                .then(function (r) { return r.json(); })
+                .then(function (resp) {
+                    if (resp.error) alert(resp.error);
+                    else loadTokens();
+                });
+        }
+    </script>
+</body>
+
+</html>

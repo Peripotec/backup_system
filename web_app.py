@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from functools import wraps
 from settings import BACKUP_ROOT_DIR, INVENTORY_FILE, DB_FILE, REPO_DIR, ARCHIVE_DIR
 from core.db_manager import DBManager
+from core.config_manager import get_config_manager
 from core.logger import log
 
 app = Flask(__name__, static_folder='static', static_url_path='/static')
@@ -727,6 +728,146 @@ def download_file(filepath):
     if not os.path.exists(safe_path):
         return abort(404)
     return send_from_directory(os.path.dirname(safe_path), os.path.basename(safe_path), as_attachment=True)
+
+# ==========================
+# ADMIN: SETTINGS
+# ==========================
+
+@app.route('/admin/settings')
+@requires_auth
+def admin_settings():
+    cfg = get_config_manager()
+    settings = cfg.get_all_settings()
+    return render_template('settings.html', settings=settings)
+
+@app.route('/api/settings', methods=['GET'])
+@requires_auth
+def api_get_settings():
+    cfg = get_config_manager()
+    return jsonify(cfg.get_all_settings())
+
+@app.route('/api/settings', methods=['PUT'])
+@requires_auth
+def api_update_settings():
+    cfg = get_config_manager()
+    data = request.json
+    # Don't allow updating password via this endpoint
+    if 'smtp_pass' in data and data['smtp_pass'] == '':
+        del data['smtp_pass']  # Keep existing password if empty
+    cfg.update_settings(data)
+    return jsonify({"status": "ok", "message": "Settings updated"})
+
+# ==========================
+# ADMIN: USERS
+# ==========================
+
+@app.route('/admin/users')
+@requires_auth
+def admin_users():
+    cfg = get_config_manager()
+    users = cfg.get_all_users()
+    roles = ['superadmin', 'admin', 'operator', 'viewer']
+    return render_template('users.html', users=users, roles=roles)
+
+@app.route('/api/users', methods=['GET'])
+@requires_auth
+def api_get_users():
+    cfg = get_config_manager()
+    return jsonify(cfg.get_all_users())
+
+@app.route('/api/users', methods=['POST'])
+@requires_auth
+def api_create_user():
+    cfg = get_config_manager()
+    data = request.json
+    username = data.get('username', '').strip()
+    password = data.get('password', '')
+    email = data.get('email', '').strip()
+    role = data.get('role', 'viewer')
+    
+    if not username or not password:
+        return jsonify({"error": "Username and password required"}), 400
+    
+    user_id = cfg.create_user(username, password, role, email)
+    if user_id:
+        return jsonify({"status": "ok", "id": user_id})
+    return jsonify({"error": "User already exists"}), 400
+
+@app.route('/api/users/<int:user_id>', methods=['PUT'])
+@requires_auth
+def api_update_user(user_id):
+    cfg = get_config_manager()
+    data = request.json
+    
+    # Don't allow updating password to empty
+    password = data.get('password')
+    if password == '':
+        password = None
+    
+    cfg.update_user(
+        user_id,
+        username=data.get('username'),
+        password=password,
+        email=data.get('email'),
+        role=data.get('role'),
+        active=data.get('active')
+    )
+    return jsonify({"status": "ok"})
+
+@app.route('/api/users/<int:user_id>', methods=['DELETE'])
+@requires_auth
+def api_delete_user(user_id):
+    cfg = get_config_manager()
+    # Prevent deleting user ID 1 (default admin)
+    if user_id == 1:
+        return jsonify({"error": "Cannot delete default admin"}), 400
+    
+    if cfg.delete_user(user_id):
+        return jsonify({"status": "ok"})
+    return jsonify({"error": "User not found"}), 404
+
+# ==========================
+# API TOKENS
+# ==========================
+
+@app.route('/api/tokens', methods=['GET'])
+@requires_auth
+def api_get_tokens():
+    cfg = get_config_manager()
+    auth = request.authorization
+    user = cfg.get_user(auth.username)
+    if user:
+        return jsonify(cfg.get_user_tokens(user['id']))
+    return jsonify([])
+
+@app.route('/api/tokens', methods=['POST'])
+@requires_auth
+def api_create_token():
+    cfg = get_config_manager()
+    auth = request.authorization
+    user = cfg.get_user(auth.username)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    
+    data = request.json or {}
+    name = data.get('name', 'API Token')
+    expires_days = data.get('expires_days')
+    
+    token = cfg.create_api_token(user['id'], name, expires_days)
+    if token:
+        return jsonify({"status": "ok", "token": token})
+    return jsonify({"error": "Failed to create token"}), 500
+
+@app.route('/api/tokens/<int:token_id>', methods=['DELETE'])
+@requires_auth
+def api_delete_token(token_id):
+    cfg = get_config_manager()
+    auth = request.authorization
+    user = cfg.get_user(auth.username)
+    
+    if cfg.delete_api_token(token_id, user['id'] if user else None):
+        return jsonify({"status": "ok"})
+    return jsonify({"error": "Token not found"}), 404
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
