@@ -1,10 +1,11 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, send_from_directory, abort, Response
+from flask import Flask, render_template, request, jsonify, redirect, url_for, send_from_directory, abort, Response, session
 import os
 import shutil
 import yaml
 import json
 import threading
 import subprocess
+import secrets
 from datetime import datetime, timedelta
 from functools import wraps
 from settings import BACKUP_ROOT_DIR, INVENTORY_FILE, DB_FILE, REPO_DIR, ARCHIVE_DIR
@@ -13,35 +14,113 @@ from core.config_manager import get_config_manager
 from core.logger import log
 
 app = Flask(__name__, static_folder='static', static_url_path='/static')
-app.secret_key = 'super_secret_key_change_me'
+app.secret_key = secrets.token_hex(32)  # Generate secure key on each restart
+
+# Session configuration - 7 days persistence
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
 
 # Global state for backup execution
 backup_status = {"running": False, "message": "", "progress": 0}
 
-# Basic Auth
-USERS = {"admin": "noc4242"}
-
-def check_auth(username, password):
-    return username in USERS and USERS[username] == password
-
-def authenticate():
-    return jsonify({"message": "Authentication Required"}), 401, {'WWW-Authenticate': 'Basic realm="Login Required"'}
+def get_current_user():
+    """Get current logged-in user from session."""
+    if 'user_id' in session:
+        cfg = get_config_manager()
+        return cfg.get_user_by_id(session['user_id'])
+    return None
 
 def requires_auth(f):
+    """Decorator to require authentication via session."""
     @wraps(f)
     def decorated(*args, **kwargs):
-        auth = request.authorization
-        if not auth or not check_auth(auth.username, auth.password):
-            return authenticate()
+        if 'user_id' not in session:
+            # Check if it's an API request
+            if request.path.startswith('/api/'):
+                # Check for API token in header
+                auth_header = request.headers.get('Authorization', '')
+                if auth_header.startswith('Bearer '):
+                    token = auth_header[7:]
+                    cfg = get_config_manager()
+                    token_data = cfg.validate_api_token(token)
+                    if token_data:
+                        return f(*args, **kwargs)
+                return jsonify({"error": "Authentication required"}), 401
+            # Redirect to login for web pages
+            return redirect(url_for('login', next=request.path))
         return f(*args, **kwargs)
     return decorated
+
+def requires_role(*roles):
+    """Decorator to require specific role(s)."""
+    def decorator(f):
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            user = get_current_user()
+            if not user or user.get('role') not in roles:
+                if request.path.startswith('/api/'):
+                    return jsonify({"error": "Insufficient permissions"}), 403
+                return redirect(url_for('index'))
+            return f(*args, **kwargs)
+        return decorated
+    return decorator
 
 def get_db():
     return DBManager(DB_FILE)
 
+@app.context_processor
+def inject_user():
+    """Inject current user into all templates."""
+    return {
+        'current_user': get_current_user(),
+        'session': session
+    }
+
+# ==========================
+# LOGIN / LOGOUT
+# ==========================
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if 'user_id' in session:
+        return redirect(url_for('index'))
+    
+    error = None
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+        remember = request.form.get('remember') == 'on'
+        
+        cfg = get_config_manager()
+        user = cfg.authenticate_user(username, password)
+        
+        if user:
+            session['user_id'] = user['id']
+            session['username'] = user['username']
+            session['role'] = user['role']
+            
+            if remember:
+                session.permanent = True
+            
+            log.info(f"User logged in: {username}")
+            next_url = request.args.get('next', '/')
+            return redirect(next_url)
+        else:
+            error = "Usuario o contraseña incorrectos"
+            log.warning(f"Failed login attempt for: {username}")
+    
+    return render_template('login.html', error=error)
+
+@app.route('/logout')
+def logout():
+    username = session.get('username', 'Unknown')
+    session.clear()
+    log.info(f"User logged out: {username}")
+    return redirect(url_for('login'))
+
 # ==========================
 # DASHBOARD
 # ==========================
+
 
 @app.route('/')
 def index():

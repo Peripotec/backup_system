@@ -148,6 +148,20 @@
                 <li class="nav-item"><a class="nav-link" href="/admin/users">👥 Usuarios</a></li>
                 <li class="nav-item"><span class="nav-link theme-toggle" onclick="toggleTheme()"
                         title="Cambiar tema">🌓</span></li>
+                {% if session.username %}
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                        👤 {{ session.username }}
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><span class="dropdown-item-text text-muted">Rol: {{ session.role }}</span></li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li><a class="dropdown-item" href="/logout">🚪 Cerrar Sesión</a></li>
+                    </ul>
+                </li>
+                {% endif %}
             </ul>
         </div>
     </nav>

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Login - Backup System</title>
+    <link rel="icon" type="image/png" href="/static/favicon.png">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-body: #0f172a;
+            --bg-card: #1e293b;
+            --text-primary: #f1f5f9;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+            --accent: #3b82f6;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-primary);
+        }
+
+        .login-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .login-logo {
+            font-size: 3rem;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .login-title {
+            text-align: center;
+            font-weight: 600;
+            margin-bottom: 30px;
+            color: var(--text-primary);
+        }
+
+        .form-control {
+            background: #334155;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 12px 16px;
+            border-radius: 8px;
+        }
+
+        .form-control:focus {
+            background: #334155;
+            border-color: var(--accent);
+            color: var(--text-primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+
+        .form-control::placeholder {
+            color: var(--text-muted);
+        }
+
+        .btn-login {
+            background: var(--accent);
+            border: none;
+            padding: 12px;
+            font-weight: 600;
+            border-radius: 8px;
+            width: 100%;
+            transition: all 0.3s;
+        }
+
+        .btn-login:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+        }
+
+        .form-check-input {
+            background-color: #334155;
+            border-color: var(--border-color);
+        }
+
+        .form-check-input:checked {
+            background-color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .form-check-label {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .error-message {
+            background: #dc262620;
+            border: 1px solid #dc2626;
+            color: #fca5a5;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .form-label {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-bottom: 6px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-card">
+        <div class="login-logo">🛡️</div>
+        <h4 class="login-title">Backup System</h4>
+
+        {% if error %}
+        <div class="error-message">{{ error }}</div>
+        {% endif %}
+
+        <form method="POST" action="/login">
+            <div class="mb-3">
+                <label class="form-label">Usuario</label>
+                <input type="text" class="form-control" name="username" placeholder="admin" required autofocus>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Contraseña</label>
+                <input type="password" class="form-control" name="password" placeholder="••••••••" required>
+            </div>
+            <div class="mb-4">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="remember" id="remember" checked>
+                    <label class="form-check-label" for="remember">Mantener sesión iniciada (7 días)</label>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-login">Iniciar Sesión</button>
+        </form>
+    </div>
+</body>
+
+</html>

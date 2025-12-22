@@ -111,10 +111,17 @@ class ConfigManager:
             if self.get_setting(key) is None:
                 self.set_setting(key, value)
         
-        # Ensure default admin user exists
-        if not self.get_user('admin'):
-            self.create_user('admin', 'admin', 'superadmin', email='admin@localhost')
-            log.info("Default admin user created (password: admin)")
+        # Ensure default users exist (one per role for testing)
+        default_users = [
+            ('admin', 'admin123', 'superadmin', 'admin@localhost'),
+            ('jefe', 'jefe123', 'admin', 'jefe@localhost'),
+            ('operador', 'oper123', 'operator', 'operador@localhost'),
+            ('visor', 'visor123', 'viewer', 'visor@localhost'),
+        ]
+        for username, password, role, email in default_users:
+            if not self.get_user(username):
+                self.create_user(username, password, role, email)
+                log.info(f"Default user created: {username} ({role})")
     
     # ==================
     # SETTINGS METHODS
