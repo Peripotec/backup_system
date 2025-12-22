@@ -1000,7 +1000,7 @@ def api_update_settings():
 def admin_users():
     cfg = get_config_manager()
     users = cfg.get_all_users()
-    roles = ['superadmin', 'admin', 'operator', 'viewer']
+    roles = cfg.get_all_roles()
     return render_template('users.html', users=users, roles=roles)
 
 @app.route('/api/users', methods=['GET'])
@@ -1107,5 +1107,77 @@ def api_delete_token(token_id):
         return jsonify({"status": "ok"})
     return jsonify({"error": "Token not found"}), 404
 
+# ==========================
+# ADMIN: ROLES
+# ==========================
+
+@app.route('/admin/roles')
+@requires_auth
+@requires_permission('manage_roles')
+def admin_roles():
+    cfg = get_config_manager()
+    roles = cfg.get_all_roles()
+    return render_template('roles.html', roles=roles)
+
+@app.route('/api/roles', methods=['GET'])
+@requires_auth
+@requires_permission('manage_roles')
+def api_get_roles():
+    cfg = get_config_manager()
+    return jsonify(cfg.get_all_roles())
+
+@app.route('/api/roles', methods=['POST'])
+@requires_auth
+@requires_permission('manage_roles')
+def api_create_role():
+    cfg = get_config_manager()
+    data = request.json
+    name = data.get('name', '').strip().lower()
+    emoji = data.get('emoji', '👤')
+    description = data.get('description', '')
+    permissions = data.get('permissions', [])
+    
+    if not name:
+        return jsonify({"error": "Nombre requerido"}), 400
+    
+    role_id = cfg.create_role(name, emoji, description, permissions)
+    if role_id:
+        return jsonify({"status": "ok", "id": role_id})
+    return jsonify({"error": "El rol ya existe"}), 400
+
+@app.route('/api/roles/<int:role_id>', methods=['PUT'])
+@requires_auth
+@requires_permission('manage_roles')
+def api_update_role(role_id):
+    cfg = get_config_manager()
+    data = request.json
+    
+    # Check if removing manage_users from superadmin when only 1 exists
+    role = cfg.get_role_by_id(role_id)
+    if role and role.get('name') == 'superadmin':
+        new_perms = data.get('permissions', [])
+        if 'manage_users' not in new_perms or 'manage_roles' not in new_perms:
+            return jsonify({"error": "El rol superadmin debe mantener permisos de gestión"}), 400
+    
+    cfg.update_role(
+        role_id,
+        name=data.get('name'),
+        emoji=data.get('emoji'),
+        description=data.get('description'),
+        permissions=data.get('permissions')
+    )
+    return jsonify({"status": "ok"})
+
+@app.route('/api/roles/<int:role_id>', methods=['DELETE'])
+@requires_auth
+@requires_permission('manage_roles')
+def api_delete_role(role_id):
+    cfg = get_config_manager()
+    success, message = cfg.delete_role(role_id)
+    if success:
+        return jsonify({"status": "ok", "message": message})
+    return jsonify({"error": message}), 400
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
+

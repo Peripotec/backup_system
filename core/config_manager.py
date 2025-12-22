@@ -76,6 +76,19 @@ class ConfigManager:
                 )
             ''')
             
+            # Roles table
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS roles (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT UNIQUE NOT NULL,
+                    emoji TEXT DEFAULT '👤',
+                    description TEXT,
+                    permissions TEXT DEFAULT '[]',
+                    is_system INTEGER DEFAULT 0,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
             # Migration: Add permissions column if it doesn't exist (for existing DBs)
             try:
                 cursor.execute("SELECT permissions FROM users LIMIT 1")
@@ -119,6 +132,25 @@ class ConfigManager:
         for key, value in defaults.items():
             if self.get_setting(key) is None:
                 self.set_setting(key, value)
+        
+        # Ensure default system roles exist
+        default_roles = [
+            ('viewer', '👁️', 'Solo lectura - Ver dashboard, archivos y comparaciones', 
+             ['view_dashboard', 'view_files', 'view_diff']),
+            ('operator', '🔧', 'Operador - Ejecutar backups y ver inventario',
+             ['view_dashboard', 'view_files', 'view_diff', 'run_backup', 'view_inventory']),
+            ('admin', '⚙️', 'Administrador - Configurar sistema, vault e inventario',
+             ['view_dashboard', 'view_files', 'view_diff', 'run_backup', 'view_inventory', 
+              'edit_inventory', 'view_vault', 'edit_vault', 'view_settings', 'edit_settings']),
+            ('superadmin', '🛡️', 'Super Administrador - Acceso total incluyendo gestión de usuarios',
+             ['view_dashboard', 'view_files', 'view_diff', 'run_backup', 'view_inventory', 
+              'edit_inventory', 'view_vault', 'edit_vault', 'view_settings', 'edit_settings',
+              'manage_users', 'manage_roles']),
+        ]
+        for name, emoji, description, permissions in default_roles:
+            if not self.get_role(name):
+                self.create_role(name, emoji, description, permissions, is_system=True)
+                log.info(f"Default role created: {name}")
         
         # Ensure default users exist (one per role for testing)
         default_users = [
@@ -437,6 +469,159 @@ class ConfigManager:
                 cursor.execute('DELETE FROM api_tokens WHERE id = ?', (token_id,))
             conn.commit()
             return cursor.rowcount > 0
+        finally:
+            conn.close()
+    
+    # ==================
+    # ROLE METHODS
+    # ==================
+    
+    def get_role(self, name):
+        """Get role by name."""
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM roles WHERE name = ?', (name,))
+            row = cursor.fetchone()
+            if row:
+                role = dict(row)
+                try:
+                    role['permissions'] = json.loads(role.get('permissions') or '[]')
+                except:
+                    role['permissions'] = []
+                return role
+            return None
+        finally:
+            conn.close()
+    
+    def get_role_by_id(self, role_id):
+        """Get role by ID."""
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM roles WHERE id = ?', (role_id,))
+            row = cursor.fetchone()
+            if row:
+                role = dict(row)
+                try:
+                    role['permissions'] = json.loads(role.get('permissions') or '[]')
+                except:
+                    role['permissions'] = []
+                return role
+            return None
+        finally:
+            conn.close()
+    
+    def get_all_roles(self):
+        """Get all roles."""
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM roles ORDER BY id')
+            roles = []
+            for row in cursor.fetchall():
+                role = dict(row)
+                try:
+                    role['permissions'] = json.loads(role.get('permissions') or '[]')
+                except:
+                    role['permissions'] = []
+                roles.append(role)
+            return roles
+        finally:
+            conn.close()
+    
+    def create_role(self, name, emoji='👤', description='', permissions=None, is_system=False):
+        """Create a new role."""
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            perms_json = json.dumps(permissions or [])
+            cursor.execute('''
+                INSERT INTO roles (name, emoji, description, permissions, is_system)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (name, emoji, description, perms_json, 1 if is_system else 0))
+            conn.commit()
+            log.info(f"Role created: {name}")
+            return cursor.lastrowid
+        except sqlite3.IntegrityError:
+            log.warning(f"Role already exists: {name}")
+            return None
+        except Exception as e:
+            log.error(f"Failed to create role {name}: {e}")
+            return None
+        finally:
+            conn.close()
+    
+    def update_role(self, role_id, name=None, emoji=None, description=None, permissions=None):
+        """Update role fields."""
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            updates = []
+            values = []
+            
+            if name is not None:
+                updates.append('name = ?')
+                values.append(name)
+            if emoji is not None:
+                updates.append('emoji = ?')
+                values.append(emoji)
+            if description is not None:
+                updates.append('description = ?')
+                values.append(description)
+            if permissions is not None:
+                updates.append('permissions = ?')
+                values.append(json.dumps(permissions))
+            
+            if updates:
+                values.append(role_id)
+                cursor.execute(f'UPDATE roles SET {", ".join(updates)} WHERE id = ?', values)
+                conn.commit()
+                return True
+            return False
+        except Exception as e:
+            log.error(f"Failed to update role {role_id}: {e}")
+            return False
+        finally:
+            conn.close()
+    
+    def delete_role(self, role_id):
+        """Delete a role (if not system and no users assigned)."""
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            
+            # Check if role is system
+            cursor.execute('SELECT is_system, name FROM roles WHERE id = ?', (role_id,))
+            role = cursor.fetchone()
+            if not role:
+                return False, "Rol no encontrado"
+            if role['is_system']:
+                return False, "No se puede eliminar un rol del sistema"
+            
+            # Check if users are assigned to this role
+            cursor.execute('SELECT COUNT(*) as count FROM users WHERE role = ?', (role['name'],))
+            count = cursor.fetchone()['count']
+            if count > 0:
+                return False, f"No se puede eliminar: {count} usuario(s) tienen este rol"
+            
+            cursor.execute('DELETE FROM roles WHERE id = ?', (role_id,))
+            conn.commit()
+            log.info(f"Role deleted: {role['name']}")
+            return True, "Rol eliminado"
+        except Exception as e:
+            log.error(f"Failed to delete role {role_id}: {e}")
+            return False, str(e)
+        finally:
+            conn.close()
+    
+    def count_superadmins(self):
+        """Count users with superadmin role."""
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) as count FROM users WHERE role = 'superadmin' AND active = 1")
+            return cursor.fetchone()['count']
         finally:
             conn.close()
 

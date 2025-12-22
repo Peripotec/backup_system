@@ -184,14 +184,11 @@
                         <div class="form-text" id="password-hint">Deja vacío para mantener la contraseña actual.</div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Rol (preset de permisos)</label>
+                        <label class="form-label">Rol</label>
                         <select class="form-select" id="user-role" onchange="applyRolePreset()">
-                            <option value="viewer">👁️ Viewer - Solo lectura</option>
-                            <option value="operator">🔧 Operator - Ejecutar backups</option>
-                            <option value="admin">⚙️ Admin - Configurar sistema</option>
-                            <option value="superadmin">🛡️ Superadmin - Todo</option>
-                            <option value="custom">🎛️ Personalizado</option>
+                            <!-- Roles loaded from DB -->
                         </select>
+                        <div class="form-text" id="role-description-hint"></div>
                     </div>
 
                     <!-- Granular Permissions -->
@@ -301,18 +298,34 @@
 
         document.addEventListener('DOMContentLoaded', function () {
             userModal = new bootstrap.Modal(document.getElementById('userModal'));
+            populateRoleDropdown();
             renderUsers();
             loadTokens();
         });
 
-        function getRoleBadge(role) {
+        function populateRoleDropdown() {
+            var select = document.getElementById('user-role');
+            select.innerHTML = '';
+            roles.forEach(function (role) {
+                var option = document.createElement('option');
+                option.value = role.name;
+                option.textContent = (role.emoji || '👤') + ' ' + role.name + ' - ' + (role.description || '');
+                option.dataset.permissions = JSON.stringify(role.permissions || []);
+                option.dataset.description = role.description || '';
+                select.appendChild(option);
+            });
+        }
+
+        function getRoleBadge(roleName) {
+            var role = roles.find(function (r) { return r.name === roleName; });
+            var emoji = role ? role.emoji : '👤';
             var colors = {
                 'superadmin': 'danger',
                 'admin': 'warning text-dark',
                 'operator': 'primary',
                 'viewer': 'secondary'
             };
-            return '<span class="badge bg-' + (colors[role] || 'secondary') + ' role-badge">' + role + '</span>';
+            return '<span class="badge bg-' + (colors[roleName] || 'secondary') + ' role-badge">' + emoji + ' ' + roleName + '</span>';
         }
 
         function formatDate(dateStr) {
@@ -516,31 +529,27 @@
                 });
         }
 
-        // Permission presets
-        var ROLE_PRESETS = {
-            'viewer': ['view_dashboard', 'view_files', 'view_diff'],
-            'operator': ['view_dashboard', 'view_files', 'view_diff', 'run_backup', 'view_inventory'],
-            'admin': ['view_dashboard', 'view_files', 'view_diff', 'run_backup', 'view_inventory',
-                'edit_inventory', 'view_vault', 'edit_vault', 'view_settings', 'edit_settings'],
-            'superadmin': ['view_dashboard', 'view_files', 'view_diff', 'run_backup', 'view_inventory',
-                'edit_inventory', 'view_vault', 'edit_vault', 'view_settings', 'edit_settings',
-                'manage_users'],
-            'custom': []
-        };
-
+        // Permission handling
         var ALL_PERMISSIONS = [
             'view_dashboard', 'view_files', 'view_diff', 'view_inventory', 'view_vault', 'view_settings',
-            'run_backup', 'edit_inventory', 'edit_vault', 'edit_settings', 'manage_users'
+            'run_backup', 'edit_inventory', 'edit_vault', 'edit_settings', 'manage_users', 'manage_roles'
         ];
 
         function applyRolePreset() {
-            var role = document.getElementById('user-role').value;
-            var preset = ROLE_PRESETS[role] || [];
+            var select = document.getElementById('user-role');
+            var selectedOption = select.options[select.selectedIndex];
+            var permissions = [];
+            try {
+                permissions = JSON.parse(selectedOption.dataset.permissions || '[]');
+            } catch (e) { }
+
+            // Update description hint
+            document.getElementById('role-description-hint').textContent = selectedOption.dataset.description || '';
 
             ALL_PERMISSIONS.forEach(function (perm) {
                 var checkbox = document.getElementById('perm-' + perm);
                 if (checkbox) {
-                    checkbox.checked = preset.includes(perm);
+                    checkbox.checked = permissions.includes(perm);
                 }
             });
         }
