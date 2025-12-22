@@ -275,6 +275,7 @@ def update_backup_status(device_name, status, message=""):
 
 @app.route('/api/backup/trigger')
 @requires_auth
+@requires_permission('run_backup')
 def trigger_backup():
     """Trigger backup via GET request."""
     global backup_status
@@ -297,6 +298,7 @@ def backup_status_api():
 
 @app.route('/api/backup/cancel')
 @requires_auth
+@requires_permission('run_backup')
 def cancel_backup():
     """Cancel running backup."""
     global backup_status
@@ -816,6 +818,7 @@ def api_jobs_paginated():
 
 @app.route('/inventory', methods=['GET', 'POST'])
 @requires_auth
+@requires_permission('view_inventory')
 def inventory():
     if request.method == 'POST':
         try:
