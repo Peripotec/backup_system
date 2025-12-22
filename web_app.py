@@ -50,6 +50,22 @@ def requires_auth(f):
         return f(*args, **kwargs)
     return decorated
 
+# Role permission matrix (hierarchical: superadmin > admin > operator > viewer)
+ROLE_HIERARCHY = ['viewer', 'operator', 'admin', 'superadmin']
+ROLE_PERMISSIONS = {
+    'viewer': ['view_dashboard', 'view_files', 'view_diff'],
+    'operator': ['view_dashboard', 'view_files', 'view_diff', 'run_backup', 'view_inventory'],
+    'admin': ['view_dashboard', 'view_files', 'view_diff', 'run_backup', 'view_inventory', 
+              'edit_inventory', 'view_vault', 'edit_vault', 'view_settings', 'edit_settings'],
+    'superadmin': ['view_dashboard', 'view_files', 'view_diff', 'run_backup', 'view_inventory', 
+                   'edit_inventory', 'view_vault', 'edit_vault', 'view_settings', 'edit_settings',
+                   'manage_users']
+}
+
+def has_permission(role, permission):
+    """Check if a role has a specific permission."""
+    return permission in ROLE_PERMISSIONS.get(role, [])
+
 def requires_role(*roles):
     """Decorator to require specific role(s)."""
     def decorator(f):
@@ -58,8 +74,23 @@ def requires_role(*roles):
             user = get_current_user()
             if not user or user.get('role') not in roles:
                 if request.path.startswith('/api/'):
-                    return jsonify({"error": "Insufficient permissions"}), 403
-                return redirect(url_for('index'))
+                    return jsonify({"error": "Permisos insuficientes"}), 403
+                # Redirect to dashboard with access denied
+                return redirect(url_for('access_denied'))
+            return f(*args, **kwargs)
+        return decorated
+    return decorator
+
+def requires_permission(permission):
+    """Decorator to require specific permission."""
+    def decorator(f):
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            user = get_current_user()
+            if not user or not has_permission(user.get('role'), permission):
+                if request.path.startswith('/api/'):
+                    return jsonify({"error": "Permisos insuficientes"}), 403
+                return redirect(url_for('access_denied'))
             return f(*args, **kwargs)
         return decorated
     return decorator
@@ -69,11 +100,20 @@ def get_db():
 
 @app.context_processor
 def inject_user():
-    """Inject current user into all templates."""
+    """Inject current user and permission helpers into all templates."""
+    user = get_current_user()
+    role = user.get('role') if user else None
     return {
-        'current_user': get_current_user(),
-        'session': session
+        'current_user': user,
+        'session': session,
+        'has_permission': lambda perm: has_permission(role, perm) if role else False,
+        'ROLE_PERMISSIONS': ROLE_PERMISSIONS
     }
+
+@app.route('/access-denied')
+@requires_auth
+def access_denied():
+    return render_template('access_denied.html'), 403
 
 # ==========================
 # LOGIN / LOGOUT
@@ -423,6 +463,7 @@ def api_delete_vault_credential(cred_id):
 
 @app.route('/admin/vault')
 @requires_auth
+@requires_permission('view_vault')
 def admin_vault():
     """Credential vault management page."""
     from core.vault import get_credentials_list
@@ -431,6 +472,7 @@ def admin_vault():
 
 @app.route('/api/inventory/device', methods=['POST'])
 @requires_auth
+@requires_permission('edit_inventory')
 def api_add_device():
     data = request.json
     inv = load_inventory()
@@ -821,6 +863,7 @@ def download_file(filepath):
 
 @app.route('/admin/settings')
 @requires_auth
+@requires_permission('view_settings')
 def admin_settings():
     cfg = get_config_manager()
     settings = cfg.get_all_settings()
@@ -828,12 +871,14 @@ def admin_settings():
 
 @app.route('/api/settings', methods=['GET'])
 @requires_auth
+@requires_permission('view_settings')
 def api_get_settings():
     cfg = get_config_manager()
     return jsonify(cfg.get_all_settings())
 
 @app.route('/api/settings', methods=['PUT'])
 @requires_auth
+@requires_permission('edit_settings')
 def api_update_settings():
     cfg = get_config_manager()
     data = request.json
@@ -849,6 +894,7 @@ def api_update_settings():
 
 @app.route('/admin/users')
 @requires_auth
+@requires_permission('manage_users')
 def admin_users():
     cfg = get_config_manager()
     users = cfg.get_all_users()
@@ -857,12 +903,14 @@ def admin_users():
 
 @app.route('/api/users', methods=['GET'])
 @requires_auth
+@requires_permission('manage_users')
 def api_get_users():
     cfg = get_config_manager()
     return jsonify(cfg.get_all_users())
 
 @app.route('/api/users', methods=['POST'])
 @requires_auth
+@requires_permission('manage_users')
 def api_create_user():
     cfg = get_config_manager()
     data = request.json
