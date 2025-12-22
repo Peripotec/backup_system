@@ -44,9 +44,10 @@
             height: 100vh;
             background: var(--bg-sidebar);
             color: #f1f5f9;
-            padding-top: 1rem;
             z-index: 1000;
             transition: transform 0.3s;
+            display: flex;
+            flex-direction: column;
         }
 
         .sidebar-brand {
@@ -54,7 +55,23 @@
             font-size: 1.3rem;
             font-weight: 700;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            margin-bottom: 1rem;
+            flex-shrink: 0;
+        }
+
+        .sidebar-nav-wrapper {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 0.5rem 0;
+        }
+
+        .sidebar-nav-wrapper::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .sidebar-nav-wrapper::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
         }
 
         .sidebar-nav {
@@ -102,12 +119,10 @@
         }
 
         .sidebar-footer {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            padding: 1rem;
+            flex-shrink: 0;
+            padding: 0.75rem;
             border-top: 1px solid rgba(255, 255, 255, 0.1);
+            background: var(--bg-sidebar);
         }
 
         .user-info {
@@ -258,95 +273,98 @@
             🛡️ Backup System
         </a>
 
-        <ul class="sidebar-nav">
-            <div class="sidebar-section">Principal</div>
-            <li class="nav-item">
-                <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="/">
-                    <i class="bi bi-speedometer2"></i> Dashboard
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {% if '/files' in request.path %}active{% endif %}" href="/files">
-                    <i class="bi bi-folder"></i> Archivos
-                </a>
-            </li>
+        <div class="sidebar-nav-wrapper">
+            <ul class="sidebar-nav">
+                <div class="sidebar-section">Principal</div>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="/">
+                        <i class="bi bi-speedometer2"></i> Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if '/files' in request.path %}active{% endif %}" href="/files">
+                        <i class="bi bi-folder"></i> Archivos
+                    </a>
+                </li>
 
-            {% if has_permission('run_backup') or has_permission('view_inventory') %}
-            <div class="sidebar-section">Operaciones</div>
-            {% if has_permission('view_inventory') %}
-            <li class="nav-item">
-                <a class="nav-link {% if '/inventory/devices' in request.path %}active{% endif %}"
-                    href="/inventory/devices">
-                    <i class="bi bi-hdd-network"></i> Dispositivos
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {% if '/inventory/groups' in request.path %}active{% endif %}"
-                    href="/inventory/groups">
-                    <i class="bi bi-folder"></i> Grupos
-                </a>
-            </li>
-            {% endif %}
-            {% if has_permission('view_diff') %}
-            <li class="nav-item">
-                <a class="nav-link {% if '/diff' in request.path %}active{% endif %}" href="/diff">
-                    <i class="bi bi-file-diff"></i> Historial
-                </a>
-            </li>
-            {% endif %}
-            {% endif %}
+                {% if has_permission('run_backup') or has_permission('view_inventory') %}
+                <div class="sidebar-section">Operaciones</div>
+                {% if has_permission('view_inventory') %}
+                <li class="nav-item">
+                    <a class="nav-link {% if '/inventory/devices' in request.path %}active{% endif %}"
+                        href="/inventory/devices">
+                        <i class="bi bi-hdd-network"></i> Dispositivos
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if '/inventory/groups' in request.path %}active{% endif %}"
+                        href="/inventory/groups">
+                        <i class="bi bi-folder"></i> Grupos
+                    </a>
+                </li>
+                {% endif %}
+                {% if has_permission('view_diff') %}
+                <li class="nav-item">
+                    <a class="nav-link {% if '/diff' in request.path %}active{% endif %}" href="/diff">
+                        <i class="bi bi-file-diff"></i> Historial
+                    </a>
+                </li>
+                {% endif %}
+                {% endif %}
 
-            {% if has_permission('view_vault') or has_permission('view_settings') %}
-            <div class="sidebar-section">Administración</div>
-            {% if has_permission('view_vault') %}
-            <li class="nav-item">
-                <a class="nav-link {% if '/vault' in request.path %}active{% endif %}" href="/admin/vault">
-                    <i class="bi bi-key"></i> Vault
-                </a>
-            </li>
-            {% endif %}
-            {% if has_permission('view_settings') %}
-            <li class="nav-item">
-                <a class="nav-link {% if '/settings' in request.path %}active{% endif %}" href="/admin/settings">
-                    <i class="bi bi-gear"></i> Configuración
-                </a>
-            </li>
-            {% endif %}
-            {% if has_permission('manage_users') %}
-            <li class="nav-item">
-                <a class="nav-link {% if '/users' in request.path %}active{% endif %}" href="/admin/users">
-                    <i class="bi bi-people"></i> Usuarios
-                </a>
-            </li>
-            {% endif %}
-            {% if has_permission('manage_roles') %}
-            <li class="nav-item">
-                <a class="nav-link {% if '/roles' in request.path %}active{% endif %}" href="/admin/roles">
-                    <i class="bi bi-person-badge"></i> Roles
-                </a>
-            </li>
-            {% endif %}
-            {% endif %}
+                {% if has_permission('view_vault') or has_permission('view_settings') %}
+                <div class="sidebar-section">Administración</div>
+                {% if has_permission('view_vault') %}
+                <li class="nav-item">
+                    <a class="nav-link {% if '/vault' in request.path %}active{% endif %}" href="/admin/vault">
+                        <i class="bi bi-key"></i> Vault
+                    </a>
+                </li>
+                {% endif %}
+                {% if has_permission('view_settings') %}
+                <li class="nav-item">
+                    <a class="nav-link {% if '/settings' in request.path %}active{% endif %}" href="/admin/settings">
+                        <i class="bi bi-gear"></i> Configuración
+                    </a>
+                </li>
+                {% endif %}
+                {% if has_permission('manage_users') %}
+                <li class="nav-item">
+                    <a class="nav-link {% if '/users' in request.path %}active{% endif %}" href="/admin/users">
+                        <i class="bi bi-people"></i> Usuarios
+                    </a>
+                </li>
+                {% endif %}
+                {% if has_permission('manage_roles') %}
+                <li class="nav-item">
+                    <a class="nav-link {% if '/roles' in request.path %}active{% endif %}" href="/admin/roles">
+                        <i class="bi bi-person-badge"></i> Roles
+                    </a>
+                </li>
+                {% endif %}
+                {% endif %}
 
-            {% if has_permission('edit_inventory') %}
-            <div class="sidebar-section">Catálogos</div>
-            <li class="nav-item">
-                <a class="nav-link {% if '/tipos' in request.path %}active{% endif %}" href="/admin/tipos">
-                    <i class="bi bi-diagram-3"></i> Tipos
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {% if '/modelos' in request.path %}active{% endif %}" href="/admin/modelos">
-                    <i class="bi bi-cpu"></i> Modelos
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {% if '/localidades' in request.path %}active{% endif %}" href="/admin/localidades">
-                    <i class="bi bi-geo-alt"></i> Localidades
-                </a>
-            </li>
-            {% endif %}
-        </ul>
+                {% if has_permission('edit_inventory') %}
+                <div class="sidebar-section">Catálogos</div>
+                <li class="nav-item">
+                    <a class="nav-link {% if '/tipos' in request.path %}active{% endif %}" href="/admin/tipos">
+                        <i class="bi bi-diagram-3"></i> Tipos
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if '/modelos' in request.path %}active{% endif %}" href="/admin/modelos">
+                        <i class="bi bi-cpu"></i> Modelos
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if '/localidades' in request.path %}active{% endif %}"
+                        href="/admin/localidades">
+                        <i class="bi bi-geo-alt"></i> Localidades
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
 
         <!-- Sidebar Footer with User Info -->
         <div class="sidebar-footer">
