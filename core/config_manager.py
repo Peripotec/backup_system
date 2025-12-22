@@ -113,10 +113,10 @@ class ConfigManager:
         
         # Ensure default users exist (one per role for testing)
         default_users = [
-            ('admin', 'admin123', 'superadmin', 'admin@localhost'),
-            ('jefe', 'jefe123', 'admin', 'jefe@localhost'),
-            ('operador', 'oper123', 'operator', 'operador@localhost'),
-            ('visor', 'visor123', 'viewer', 'visor@localhost'),
+            ('superadmin', 'super123', 'superadmin', 'superadmin@localhost'),
+            ('admin', 'admin123', 'admin', 'admin@localhost'),
+            ('operator', 'oper123', 'operator', 'operator@localhost'),
+            ('viewer', 'viewer123', 'viewer', 'viewer@localhost'),
         ]
         for username, password, role, email in default_users:
             if not self.get_user(username):

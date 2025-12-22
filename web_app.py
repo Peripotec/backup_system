@@ -123,6 +123,7 @@ def logout():
 
 
 @app.route('/')
+@requires_auth
 def index():
     db = get_db()
     stats = db.get_stats_24h()
@@ -233,6 +234,7 @@ def update_backup_status(device_name, status, message=""):
     backup_status["progress"] = min(10 + (total * 10), 95)
 
 @app.route('/api/backup/trigger')
+@requires_auth
 def trigger_backup():
     """Trigger backup via GET request."""
     global backup_status
@@ -249,10 +251,12 @@ def trigger_backup():
     return jsonify({"status": "started", "message": f"Backup iniciado: {target}", "running": True})
 
 @app.route('/api/backup/status')
+@requires_auth
 def backup_status_api():
     return jsonify(backup_status)
 
 @app.route('/api/backup/cancel')
+@requires_auth
 def cancel_backup():
     """Cancel running backup."""
     global backup_status
@@ -792,14 +796,17 @@ def inventory():
 
 @app.route('/files')
 @app.route('/files/<path:subpath>')
+@requires_auth
 def files_browser(subpath=""):
     return render_template('files.html', current_path=subpath)
 
 @app.route('/diff/<vendor>/<hostname>')
+@requires_auth
 def diff_page(vendor, hostname):
     return render_template('diff.html', vendor=vendor, hostname=hostname)
 
 @app.route('/download/<path:filepath>')
+@requires_auth
 def download_file(filepath):
     safe_path = os.path.abspath(os.path.join(ARCHIVE_DIR, filepath))
     if not safe_path.startswith(os.path.abspath(ARCHIVE_DIR)):
