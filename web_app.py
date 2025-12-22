@@ -981,36 +981,56 @@ def api_stats_by_group():
 
 @app.route('/api/jobs')
 def api_jobs_paginated():
-    """Get paginated jobs list."""
+    """Get paginated jobs list with filters."""
     page = int(request.args.get('page', 1))
     per_page = int(request.args.get('per_page', 20))
-    offset = (page - 1) * per_page
     
+    # Filters
+    filters = {}
+    
+    # 1. Filter by status/vendor directly
+    status = request.args.get('status')
+    if status:
+        filters['status'] = status
+        
+    vendor = request.args.get('vendor')
+    if vendor:
+        filters['vendor'] = vendor.lower()
+        
+    # 2. Filter by localidad requires inventory lookup
+    localidad = request.args.get('localidad')
+    if localidad:
+        localidad = localidad.lower()
+        inv = load_inventory()
+        matching_hosts = []
+        for group in inv.get('groups', []):
+            for device in group.get('devices', []):
+                d_loc = (device.get('localidad') or '').lower()
+                if d_loc == localidad:
+                    matching_hosts.append(device.get('sysname') or device.get('hostname'))
+        
+        filters['hostname_in'] = matching_hosts
+
     db = get_db()
-    conn = db._get_connection()
-    cursor = conn.cursor()
     
-    # Get total count
-    cursor.execute('SELECT COUNT(*) FROM jobs')
-    total = cursor.fetchone()[0]
+    # Get total and jobs
+    total = db.get_jobs_count(filters)
+    raw_jobs = db.get_jobs(page, per_page, filters)
     
-    # Get page of jobs
-    cursor.execute('''
-        SELECT id, hostname, vendor, group_name, status, message, timestamp, duration_seconds, changed
-        FROM jobs 
-        ORDER BY timestamp DESC
-        LIMIT ? OFFSET ?
-    ''', (per_page, offset))
-    
+    # Format for API
     jobs = []
-    for row in cursor.fetchall():
+    for row in raw_jobs:
         jobs.append({
-            "id": row[0], "hostname": row[1], "vendor": row[2], "group_name": row[3],
-            "status": row[4], "message": row[5], "timestamp": row[6], 
-            "duration": row[7], "changed": row[8]
+            "id": row['id'], 
+            "hostname": row['hostname'], 
+            "vendor": row['vendor'], 
+            "group_name": row['group_name'],
+            "status": row['status'], 
+            "message": row['message'], 
+            "timestamp": row['timestamp'], 
+            "duration": row['duration_seconds'], 
+            "changed": row['changed']
         })
-    
-    conn.close()
     
     return jsonify({
         "jobs": jobs,

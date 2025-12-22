@@ -145,9 +145,35 @@
 
 <!-- Jobs Table -->
 <div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center py-2">
-        <span>📋 Últimas Ejecuciones</span>
-        <button class="btn btn-sm btn-outline-secondary" onclick="loadJobs(1)">🔄</button>
+    <div class="card-header py-2">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <span>📋 Últimas Ejecuciones</span>
+            <button class="btn btn-sm btn-outline-secondary" onclick="loadJobs(1)">🔄</button>
+        </div>
+        <!-- Jobs Filter Bar -->
+        <div class="row g-2">
+            <div class="col-md-3">
+                <select class="form-select form-select-sm" id="jobs-filter-localidad" onchange="loadJobs(1)">
+                    <option value="">📍 Todas las localidades</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select form-select-sm" id="jobs-filter-status" onchange="loadJobs(1)">
+                    <option value="">📊 Todos los estados</option>
+                    <option value="SUCCESS">✅ Exitosos</option>
+                    <option value="ERROR">❌ Fallidos</option>
+                    <option value="WARNING">⚠️ Advertencias</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select form-select-sm" id="jobs-filter-vendor" onchange="loadJobs(1)">
+                    <option value="">🏭 Todos los vendors</option>
+                </select>
+            </div>
+            <div class="col-md-3 text-end">
+                <small class="text-muted" id="jobs-total-count"></small>
+            </div>
+        </div>
     </div>
     <div class="card-body p-0">
         <table class="table table-striped table-hover table-sm mb-0">
@@ -418,8 +444,33 @@
 
     function addLog(t, m) { var p = document.getElementById('log-panel'); p.innerHTML += '<div class="log-' + t + '">' + m + '</div>'; p.scrollTop = p.scrollHeight; }
 
+    function populateJobsFilters() {
+        const localidades = new Set(), vendors = new Set();
+        document.querySelectorAll('.device-item').forEach(el => {
+            if (el.dataset.localidad) localidades.add(el.dataset.localidad);
+            if (el.dataset.vendor) vendors.add(el.dataset.vendor);
+        });
+
+        const selLoc = document.getElementById('jobs-filter-localidad');
+        selLoc.innerHTML = '<option value="">📍 Todas las localidades</option>';
+        [...localidades].sort().forEach(v => selLoc.innerHTML += '<option value="' + v + '">' + v.charAt(0).toUpperCase() + v.slice(1) + '</option>');
+
+        const selVendor = document.getElementById('jobs-filter-vendor');
+        selVendor.innerHTML = '<option value="">🏭 Todos los vendors</option>';
+        [...vendors].sort().forEach(v => selVendor.innerHTML += '<option value="' + v + '">' + v.charAt(0).toUpperCase() + v.slice(1) + '</option>');
+    }
+
     function loadJobs(page) {
-        fetch('/api/jobs?page=' + page + '&per_page=10').then(r => r.json()).then(data => {
+        let url = '/api/jobs?page=' + page + '&per_page=10';
+        const loc = document.getElementById('jobs-filter-localidad').value;
+        const status = document.getElementById('jobs-filter-status').value;
+        const vendor = document.getElementById('jobs-filter-vendor').value;
+
+        if (loc) url += '&localidad=' + encodeURIComponent(loc);
+        if (status) url += '&status=' + encodeURIComponent(status);
+        if (vendor) url += '&vendor=' + encodeURIComponent(vendor);
+
+        fetch(url).then(r => r.json()).then(data => {
             var tb = document.getElementById('jobs-table'); tb.innerHTML = '';
             data.jobs.forEach(j => {
                 var ts = j.timestamp ? j.timestamp.split('.')[0] : '';
@@ -427,6 +478,8 @@
                 tb.innerHTML += '<tr><td><small>' + ts + '</small></td><td><strong>' + j.hostname + '</strong></td><td><small>' + (j.group_name || '-') + '</small></td><td>' + st + '</td><td><small class="text-muted">' + (j.message || '').substring(0, 40) + '</small></td><td><a href="/files/' + j.hostname + '" class="btn btn-sm btn-outline-primary py-0">📁</a> <a href="/diff/' + j.vendor + '/' + j.hostname + '" class="btn btn-sm btn-outline-secondary py-0">📝</a> <button class="btn btn-sm btn-outline-success py-0" onclick="backupSingle(\'' + j.hostname + '\')">🔄</button></td></tr>';
             });
             document.getElementById('jobs-info').textContent = 'Pág ' + data.page + '/' + data.pages + ' (' + data.total + ')';
+            document.getElementById('jobs-total-count').textContent = data.total + ' registros';
+
             var pg = document.getElementById('pagination'); pg.innerHTML = '';
             if (data.page > 1) pg.innerHTML += '<li class="page-item"><a class="page-link" href="#" onclick="loadJobs(' + (data.page - 1) + ')">«</a></li>';
             for (var i = Math.max(1, data.page - 2); i <= Math.min(data.pages, data.page + 2); i++) pg.innerHTML += '<li class="page-item ' + (i === data.page ? 'active' : '') + '"><a class="page-link" href="#" onclick="loadJobs(' + i + ')">' + i + '</a></li>';
@@ -463,6 +516,7 @@
         }, 100);
     });
 
+    populateJobsFilters();
     loadJobs(1);
 </script>
 {% endblock %}

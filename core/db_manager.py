@@ -139,15 +139,66 @@ class DBManager:
         finally:
             conn.close()
 
-    def get_recent_jobs(self, limit=100):
-        """Used by Dashboard."""
+    def get_jobs(self, page=1, per_page=10, filters=None):
+        """Get jobs with pagination and filters."""
         conn = self._get_connection()
         conn.row_factory = sqlite3.Row
         try:
             cursor = conn.cursor()
-            cursor.execute('SELECT * FROM jobs ORDER BY id DESC LIMIT ?', (limit,))
+            query = "SELECT * FROM jobs WHERE 1=1"
+            params = []
+            
+            if filters:
+                if filters.get('status'):
+                    query += " AND status = ?"
+                    params.append(filters['status'])
+                if filters.get('vendor'):
+                    query += " AND vendor = ?"
+                    params.append(filters['vendor'])
+                if filters.get('hostname_in') is not None:
+                    # If list is empty but filter key exists, return no results
+                    if not filters['hostname_in']:
+                        query += " AND 1=0"
+                    else:
+                        placeholders = ','.join(['?'] * len(filters['hostname_in']))
+                        query += f" AND hostname IN ({placeholders})"
+                        params.extend(filters['hostname_in'])
+            
+            query += " ORDER BY id DESC LIMIT ? OFFSET ?"
+            params.extend([per_page, (page - 1) * per_page])
+            
+            cursor.execute(query, params)
             return [dict(row) for row in cursor.fetchall()]
         finally:
+            conn.close()
+
+    def get_jobs_count(self, filters=None):
+        """Get total count of jobs matching filters."""
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            query = "SELECT count(*) FROM jobs WHERE 1=1"
+            params = []
+            
+            if filters:
+                if filters.get('status'):
+                    query += " AND status = ?"
+                    params.append(filters['status'])
+                if filters.get('vendor'):
+                    query += " AND vendor = ?"
+                    params.append(filters['vendor'])
+                if filters.get('hostname_in') is not None:
+                    if not filters['hostname_in']:
+                        query += " AND 1=0"
+                    else:
+                        placeholders = ','.join(['?'] * len(filters['hostname_in']))
+                        query += f" AND hostname IN ({placeholders})"
+                        params.extend(filters['hostname_in'])
+
+            cursor.execute(query, params)
+            return cursor.fetchone()[0]
+        finally:
+            conn.close()
             conn.close()
 
     def get_stats_24h(self):
