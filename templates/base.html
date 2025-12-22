@@ -275,8 +275,22 @@
             <div class="sidebar-section">Operaciones</div>
             {% if has_permission('view_inventory') %}
             <li class="nav-item">
-                <a class="nav-link {% if '/inventory' in request.path %}active{% endif %}" href="/inventory">
-                    <i class="bi bi-hdd-network"></i> Inventario
+                <a class="nav-link {% if '/inventory' in request.path and 'devices' in request.path %}active{% endif %}"
+                    href="/inventory#tab-devices">
+                    <i class="bi bi-hdd-network"></i> Dispositivos
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if '/inventory' in request.path and 'groups' in request.path %}active{% endif %}"
+                    href="/inventory#tab-groups">
+                    <i class="bi bi-folder"></i> Grupos
+                </a>
+            </li>
+            {% endif %}
+            {% if has_permission('view_diff') %}
+            <li class="nav-item">
+                <a class="nav-link {% if '/diff' in request.path %}active{% endif %}" href="/diff">
+                    <i class="bi bi-file-diff"></i> Historial
                 </a>
             </li>
             {% endif %}
