@@ -481,6 +481,15 @@ def save_inventory(data):
     with open(INVENTORY_FILE, 'w') as f:
         yaml.dump(data, f, default_flow_style=False, allow_unicode=True)
 
+def load_catalogs():
+    """Load catalogs from database (localidades, tipos, modelos)."""
+    db = get_db()
+    return {
+        'localidades': db.get_localidades(),
+        'tipos': db.get_device_types(),
+        'modelos': db.get_device_models()
+    }
+
 @app.route('/api/inventory')
 @requires_auth
 def api_get_inventory():
