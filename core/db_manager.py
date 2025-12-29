@@ -1,6 +1,6 @@
 import sqlite3
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from settings import DB_FILE
 from core.logger import log
 
@@ -422,5 +422,22 @@ class DBManager:
             cursor.execute('DELETE FROM localidades WHERE id = ?', (loc_id,))
             conn.commit()
             return cursor.rowcount > 0
+        finally:
+            conn.close()
+
+    def delete_old_jobs(self, days):
+        """Delete jobs older than N days."""
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            limit_date = datetime.now() - timedelta(days=days)
+            cursor.execute("DELETE FROM jobs WHERE timestamp < ?", (limit_date,))
+            deleted = cursor.rowcount
+            conn.commit()
+            log.info(f"Deleted {deleted} old jobs from DB (older than {days} days)")
+            return deleted
+        except Exception as e:
+            log.error(f"Failed to delete old jobs: {e}")
+            return 0
         finally:
             conn.close()

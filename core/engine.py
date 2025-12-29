@@ -1,9 +1,12 @@
 import yaml
 import time
+import os
+import shutil
+from datetime import datetime
 import importlib
 import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor
-from settings import INVENTORY_FILE, MAX_WORKERS
+from settings import INVENTORY_FILE, MAX_WORKERS, ARCHIVE_DIR
 from core.logger import log
 from core.db_manager import DBManager
 from core.git_manager import GitManager
@@ -145,11 +148,36 @@ class BackupEngine:
             return {"status": "ERROR", "hostname": sysname, "error": str(e)}
 
 
+    def cleanup_old_backups(self, retention_days):
+        """Delete generic backups older than N days."""
+        log.info(f"Cleaning backups older than {retention_days} days...")
+        
+        # 1. DB Cleanup
+        self.db.delete_old_jobs(retention_days)
+        
+        # 2. File Cleanup
+        limit = time.time() - (retention_days * 86400)
+        count = 0
+        
+        # Walk ARCHIVE_DIR
+        for root, dirs, files in os.walk(ARCHIVE_DIR):
+            for f in files:
+                path = os.path.join(root, f)
+                try:
+                    mtime = os.path.getmtime(path)
+                    if mtime < limit:
+                        os.remove(path)
+                        count += 1
+                except Exception as e:
+                    log.error(f"Error cleaning {path}: {e}")
+        
+        log.info(f"Cleanup finished. Deleted {count} files.")
+
     def run(self, target_group=None, target_device=None):
         """
         Main runner. Spawns threads.
         target_group: filter by group name
-        target_device: filter by device hostname
+        target_device: filter by device hostname or sysname
         """
         log.info(f"Starting Backup Run (Dry Run={self.dry_run})")
         run_id = self.db.start_run()
@@ -170,9 +198,12 @@ class BackupEngine:
                     continue
 
                 for device in group['devices']:
-                    # Filter by specific device if requested
-                    if target_device and device['hostname'] != target_device:
-                        continue
+                    # Filter by specific device (sysname or hostname)
+                    if target_device:
+                        sysname = device.get('sysname')
+                        hostname = device.get('hostname')
+                        if target_device != sysname and target_device != hostname:
+                            continue
                     
                     # Device-specific credential_ids override group, but include group as fallback
                     device_cred_ids = device.get('credential_ids', [])
