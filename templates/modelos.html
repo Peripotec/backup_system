@@ -3,10 +3,19 @@
 
 {% block content %}
 <div class="card">
-    <div class="card-header bg-purple text-white d-flex justify-content-between align-items-center"
-        style="background: #6f42c1;">
+    <div class="card-header text-white d-flex justify-content-between align-items-center" style="background: #6f42c1;">
         <span><i class="bi bi-cpu"></i> Modelos de Dispositivo</span>
         <button class="btn btn-light btn-sm" onclick="openAddModal()">➕ Agregar Modelo</button>
+    </div>
+    <!-- Toolbar -->
+    <div class="d-flex gap-2 align-items-center p-2 bg-light border-bottom">
+        <select class="form-select form-select-sm" id="group-by" style="width:auto;" onchange="renderTable()">
+            <option value="vendor">Agrupar por: Vendor</option>
+            <option value="">Sin agrupar</option>
+        </select>
+        <input type="text" class="form-control form-control-sm" id="search-input" placeholder="🔍 Buscar modelo..."
+            style="max-width:220px;" onkeyup="renderTable()">
+        <small class="text-muted ms-auto" id="count-info"></small>
     </div>
     <div class="card-body p-0">
         <table class="table table-hover table-striped mb-0">
@@ -39,16 +48,24 @@
             <div class="modal-body">
                 <input type="hidden" id="edit-mode" value="add">
                 <input type="hidden" id="original-id" value="">
-                <div class="mb-3"><label class="form-label">ID *</label><input type="text" class="form-control"
-                        id="model-id" placeholder="s5720" required>
+                <div class="mb-3">
+                    <label class="form-label">ID *</label>
+                    <input type="text" class="form-control" id="model-id" placeholder="s5720" required>
                     <div class="form-text">Identificador único (minúsculas)</div>
                 </div>
-                <div class="mb-3"><label class="form-label">Nombre *</label><input type="text" class="form-control"
-                        id="model-name" placeholder="S5720-52X-SI" required></div>
-                <div class="mb-3"><label class="form-label">Vendor *</label><select class="form-select"
-                        id="model-vendor" required></select></div>
-                <div class="mb-3"><label class="form-label">Descripción</label><textarea class="form-control"
-                        id="model-desc" rows="2" placeholder="Switch 48 puertos GE + 4 SFP+"></textarea></div>
+                <div class="mb-3">
+                    <label class="form-label">Nombre *</label>
+                    <input type="text" class="form-control" id="model-name" placeholder="S5720-52X-SI" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Vendor *</label>
+                    <select class="form-select" id="model-vendor" required></select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Descripción</label>
+                    <textarea class="form-control" id="model-desc" rows="2"
+                        placeholder="Switch 48 puertos GE + 4 SFP+"></textarea>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -88,11 +105,55 @@
 
     function renderTable() {
         var tbody = document.getElementById('models-table');
-        tbody.innerHTML = '';
-        if (models.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No hay modelos. Agregue uno para comenzar.</td></tr>'; return; }
-        models.forEach(m => {
-            tbody.innerHTML += '<tr><td><code>' + m.id + '</code></td><td><strong>' + m.name + '</strong></td><td><span class="badge bg-primary">' + m.vendor + '</span></td><td><small class="text-muted">' + (m.description || '-') + '</small></td><td><span class="btn-action" style="cursor:pointer" onclick="openEditModal(\'' + m.id + '\')">✏️</span><span class="btn-action" style="cursor:pointer" onclick="deleteModel(\'' + m.id + '\')">🗑️</span></td></tr>';
+        var groupBy = document.getElementById('group-by').value;
+        var search = document.getElementById('search-input').value.toLowerCase();
+
+        // Filter
+        var filtered = models.filter(m => {
+            if (!search) return true;
+            return m.id.toLowerCase().includes(search) ||
+                m.name.toLowerCase().includes(search) ||
+                (m.vendor || '').toLowerCase().includes(search) ||
+                (m.description || '').toLowerCase().includes(search);
         });
+
+        tbody.innerHTML = '';
+        document.getElementById('count-info').textContent = filtered.length + ' modelos';
+
+        if (filtered.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No hay modelos que coincidan.</td></tr>';
+            return;
+        }
+
+        if (groupBy === 'vendor') {
+            // Group by vendor
+            var grouped = {};
+            filtered.forEach(m => {
+                var key = m.vendor || 'Sin vendor';
+                if (!grouped[key]) grouped[key] = [];
+                grouped[key].push(m);
+            });
+
+            Object.keys(grouped).sort().forEach(vendor => {
+                tbody.innerHTML += '<tr class="table-secondary"><td colspan="5"><strong>🏭 ' +
+                    vendor.charAt(0).toUpperCase() + vendor.slice(1) + '</strong> <span class="badge bg-secondary">' + grouped[vendor].length + '</span></td></tr>';
+                grouped[vendor].forEach(m => renderRow(tbody, m));
+            });
+        } else {
+            filtered.forEach(m => renderRow(tbody, m));
+        }
+    }
+
+    function renderRow(tbody, m) {
+        tbody.innerHTML += '<tr>' +
+            '<td><code>' + m.id + '</code></td>' +
+            '<td><strong>' + m.name + '</strong></td>' +
+            '<td><span class="badge bg-primary">' + m.vendor + '</span></td>' +
+            '<td><small class="text-muted">' + (m.description || '-') + '</small></td>' +
+            '<td>' +
+            '<span class="btn-action" style="cursor:pointer" onclick="openEditModal(\'' + m.id + '\')" title="Editar">✏️</span> ' +
+            '<span class="btn-action" style="cursor:pointer" onclick="deleteModel(\'' + m.id + '\')" title="Eliminar">🗑️</span>' +
+            '</td></tr>';
     }
 
     function openAddModal() {

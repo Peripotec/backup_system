@@ -107,27 +107,39 @@
                     </div>
                 </div>
             </div>
-            <!-- 24h Stats -->
+            <!-- 24h Stats - Clickable -->
             <div class="col-md-5 border-end">
                 <div class="row text-center">
                     <div class="col-6">
-                        <div class="stat-number text-success">{{ stats.get('SUCCESS', 0) }}</div>
-                        <small class="text-muted">✓ Exitosos (24h)</small>
+                        <a href="/devices" class="text-decoration-none" title="Ver todos los dispositivos">
+                            <div class="stat-number text-success" style="cursor:pointer;">{{ stats.get('SUCCESS', 0) }}
+                            </div>
+                            <small class="text-muted">✓ Exitosos (24h)</small>
+                        </a>
                     </div>
                     <div class="col-6">
-                        <div class="stat-number text-danger">{{ stats.get('ERROR', 0) }}</div>
-                        <small class="text-muted">✗ Fallidos (24h)</small>
+                        <a href="/devices?criticidad=alta" class="text-decoration-none"
+                            title="Ver dispositivos críticos">
+                            <div class="stat-number text-danger" style="cursor:pointer;">{{ stats.get('ERROR', 0) }}
+                            </div>
+                            <small class="text-muted">✗ Fallidos (24h)</small>
+                        </a>
                     </div>
                 </div>
             </div>
-            <!-- Pie Chart -->
+            <!-- Pie Chart + Quick Actions -->
             <div class="col-md-4">
                 <div class="d-flex align-items-center">
                     <div class="chart-container flex-grow-1"><canvas id="chartPie"></canvas></div>
                     <div class="ms-3">
-                        <small class="text-muted d-block">General</small>
-                        <small class="text-success">● OK</small><br>
-                        <small class="text-danger">● Error</small>
+                        <div class="btn-group-vertical btn-group-sm">
+                            <a href="/devices" class="btn btn-outline-primary" title="Administrar dispositivos">📱
+                                Dispositivos</a>
+                            <a href="/historial" class="btn btn-outline-secondary"
+                                title="Ver cambios de configuración">📜 Historial</a>
+                            <a href="/files" class="btn btn-outline-info" title="Explorar archivos de backup">📁
+                                Archivos</a>
+                        </div>
                     </div>
                 </div>
             </div>

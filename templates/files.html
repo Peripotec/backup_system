@@ -36,18 +36,33 @@
 <div class="row">
     <div class="col-md-4">
         <div class="card">
-            <div class="card-header bg-primary text-white"><i class="bi bi-folder"></i> Explorador</div>
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-folder"></i> Explorador</span>
+            </div>
             <div class="card-body p-2">
-                <div class="d-flex gap-2 mb-2">
-                    <select class="form-select form-select-sm w-auto" id="view-type" onchange="changeView()">
-                        <option value="physical">📂 Por Grupo</option>
-                        <option value="localidad">📍 Por Localidad</option>
-                        <option value="tipo">🏷️ Por Tipo</option>
-                        <option value="vendor">🏭 Por Vendor</option>
-                    </select>
-                    <input type="text" class="form-control form-control-sm" id="search-input" placeholder="🔍 Buscar..."
-                        onkeyup="filterFiles()">
+                <!-- Tabs de vista -->
+                <div class="btn-group btn-group-sm w-100 mb-2" role="group">
+                    <input type="radio" class="btn-check" name="view-type" id="view-physical" value="physical" checked
+                        onchange="changeView()">
+                    <label class="btn btn-outline-primary" for="view-physical" title="Por Grupo">📂 Grupo</label>
+
+                    <input type="radio" class="btn-check" name="view-type" id="view-localidad" value="localidad"
+                        onchange="changeView()">
+                    <label class="btn btn-outline-primary" for="view-localidad" title="Por Localidad">📍
+                        Localidad</label>
+
+                    <input type="radio" class="btn-check" name="view-type" id="view-tipo" value="tipo"
+                        onchange="changeView()">
+                    <label class="btn btn-outline-primary" for="view-tipo" title="Por Tipo">🏷️ Tipo</label>
+
+                    <input type="radio" class="btn-check" name="view-type" id="view-vendor" value="vendor"
+                        onchange="changeView()">
+                    <label class="btn btn-outline-primary" for="view-vendor" title="Por Vendor">🏭 Vendor</label>
                 </div>
+
+                <input type="text" class="form-control form-control-sm mb-2" id="search-input"
+                    placeholder="🔍 Buscar archivo..." onkeyup="filterFiles()">
+
                 <nav>
                     <ol class="breadcrumb bg-light p-2 rounded mb-0" id="breadcrumb">
                         <li class="breadcrumb-item"><a href="#" onclick="loadFiles('')">root</a></li>
@@ -105,8 +120,13 @@
         loadFiles('');
     }
 
+    function getViewType() {
+        var checked = document.querySelector('input[name="view-type"]:checked');
+        return checked ? checked.value : 'physical';
+    }
+
     function updateBreadcrumb(path) {
-        const view = document.getElementById('view-type').value;
+        const view = getViewType();
         const rootLabel = view === 'physical' ? 'archive' : view;
 
         var html = '<li class="breadcrumb-item"><a href="#" onclick="loadFiles(\'\')">' + rootLabel + '</a></li>';
@@ -128,7 +148,7 @@
         updateBreadcrumb(path);
         document.getElementById('search-input').value = '';
 
-        const view = document.getElementById('view-type').value;
+        const view = getViewType();
         var url = path ? '/api/files/list/' + path : '/api/files/list';
         url += '?view=' + view;
 

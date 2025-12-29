@@ -3,8 +3,16 @@
 
 {% block content %}
 <div class="card">
-    <div class="card-header bg-secondary text-white">
+    <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
         <span><i class="bi bi-file-diff"></i> Historial de Cambios</span>
+        <select class="form-select form-select-sm" id="group-by" style="width: auto;">
+            <option value="vendor">Agrupar por: Vendor</option>
+            <option value="group">Agrupar por: Grupo</option>
+            <option value="localidad">Agrupar por: Localidad</option>
+            <option value="troncal">Agrupar por: Troncal</option>
+            <option value="tipo">Agrupar por: Tipo</option>
+            <option value="criticidad">Agrupar por: Criticidad</option>
+        </select>
     </div>
     <!-- Filter Bar Container -->
     <div id="filter-bar-container"></div>
@@ -14,8 +22,10 @@
                 <tr>
                     <th>Dispositivo</th>
                     <th>IP</th>
-                    <th>Grupo</th>
-                    <th>Vendor</th>
+                    <th>📍 Ubicación</th>
+                    <th>🔗 Troncal</th>
+                    <th>Equipo</th>
+                    <th>Criticidad</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
@@ -31,8 +41,8 @@
 </div>
 
 <div class="alert alert-info mt-3">
-    <strong>💡 Tip:</strong> El historial muestra los cambios entre versiones de configuración capturadas por el sistema
-    de backup.
+    <strong>💡 Tip:</strong> El historial muestra los cambios entre versiones de configuración. Haz click en un
+    dispositivo para ver su diff.
 </div>
 {% endblock %}
 
@@ -50,11 +60,21 @@
         filterBar = new FilterBar({
             container: '#filter-bar-container',
             filters: [
+                { id: 'localidad', label: '📍 Localidad', type: 'select', options: 'dynamic' },
+                { id: 'troncal', label: '🔗 Troncal', type: 'select', options: 'dynamic' },
+                { id: 'tipo', label: '🏷️ Tipo', type: 'select', options: 'dynamic' },
                 { id: 'vendor', label: '🏭 Vendor', type: 'select', options: 'dynamic' },
-                { id: 'grupo', label: '📁 Grupo', type: 'select', options: 'dynamic' }
+                { id: 'grupo', label: '📁 Grupo', type: 'select', options: 'dynamic' },
+                {
+                    id: 'criticidad', label: '⚠️ Criticidad', type: 'select', options: [
+                        { value: 'alta', label: '🔴 Alta' },
+                        { value: 'media', label: '🟡 Media' },
+                        { value: 'baja', label: '🟢 Baja' }
+                    ]
+                }
             ],
             searchEnabled: true,
-            searchPlaceholder: '🔍 Buscar dispositivo...',
+            searchPlaceholder: '🔍 Buscar en todo...',
             onFilter: function (filters) {
                 currentPage = 1;
                 loadDevices();
@@ -63,23 +83,34 @@
 
         // Load filter options
         fetch('/api/filter-options').then(r => r.json()).then(opts => {
+            filterBar.populateFilter('localidad', opts.localidades);
+            filterBar.populateFilter('troncal', opts.troncales);
+            filterBar.populateFilter('tipo', opts.tipos);
             filterBar.populateFilter('vendor', opts.vendors);
             filterBar.populateFilter('grupo', opts.grupos);
+            loadDevices();
+        });
+
+        // Group by change
+        document.getElementById('group-by').addEventListener('change', function () {
+            currentPage = 1;
             loadDevices();
         });
     }
 
     function loadDevices(page) {
-        if (page) currentPage = page;
+        if (typeof page === 'number') currentPage = page;
+        else if (page instanceof Event) currentPage = 1;
 
-        var params = filterBar.buildQueryString({ page: currentPage, per_page: 50, group_by: 'vendor' });
+        var groupBy = document.getElementById('group-by').value;
+        var params = filterBar.buildQueryString({ page: currentPage, per_page: 50, group_by: groupBy });
 
         fetch('/api/devices?' + params).then(r => r.json()).then(data => {
             renderTable(data);
             renderPagination(data);
             filterBar.updateCount(data.total);
             document.getElementById('devices-info').textContent =
-                'Mostrando ' + data.devices.length + ' de ' + data.total + ' dispositivos';
+                'Mostrando ' + data.devices.length + ' de ' + data.total + ' (Pág ' + data.page + '/' + data.pages + ')';
         });
     }
 
@@ -88,20 +119,68 @@
         tbody.innerHTML = '';
 
         if (data.total === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No se encontraron dispositivos.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No se encontraron dispositivos con historial.</td></tr>';
             return;
         }
 
-        data.devices.forEach(d => {
-            var sysname = d.sysname || d.hostname;
-            tbody.innerHTML += '<tr>' +
-                '<td><strong>' + sysname + '</strong></td>' +
-                '<td><code>' + d.ip + '</code></td>' +
-                '<td><span class="badge bg-info">' + d.group_name + '</span></td>' +
-                '<td>' + d.vendor + '</td>' +
-                '<td><a href="/diff/' + d.vendor + '/' + sysname + '" class="btn btn-sm btn-outline-primary" title="Ver historial">' +
-                '<i class="bi bi-file-diff"></i> Ver Diff</a></td>' +
-                '</tr>';
+        // Render grouped
+        Object.keys(data.grouped).sort().forEach(key => {
+            var devices = data.grouped[key];
+            tbody.innerHTML += '<tr class="table-secondary"><td colspan="7"><strong>' +
+                key.charAt(0).toUpperCase() + key.slice(1) + '</strong> ' +
+                '<span class="badge bg-secondary">' + devices.length + '</span></td></tr>';
+
+            devices.forEach(d => {
+                var sysname = d.sysname || d.hostname;
+                var nombre = d.nombre || sysname;
+                var sysnameSecondary = d.nombre ? '<br><small class="text-muted">' + sysname + '</small>' : '';
+
+                // Criticidad badge
+                var critBadge = '';
+                if (d.criticidad === 'alta') critBadge = '<span class="badge bg-danger">🔴 Alta</span>';
+                else if (d.criticidad === 'media') critBadge = '<span class="badge bg-warning text-dark">🟡 Media</span>';
+                else if (d.criticidad === 'baja') critBadge = '<span class="badge bg-success">🟢 Baja</span>';
+
+                // Location badges
+                var locBadge = d.localidad ?
+                    '<span class="badge bg-info clickable-badge" onclick="quickFilter(\'localidad\', \'' + d.localidad + '\')" title="Filtrar">📍' + d.localidad + '</span>' : '';
+
+                var tronBadge = d.troncal ?
+                    '<span class="badge bg-primary clickable-badge" onclick="quickFilter(\'troncal\', \'' + d.troncal + '\')" title="Filtrar">🔗' + d.troncal + '</span>' :
+                    '<span class="text-muted">-</span>';
+
+                var vendorBadge = '<span class="badge bg-secondary clickable-badge" onclick="quickFilter(\'vendor\', \'' + d.vendor + '\')" title="Filtrar">🏭' + d.vendor + '</span>';
+                var tipoBadge = d.tipo ? '<br><span class="badge bg-light text-dark">' + d.tipo + '</span>' : '';
+
+                tbody.innerHTML += '<tr>' +
+                    '<td><a href="/diff/' + d.vendor + '/' + sysname + '" class="text-decoration-none"><strong>' + nombre + '</strong></a>' + sysnameSecondary + '</td>' +
+                    '<td><code class="clickable-ip" onclick="copyToClipboard(\'' + d.ip + '\')" title="Click para copiar">' + d.ip + '</code></td>' +
+                    '<td>' + locBadge + '</td>' +
+                    '<td>' + tronBadge + '</td>' +
+                    '<td>' + vendorBadge + tipoBadge + '</td>' +
+                    '<td class="text-center">' + critBadge + '</td>' +
+                    '<td><a href="/diff/' + d.vendor + '/' + sysname + '" class="btn btn-sm btn-outline-primary" title="Ver historial">' +
+                    '<i class="bi bi-file-diff"></i> Ver Diff</a></td>' +
+                    '</tr>';
+            });
+        });
+    }
+
+    function quickFilter(field, value) {
+        filterBar.setFilter(field, value);
+        loadDevices();
+    }
+
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(() => {
+            var el = event.target;
+            var original = el.textContent;
+            el.textContent = '✓ Copiado';
+            el.classList.add('text-success');
+            setTimeout(() => {
+                el.textContent = original;
+                el.classList.remove('text-success');
+            }, 1000);
         });
     }
 

@@ -7,6 +7,12 @@
         <span><i class="bi bi-diagram-3"></i> Tipos de Dispositivo</span>
         <button class="btn btn-light btn-sm" onclick="openAddModal()">➕ Agregar Tipo</button>
     </div>
+    <!-- Toolbar -->
+    <div class="d-flex gap-2 align-items-center p-2 bg-light border-bottom">
+        <input type="text" class="form-control form-control-sm" id="search-input" placeholder="🔍 Buscar tipo..."
+            style="max-width:250px;" onkeyup="renderTable()">
+        <small class="text-muted ms-auto" id="count-info"></small>
+    </div>
     <div class="card-body p-0">
         <table class="table table-hover table-striped mb-0">
             <thead class="table-dark">
@@ -37,14 +43,20 @@
             <div class="modal-body">
                 <input type="hidden" id="edit-mode" value="add">
                 <input type="hidden" id="original-id" value="">
-                <div class="mb-3"><label class="form-label">ID *</label><input type="text" class="form-control"
-                        id="type-id" placeholder="switch" required>
+                <div class="mb-3">
+                    <label class="form-label">ID *</label>
+                    <input type="text" class="form-control" id="type-id" placeholder="switch" required>
                     <div class="form-text">Identificador único (minúsculas, sin espacios)</div>
                 </div>
-                <div class="mb-3"><label class="form-label">Nombre *</label><input type="text" class="form-control"
-                        id="type-name" placeholder="Switch" required></div>
-                <div class="mb-3"><label class="form-label">Descripción</label><textarea class="form-control"
-                        id="type-desc" rows="2" placeholder="Conmutadores de capa 2/3"></textarea></div>
+                <div class="mb-3">
+                    <label class="form-label">Nombre *</label>
+                    <input type="text" class="form-control" id="type-name" placeholder="Switch" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Descripción</label>
+                    <textarea class="form-control" id="type-desc" rows="2"
+                        placeholder="Conmutadores de capa 2/3"></textarea>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -74,10 +86,33 @@
 
     function renderTable() {
         var tbody = document.getElementById('types-table');
+        var search = document.getElementById('search-input').value.toLowerCase();
+
+        // Filter
+        var filtered = types.filter(t => {
+            if (!search) return true;
+            return t.id.toLowerCase().includes(search) ||
+                t.name.toLowerCase().includes(search) ||
+                (t.description || '').toLowerCase().includes(search);
+        });
+
         tbody.innerHTML = '';
-        if (types.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No hay tipos. Agregue uno para comenzar.</td></tr>'; return; }
-        types.forEach(t => {
-            tbody.innerHTML += '<tr><td><code>' + t.id + '</code></td><td><strong>' + t.name + '</strong></td><td><small class="text-muted">' + (t.description || '-') + '</small></td><td><span class="btn-action" style="cursor:pointer" onclick="openEditModal(\'' + t.id + '\')">✏️</span><span class="btn-action" style="cursor:pointer" onclick="deleteType(\'' + t.id + '\')">🗑️</span></td></tr>';
+        document.getElementById('count-info').textContent = filtered.length + ' tipos';
+
+        if (filtered.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No hay tipos que coincidan.</td></tr>';
+            return;
+        }
+
+        filtered.forEach(t => {
+            tbody.innerHTML += '<tr>' +
+                '<td><code>' + t.id + '</code></td>' +
+                '<td><strong>' + t.name + '</strong></td>' +
+                '<td><small class="text-muted">' + (t.description || '-') + '</small></td>' +
+                '<td>' +
+                '<span class="btn-action" style="cursor:pointer" onclick="openEditModal(\'' + t.id + '\')" title="Editar">✏️</span> ' +
+                '<span class="btn-action" style="cursor:pointer" onclick="deleteType(\'' + t.id + '\')" title="Eliminar">🗑️</span>' +
+                '</td></tr>';
         });
     }
 

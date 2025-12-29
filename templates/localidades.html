@@ -7,13 +7,23 @@
         <span><i class="bi bi-geo-alt"></i> Localidades</span>
         <button class="btn btn-light btn-sm" onclick="openAddModal()">➕ Agregar Localidad</button>
     </div>
+    <!-- Toolbar -->
+    <div class="d-flex gap-2 align-items-center p-2 bg-light border-bottom">
+        <select class="form-select form-select-sm" id="group-by" style="width:auto;" onchange="renderTable()">
+            <option value="zona">Agrupar por: Zona (Troncal)</option>
+            <option value="">Sin agrupar</option>
+        </select>
+        <input type="text" class="form-control form-control-sm" id="search-input" placeholder="🔍 Buscar localidad..."
+            style="max-width:220px;" onkeyup="renderTable()">
+        <small class="text-muted ms-auto" id="count-info"></small>
+    </div>
     <div class="card-body p-0">
         <table class="table table-hover table-striped mb-0">
             <thead class="table-dark">
                 <tr>
                     <th>ID</th>
                     <th>Nombre</th>
-                    <th>Zona</th>
+                    <th>Zona (Troncal)</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
@@ -23,8 +33,8 @@
 </div>
 
 <div class="alert alert-info mt-3">
-    <strong>💡 Tip:</strong> Las localidades permiten organizar dispositivos por ubicación geográfica. Las zonas
-    (Troncal Norte/Sur/Este/Oeste) agrupan localidades.
+    <strong>💡 Tip:</strong> Las localidades organizan dispositivos por ubicación geográfica.
+    La <strong>Zona</strong> actúa como <strong>Troncal</strong> - los dispositivos heredan el troncal de su localidad.
 </div>
 
 <!-- Modal -->
@@ -38,14 +48,20 @@
             <div class="modal-body">
                 <input type="hidden" id="edit-mode" value="add">
                 <input type="hidden" id="original-id" value="">
-                <div class="mb-3"><label class="form-label">ID *</label><input type="text" class="form-control"
-                        id="loc-id" placeholder="rafaela" required>
-                    <div class="form-text">Identificador único (minúsculas)</div>
+                <div class="mb-3">
+                    <label class="form-label">ID *</label>
+                    <input type="text" class="form-control" id="loc-id" placeholder="rafaela" required>
+                    <div class="form-text">Identificador único (minúsculas, sin espacios)</div>
                 </div>
-                <div class="mb-3"><label class="form-label">Nombre *</label><input type="text" class="form-control"
-                        id="loc-name" placeholder="Rafaela" required></div>
-                <div class="mb-3"><label class="form-label">Zona</label><select class="form-select"
-                        id="loc-zona"></select></div>
+                <div class="mb-3">
+                    <label class="form-label">Nombre *</label>
+                    <input type="text" class="form-control" id="loc-name" placeholder="Rafaela" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Zona (Troncal) *</label>
+                    <select class="form-select" id="loc-zona"></select>
+                    <div class="form-text">Los dispositivos de esta localidad heredarán este troncal</div>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -84,12 +100,54 @@
 
     function renderTable() {
         var tbody = document.getElementById('loc-table');
-        tbody.innerHTML = '';
-        if (localidades.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No hay localidades. Agregue una para comenzar.</td></tr>'; return; }
-        localidades.forEach(l => {
-            var zonaBadge = l.zona ? '<span class="badge bg-primary">' + l.zona + '</span>' : '<span class="text-muted">-</span>';
-            tbody.innerHTML += '<tr><td><code>' + l.id + '</code></td><td><strong>' + l.name + '</strong></td><td>' + zonaBadge + '</td><td><span class="btn-action" style="cursor:pointer" onclick="openEditModal(\'' + l.id + '\')">✏️</span><span class="btn-action" style="cursor:pointer" onclick="deleteLoc(\'' + l.id + '\')">🗑️</span></td></tr>';
+        var groupBy = document.getElementById('group-by').value;
+        var search = document.getElementById('search-input').value.toLowerCase();
+
+        // Filter
+        var filtered = localidades.filter(l => {
+            if (!search) return true;
+            return l.id.toLowerCase().includes(search) ||
+                l.name.toLowerCase().includes(search) ||
+                (l.zona || '').toLowerCase().includes(search);
         });
+
+        tbody.innerHTML = '';
+        document.getElementById('count-info').textContent = filtered.length + ' localidades';
+
+        if (filtered.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No hay localidades que coincidan.</td></tr>';
+            return;
+        }
+
+        if (groupBy === 'zona') {
+            // Group by zona
+            var grouped = {};
+            filtered.forEach(l => {
+                var key = l.zona || 'Sin zona';
+                if (!grouped[key]) grouped[key] = [];
+                grouped[key].push(l);
+            });
+
+            Object.keys(grouped).sort().forEach(zona => {
+                tbody.innerHTML += '<tr class="table-secondary"><td colspan="4"><strong>🔗 ' +
+                    zona + '</strong> <span class="badge bg-secondary">' + grouped[zona].length + '</span></td></tr>';
+                grouped[zona].forEach(l => renderRow(tbody, l));
+            });
+        } else {
+            filtered.forEach(l => renderRow(tbody, l));
+        }
+    }
+
+    function renderRow(tbody, l) {
+        var zonaBadge = l.zona ? '<span class="badge bg-primary">🔗 ' + l.zona + '</span>' : '<span class="text-muted">-</span>';
+        tbody.innerHTML += '<tr>' +
+            '<td><code>' + l.id + '</code></td>' +
+            '<td><strong>' + l.name + '</strong></td>' +
+            '<td>' + zonaBadge + '</td>' +
+            '<td>' +
+            '<span class="btn-action" style="cursor:pointer" onclick="openEditModal(\'' + l.id + '\')" title="Editar">✏️</span> ' +
+            '<span class="btn-action" style="cursor:pointer" onclick="deleteLoc(\'' + l.id + '\')" title="Eliminar">🗑️</span>' +
+            '</td></tr>';
     }
 
     function openAddModal() {

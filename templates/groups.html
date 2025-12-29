@@ -16,8 +16,12 @@
         <span><i class="bi bi-folder"></i> Grupos de Equipos</span>
         <button class="btn btn-light btn-sm" onclick="openAddGroupModal()">➕ Agregar Grupo</button>
     </div>
-    <!-- Filter Bar Container -->
-    <div id="filter-bar-container"></div>
+    <!-- Toolbar simple -->
+    <div class="d-flex gap-2 align-items-center p-2 bg-light border-bottom">
+        <input type="text" class="form-control form-control-sm" id="search-input" placeholder="🔍 Buscar grupo..."
+            style="max-width:250px;" onkeyup="renderGroups()">
+        <small class="text-muted ms-auto" id="count-info"></small>
+    </div>
     <div class="card-body p-0">
         <table class="table table-hover table-striped mb-0">
             <thead class="table-dark">
@@ -83,12 +87,10 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/filter-bar.js"></script>
 <script>
     var inventory = {{ inventory | tojson | safe }};
     var vendors = [], vaultCredentials = [];
     var groupModal;
-    var filterBar;
 
     document.addEventListener('DOMContentLoaded', function () {
         groupModal = new bootstrap.Modal(document.getElementById('groupModal'));
@@ -97,24 +99,8 @@
     });
 
     function initFilterBar() {
-        filterBar = new FilterBar({
-            container: '#filter-bar-container',
-            filters: [
-                { id: 'vendor', label: '🏭 Vendor', type: 'select', options: 'dynamic' }
-            ],
-            searchEnabled: true,
-            searchPlaceholder: '🔍 Buscar grupo...',
-            onFilter: function (filters) {
-                renderGroups(filters);
-            }
-        });
-
-        // Populate vendor filter
-        var vendorSet = new Set();
-        inventory.groups.forEach(g => vendorSet.add(g.vendor));
-        filterBar.populateFilter('vendor', Array.from(vendorSet).sort());
-
-        renderGroups({});
+        // Simple search - no full FilterBar needed for groups
+        renderGroups();
     }
 
     function loadVendors() {
@@ -125,36 +111,43 @@
         });
     }
 
-    function renderGroups(filters) {
-        filters = filters || {};
+    function renderGroups() {
         var tbody = document.getElementById('group-table');
+        var search = (document.getElementById('search-input') ? document.getElementById('search-input').value : '').toLowerCase();
         tbody.innerHTML = '';
 
         if (!inventory.groups || inventory.groups.length === 0) {
             tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No hay grupos. Cree uno para comenzar.</td></tr>';
-            filterBar.updateCount(0);
+            document.getElementById('count-info').textContent = '0 grupos';
             return;
         }
 
         var filtered = inventory.groups.filter(g => {
-            if (filters.vendor && g.vendor.toLowerCase() !== filters.vendor.toLowerCase()) return false;
-            if (filters.search && !g.name.toLowerCase().includes(filters.search.toLowerCase())) return false;
-            return true;
+            if (!search) return true;
+            return g.name.toLowerCase().includes(search) ||
+                g.vendor.toLowerCase().includes(search);
         });
+
+        document.getElementById('count-info').textContent = filtered.length + ' de ' + inventory.groups.length + ' grupos';
 
         if (filtered.length === 0) {
             tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No se encontraron grupos.</td></tr>';
-            filterBar.updateCount(0, inventory.groups.length);
             return;
         }
 
         filtered.forEach(g => {
             var dc = g.devices ? g.devices.length : 0;
             var creds = g.credential_ids ? g.credential_ids.join(', ') : '-';
-            tbody.innerHTML += '<tr><td><strong>' + g.name + '</strong></td><td><span class="badge bg-primary">' + g.vendor + '</span></td><td><small>' + creds + '</small></td><td>' + dc + '</td><td><span class="btn-action" onclick="openEditGroupModal(\'' + g.name + '\')">✏️</span><span class="btn-action" onclick="deleteGroup(\'' + g.name + '\')">🗑️</span></td></tr>';
+            tbody.innerHTML += '<tr>' +
+                '<td><strong>' + g.name + '</strong></td>' +
+                '<td><span class="badge bg-primary">' + g.vendor + '</span></td>' +
+                '<td><small>' + creds + '</small></td>' +
+                '<td><span class="badge bg-secondary">' + dc + '</span></td>' +
+                '<td>' +
+                '<span class="btn-action" onclick="openEditGroupModal(\'' + g.name + '\')" title="Editar">✏️</span>' +
+                '<span class="btn-action" onclick="deleteGroup(\'' + g.name + '\')" title="Eliminar">🗑️</span>' +
+                '</td></tr>';
         });
-
-        filterBar.updateCount(filtered.length, inventory.groups.length);
     }
 
     function loadVaultCredentials() { return fetch('/api/vault').then(r => r.json()).then(data => { vaultCredentials = data; return data; }); }
