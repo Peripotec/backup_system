@@ -3,11 +3,11 @@
 
 {% block content %}
 <div class="card">
-    <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+    <div class="card-header bg-secondary text-white">
         <span><i class="bi bi-file-diff"></i> Historial de Cambios</span>
-        <input type="text" class="form-control form-control-sm w-25" id="device-search"
-            placeholder="🔍 Buscar dispositivo..." onkeyup="filterDevices()">
     </div>
+    <!-- Filter Bar Container -->
+    <div id="filter-bar-container"></div>
     <div class="card-body p-0">
         <table class="table table-hover table-striped mb-0">
             <thead class="table-dark">
@@ -19,27 +19,14 @@
                     <th>Acciones</th>
                 </tr>
             </thead>
-            <tbody id="devices-table">
-                {% for device in devices %}
-                <tr class="device-row" data-name="{{ device.hostname|lower }}">
-                    <td><strong>{{ device.hostname }}</strong></td>
-                    <td><code>{{ device.ip }}</code></td>
-                    <td><span class="badge bg-info">{{ device.group }}</span></td>
-                    <td>{{ device.vendor }}</td>
-                    <td>
-                        <a href="/diff/{{ device.vendor }}/{{ device.hostname }}" class="btn btn-sm btn-outline-primary"
-                            title="Ver historial">
-                            <i class="bi bi-file-diff"></i> Ver Diff
-                        </a>
-                    </td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="5" class="text-center text-muted">No hay dispositivos en el inventario.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
+            <tbody id="devices-table"></tbody>
         </table>
+    </div>
+    <div class="card-footer d-flex justify-content-between align-items-center py-2">
+        <small id="devices-info" class="text-muted">Cargando...</small>
+        <nav>
+            <ul class="pagination pagination-sm mb-0" id="pagination"></ul>
+        </nav>
     </div>
 </div>
 
@@ -50,12 +37,87 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="/static/js/filter-bar.js"></script>
 <script>
-    function filterDevices() {
-        var q = document.getElementById('device-search').value.toLowerCase();
-        document.querySelectorAll('.device-row').forEach(function (row) {
-            row.style.display = row.dataset.name.includes(q) ? '' : 'none';
+    var filterBar;
+    var currentPage = 1;
+
+    document.addEventListener('DOMContentLoaded', function () {
+        initFilterBar();
+    });
+
+    function initFilterBar() {
+        filterBar = new FilterBar({
+            container: '#filter-bar-container',
+            filters: [
+                { id: 'vendor', label: '🏭 Vendor', type: 'select', options: 'dynamic' },
+                { id: 'grupo', label: '📁 Grupo', type: 'select', options: 'dynamic' }
+            ],
+            searchEnabled: true,
+            searchPlaceholder: '🔍 Buscar dispositivo...',
+            onFilter: function (filters) {
+                currentPage = 1;
+                loadDevices();
+            }
         });
+
+        // Load filter options
+        fetch('/api/filter-options').then(r => r.json()).then(opts => {
+            filterBar.populateFilter('vendor', opts.vendors);
+            filterBar.populateFilter('grupo', opts.grupos);
+            loadDevices();
+        });
+    }
+
+    function loadDevices(page) {
+        if (page) currentPage = page;
+
+        var params = filterBar.buildQueryString({ page: currentPage, per_page: 50, group_by: 'vendor' });
+
+        fetch('/api/devices?' + params).then(r => r.json()).then(data => {
+            renderTable(data);
+            renderPagination(data);
+            filterBar.updateCount(data.total);
+            document.getElementById('devices-info').textContent =
+                'Mostrando ' + data.devices.length + ' de ' + data.total + ' dispositivos';
+        });
+    }
+
+    function renderTable(data) {
+        var tbody = document.getElementById('devices-table');
+        tbody.innerHTML = '';
+
+        if (data.total === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No se encontraron dispositivos.</td></tr>';
+            return;
+        }
+
+        data.devices.forEach(d => {
+            var sysname = d.sysname || d.hostname;
+            tbody.innerHTML += '<tr>' +
+                '<td><strong>' + sysname + '</strong></td>' +
+                '<td><code>' + d.ip + '</code></td>' +
+                '<td><span class="badge bg-info">' + d.group_name + '</span></td>' +
+                '<td>' + d.vendor + '</td>' +
+                '<td><a href="/diff/' + d.vendor + '/' + sysname + '" class="btn btn-sm btn-outline-primary" title="Ver historial">' +
+                '<i class="bi bi-file-diff"></i> Ver Diff</a></td>' +
+                '</tr>';
+        });
+    }
+
+    function renderPagination(data) {
+        var pg = document.getElementById('pagination');
+        pg.innerHTML = '';
+        if (data.pages <= 1) return;
+
+        if (data.page > 1)
+            pg.innerHTML += '<li class="page-item"><a class="page-link" href="#" onclick="loadDevices(' + (data.page - 1) + ')">«</a></li>';
+
+        for (var i = Math.max(1, data.page - 2); i <= Math.min(data.pages, data.page + 2); i++)
+            pg.innerHTML += '<li class="page-item ' + (i === data.page ? 'active' : '') + '"><a class="page-link" href="#" onclick="loadDevices(' + i + ')">' + i + '</a></li>';
+
+        if (data.page < data.pages)
+            pg.innerHTML += '<li class="page-item"><a class="page-link" href="#" onclick="loadDevices(' + (data.page + 1) + ')">»</a></li>';
     }
 </script>
 {% endblock %}

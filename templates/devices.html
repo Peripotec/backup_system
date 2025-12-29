@@ -79,7 +79,7 @@
     <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
         <span><i class="bi bi-hdd-network"></i> Dispositivos Registrados</span>
         <div class="d-flex gap-2">
-            <select class="form-select form-select-sm" id="group-by" onchange="renderDevices()" style="width: auto;">
+            <select class="form-select form-select-sm" id="group-by" style="width: auto;">
                 <option value="group">Agrupar por: Grupo</option>
                 <option value="localidad">Agrupar por: Localidad</option>
                 <option value="tipo">Agrupar por: Tipo</option>
@@ -89,6 +89,8 @@
             <button class="btn btn-light btn-sm" onclick="openAddDeviceModal()">➕ Agregar Dispositivo</button>
         </div>
     </div>
+    <!-- Filter Bar Container -->
+    <div id="filter-bar-container"></div>
     <div class="card-body p-0">
         <table class="table table-hover table-striped mb-0">
             <thead class="table-dark">
@@ -104,6 +106,12 @@
             </thead>
             <tbody id="device-table"></tbody>
         </table>
+    </div>
+    <div class="card-footer d-flex justify-content-between align-items-center py-2">
+        <small id="devices-info" class="text-muted">Cargando...</small>
+        <nav>
+            <ul class="pagination pagination-sm mb-0" id="pagination"></ul>
+        </nav>
     </div>
 </div>
 
@@ -218,18 +226,129 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="/static/js/filter-bar.js"></script>
 <script>
     var inventory = {{ inventory | tojson | safe }};
     var vaultCredentials = [], deviceTypes = [], deviceModels = [], localidades = [], existingTags = [];
     var selectedTags = [];
     var deviceModal;
+    var filterBar;
+    var currentPage = 1;
 
     document.addEventListener('DOMContentLoaded', function () {
         deviceModal = new bootstrap.Modal(document.getElementById('deviceModal'));
         loadCatalogs();
-        renderDevices();
         setupTagInput();
+        initFilterBar();
     });
+
+    function initFilterBar() {
+        filterBar = new FilterBar({
+            container: '#filter-bar-container',
+            filters: [
+                { id: 'localidad', label: '📍 Localidad', type: 'select', options: 'dynamic' },
+                { id: 'tipo', label: '🏷️ Tipo', type: 'select', options: 'dynamic' },
+                { id: 'vendor', label: '🏭 Vendor', type: 'select', options: 'dynamic' },
+                { id: 'grupo', label: '📁 Grupo', type: 'select', options: 'dynamic' },
+                {
+                    id: 'criticidad', label: '⚠️ Criticidad', type: 'select', options: [
+                        { value: 'alta', label: '🔴 Alta' },
+                        { value: 'media', label: '🟡 Media' },
+                        { value: 'baja', label: '🟢 Baja' }
+                    ]
+                }
+            ],
+            searchEnabled: true,
+            searchPlaceholder: '🔍 Buscar sysname, IP...',
+            onFilter: function (filters) {
+                currentPage = 1;
+                loadDevices();
+            }
+        });
+
+        // Load filter options from API
+        fetch('/api/filter-options').then(r => r.json()).then(opts => {
+            filterBar.populateFilter('localidad', opts.localidades);
+            filterBar.populateFilter('tipo', opts.tipos);
+            filterBar.populateFilter('vendor', opts.vendors);
+            filterBar.populateFilter('grupo', opts.grupos);
+
+            // Initial load with URL params already applied by FilterBar
+            loadDevices();
+        });
+
+        // Group by change
+        document.getElementById('group-by').addEventListener('change', loadDevices);
+    }
+
+    function loadDevices(page) {
+        if (page) currentPage = page;
+
+        var groupBy = document.getElementById('group-by').value;
+        var params = filterBar.buildQueryString({ page: currentPage, per_page: 50, group_by: groupBy });
+
+        fetch('/api/devices?' + params).then(r => r.json()).then(data => {
+            renderDevicesTable(data);
+            renderPagination(data);
+            filterBar.updateCount(data.total);
+            document.getElementById('devices-info').textContent =
+                'Mostrando ' + data.devices.length + ' de ' + data.total + ' (Pág ' + data.page + '/' + data.pages + ')';
+        });
+    }
+
+    function renderDevicesTable(data) {
+        var tbody = document.getElementById('device-table');
+        tbody.innerHTML = '';
+
+        if (data.total === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No se encontraron dispositivos.</td></tr>';
+            return;
+        }
+
+        // Render grouped
+        Object.keys(data.grouped).sort().forEach(key => {
+            var devices = data.grouped[key];
+            tbody.innerHTML += '<tr class="table-secondary"><td colspan="7"><strong>' +
+                key.charAt(0).toUpperCase() + key.slice(1) + '</strong> ' +
+                '<span class="badge bg-secondary">' + devices.length + '</span></td></tr>';
+
+            devices.forEach(d => {
+                var sysname = d.sysname || d.hostname;
+                var nombre = d.nombre || '';
+                var localidad = d.localidad || '-';
+                var tipo = d.tipo || '-';
+                var critBadge = '';
+                if (d.criticidad === 'alta') critBadge = ' <span class="badge bg-danger">Alta</span>';
+                else if (d.criticidad === 'media') critBadge = ' <span class="badge bg-warning">Media</span>';
+
+                tbody.innerHTML += '<tr>' +
+                    '<td><strong>' + sysname + '</strong>' + critBadge + '</td>' +
+                    '<td>' + nombre + '</td>' +
+                    '<td><code>' + d.ip + '</code></td>' +
+                    '<td>' + localidad + '</td>' +
+                    '<td>' + tipo + '</td>' +
+                    '<td><span class="badge bg-info">' + d.group_name + '</span></td>' +
+                    '<td><span class="btn-action" onclick=\'openEditDeviceModal(' + JSON.stringify(d.group_name) + ', ' + JSON.stringify(d) + ')\'>✏️</span>' +
+                    '<span class="btn-action" onclick="deleteDevice(\'' + d.group_name + '\', \'' + sysname + '\')">🗑️</span></td>' +
+                    '</tr>';
+            });
+        });
+    }
+
+    function renderPagination(data) {
+        var pg = document.getElementById('pagination');
+        pg.innerHTML = '';
+        if (data.pages <= 1) return;
+
+        if (data.page > 1)
+            pg.innerHTML += '<li class="page-item"><a class="page-link" href="#" onclick="loadDevices(' + (data.page - 1) + ')">«</a></li>';
+
+        for (var i = Math.max(1, data.page - 2); i <= Math.min(data.pages, data.page + 2); i++)
+            pg.innerHTML += '<li class="page-item ' + (i === data.page ? 'active' : '') + '"><a class="page-link" href="#" onclick="loadDevices(' + i + ')">' + i + '</a></li>';
+
+        if (data.page < data.pages)
+            pg.innerHTML += '<li class="page-item"><a class="page-link" href="#" onclick="loadDevices(' + (data.page + 1) + ')">»</a></li>';
+    }
 
     function loadCatalogs() {
         fetch('/api/device_types').then(r => r.json()).then(d => { deviceTypes = d; renderTypeDropdown(); });
@@ -257,68 +376,12 @@
         sel.innerHTML = '<option value="">Seleccionar...</option>' + filtered.map(m => '<option value="' + m.id + '">' + m.name + '</option>').join('');
     }
 
-    function renderDevices() {
-        var tbody = document.getElementById('device-table'), gSel = document.getElementById('device-group');
-        var groupBy = document.getElementById('group-by').value;
-        tbody.innerHTML = ''; gSel.innerHTML = '';
-
-        if (!inventory.groups || inventory.groups.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No hay grupos. <a href="/inventory/groups">Cree uno primero</a>.</td></tr>';
-            return;
-        }
-
-        // Populate Group Select (always needed)
-        inventory.groups.forEach(g => { gSel.innerHTML += '<option value="' + g.name + '">' + g.name + ' (' + g.vendor + ')</option>'; });
-
-        // Flatten devices for grouping
-        var allDevices = [];
+    // Populate group dropdown for modal (needed for Add/Edit)
+    function populateGroupDropdown() {
+        var gSel = document.getElementById('device-group');
+        gSel.innerHTML = '';
         inventory.groups.forEach(g => {
-            if (g.devices) g.devices.forEach(d => {
-                d._groupName = g.name;
-                d._vendor = g.vendor;
-                allDevices.push(d);
-            });
-        });
-
-        if (allDevices.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Sin dispositivos.</td></tr>';
-            return;
-        }
-
-        // Group devices
-        var groups = {};
-        allDevices.forEach(d => {
-            let key = 'Sin definir';
-            if (groupBy === 'group') key = d._groupName;
-            else if (groupBy === 'vendor') key = d._vendor;
-            else key = d[groupBy] || 'Sin definir';
-
-            if (!groups[key]) groups[key] = [];
-            groups[key].push(d);
-        });
-
-        Object.keys(groups).sort().forEach(key => {
-            // Header for group
-            tbody.innerHTML += '<tr class="table-secondary"><td colspan="7"><strong>' + key.charAt(0).toUpperCase() + key.slice(1) + '</strong> <span class="badge bg-secondary">' + groups[key].length + '</span></td></tr>';
-
-            groups[key].forEach(d => {
-                var sysname = d.sysname || d.hostname;
-                var nombre = d.nombre || '';
-                var localidad = d.localidad || '-';
-                var tipo = d.tipo || '-';
-                // var tags = d.tags ? d.tags.map(t => '<span class="badge bg-secondary tag-badge">' + t + '</span>').join('') : '';
-
-                tbody.innerHTML += '<tr>' +
-                    '<td><strong>' + sysname + '</strong></td>' +
-                    '<td>' + nombre + '</td>' +
-                    '<td><code>' + d.ip + '</code></td>' +
-                    '<td>' + localidad + '</td>' +
-                    '<td>' + tipo + '</td>' +
-                    '<td><span class="badge bg-info">' + d._groupName + '</span></td>' +
-                    '<td><span class="btn-action" onclick=\'openEditDeviceModal(' + JSON.stringify(d._groupName) + ', ' + JSON.stringify(d) + ')\'>✏️</span>' +
-                    '<span class="btn-action" onclick="deleteDevice(\'' + d._groupName + '\', \'' + sysname + '\')">🗑️</span></td>' +
-                    '</tr>';
-            });
+            gSel.innerHTML += '<option value="' + g.name + '">' + g.name + ' (' + g.vendor + ')</option>';
         });
     }
 

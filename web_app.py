@@ -486,6 +486,131 @@ def save_inventory(data):
 def api_get_inventory():
     return jsonify(load_inventory())
 
+@app.route('/api/devices')
+@requires_auth
+def api_get_devices():
+    """Get devices with server-side filtering and pagination."""
+    inv = load_inventory()
+    
+    # Get filter params from URL
+    f_localidad = request.args.get('localidad', '').lower()
+    f_tipo = request.args.get('tipo', '').lower()
+    f_vendor = request.args.get('vendor', '').lower()
+    f_criticidad = request.args.get('criticidad', '').lower()
+    f_grupo = request.args.get('grupo', '').lower()
+    f_search = request.args.get('search', '').lower()
+    page = int(request.args.get('page', 1))
+    per_page = int(request.args.get('per_page', 50))
+    group_by = request.args.get('group_by', 'group')  # group, localidad, tipo, vendor, criticidad
+    
+    # Flatten all devices and apply filters
+    all_devices = []
+    for group in inv.get('groups', []):
+        group_name = group.get('name', '')
+        group_vendor = group.get('vendor', '')
+        
+        for device in group.get('devices', []):
+            d_localidad = (device.get('localidad') or '').lower()
+            d_tipo = (device.get('tipo') or '').lower()
+            d_criticidad = (device.get('criticidad') or '').lower()
+            d_sysname = (device.get('sysname') or device.get('hostname') or '').lower()
+            d_nombre = (device.get('nombre') or '').lower()
+            d_ip = device.get('ip', '')
+            
+            # Apply filters
+            if f_localidad and d_localidad != f_localidad:
+                continue
+            if f_tipo and d_tipo != f_tipo:
+                continue
+            if f_vendor and group_vendor.lower() != f_vendor:
+                continue
+            if f_criticidad and d_criticidad != f_criticidad:
+                continue
+            if f_grupo and group_name.lower() != f_grupo:
+                continue
+            if f_search and f_search not in d_sysname and f_search not in d_nombre and f_search not in d_ip:
+                continue
+            
+            all_devices.append({
+                'sysname': device.get('sysname') or device.get('hostname'),
+                'hostname': device.get('hostname'),
+                'nombre': device.get('nombre', ''),
+                'ip': device.get('ip'),
+                'localidad': device.get('localidad', ''),
+                'tipo': device.get('tipo', ''),
+                'modelo': device.get('modelo', ''),
+                'criticidad': device.get('criticidad', ''),
+                'tags': device.get('tags', []),
+                'credential_ids': device.get('credential_ids', []),
+                'group_name': group_name,
+                'vendor': group_vendor
+            })
+    
+    # Sort by sysname
+    all_devices.sort(key=lambda x: x['sysname'].lower())
+    
+    # Pagination
+    total = len(all_devices)
+    start = (page - 1) * per_page
+    end = start + per_page
+    paginated = all_devices[start:end]
+    
+    # Group the results if requested
+    grouped = {}
+    for d in paginated:
+        if group_by == 'localidad':
+            key = d['localidad'] or 'Sin definir'
+        elif group_by == 'tipo':
+            key = d['tipo'] or 'Sin definir'
+        elif group_by == 'vendor':
+            key = d['vendor'] or 'Sin definir'
+        elif group_by == 'criticidad':
+            key = d['criticidad'] or 'Sin definir'
+        else:  # group
+            key = d['group_name']
+        
+        if key not in grouped:
+            grouped[key] = []
+        grouped[key].append(d)
+    
+    return jsonify({
+        'devices': paginated,
+        'grouped': grouped,
+        'total': total,
+        'page': page,
+        'per_page': per_page,
+        'pages': (total + per_page - 1) // per_page if per_page > 0 else 1
+    })
+
+@app.route('/api/filter-options')
+@requires_auth
+def api_filter_options():
+    """Get unique values for filter dropdowns."""
+    inv = load_inventory()
+    
+    localidades = set()
+    tipos = set()
+    vendors = set()
+    grupos = set()
+    
+    for group in inv.get('groups', []):
+        grupos.add(group.get('name', ''))
+        vendors.add(group.get('vendor', ''))
+        
+        for device in group.get('devices', []):
+            if device.get('localidad'):
+                localidades.add(device['localidad'])
+            if device.get('tipo'):
+                tipos.add(device['tipo'])
+    
+    return jsonify({
+        'localidades': sorted(list(localidades)),
+        'tipos': sorted(list(tipos)),
+        'vendors': sorted(list(vendors)),
+        'grupos': sorted(list(grupos)),
+        'criticidades': ['alta', 'media', 'baja']
+    })
+
 @app.route('/api/inventory/group', methods=['POST'])
 @requires_auth
 def api_add_group():
