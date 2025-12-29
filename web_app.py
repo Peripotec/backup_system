@@ -1063,9 +1063,11 @@ def api_list_files(subpath=""):
     for g in inv.get('groups', []):
         for d in g.get('devices', []):
             if (d.get('sysname') or d.get('hostname')).lower() == device_name.lower():
-                # Physical folder uses sysname (as set by engine)
+                # Physical folder structure: /archive/{vendor}/{sysname}/
+                # vendor_name comes from group's vendor (lowercased, as used by engine)
+                vendor_name = g.get('vendor', '').lower()
                 device_folder_name = d.get('sysname') or d.get('hostname')
-                phys_path = os.path.join(g['name'], device_folder_name)
+                phys_path = os.path.join(vendor_name, device_folder_name)
                 break
         if phys_path: break
     
