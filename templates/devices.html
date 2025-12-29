@@ -300,7 +300,13 @@
     }
 
     function loadDevices(page) {
-        if (page) currentPage = page;
+        // Handle case when called from event listener (page would be an Event object)
+        if (typeof page === 'number') {
+            currentPage = page;
+        } else if (page === undefined || page instanceof Event) {
+            // Keep currentPage as is, or reset to 1 when filters/grouping change
+            if (page instanceof Event) currentPage = 1;
+        }
 
         var groupBy = document.getElementById('group-by').value;
         var params = filterBar.buildQueryString({ page: currentPage, per_page: 50, group_by: groupBy });
@@ -334,11 +340,11 @@
                 var sysname = d.sysname || d.hostname;
                 var nombre = d.nombre ? '<br><small class="text-muted">' + d.nombre + '</small>' : '';
 
-                // Criticidad badge
+                // Criticidad badge con texto
                 var critBadge = '';
-                if (d.criticidad === 'alta') critBadge = '<span class="badge bg-danger">🔴</span>';
-                else if (d.criticidad === 'media') critBadge = '<span class="badge bg-warning">🟡</span>';
-                else if (d.criticidad === 'baja') critBadge = '<span class="badge bg-success">🟢</span>';
+                if (d.criticidad === 'alta') critBadge = '<span class="badge bg-danger">🔴 Alta</span>';
+                else if (d.criticidad === 'media') critBadge = '<span class="badge bg-warning text-dark">🟡 Media</span>';
+                else if (d.criticidad === 'baja') critBadge = '<span class="badge bg-success">🟢 Baja</span>';
 
                 // Ubicación badges (clickeables para filtrar)
                 var locBadge = d.localidad ?
