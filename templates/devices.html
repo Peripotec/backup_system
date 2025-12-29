@@ -191,7 +191,7 @@
                 </div>
 
                 <div class="row">
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <div class="mb-3">
                             <label class="form-label">Criticidad</label>
                             <select class="form-select" id="device-criticidad">
@@ -202,13 +202,7 @@
                             </select>
                         </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="mb-3">
-                            <label class="form-label">🔗 Troncal</label>
-                            <select class="form-select" id="device-troncal"></select>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <div class="mb-3">
                             <label class="form-label">Tags</label>
                             <div class="tag-input-container" id="tags-container">
@@ -283,13 +277,6 @@
             filterBar.populateFilter('vendor', opts.vendors);
             filterBar.populateFilter('grupo', opts.grupos);
             filterBar.populateFilter('tag', opts.tags);
-
-            // Populate troncal dropdown in modal
-            var tronSel = document.getElementById('device-troncal');
-            if (tronSel) {
-                tronSel.innerHTML = '<option value="">Sin definir</option>' +
-                    opts.troncales.map(t => '<option value="' + t + '">' + t + '</option>').join('');
-            }
 
             // Initial load with URL params already applied by FilterBar
             loadDevices();
@@ -550,7 +537,6 @@
         onGroupChange();
         setTimeout(() => { document.getElementById('device-modelo').value = device.modelo || ''; }, 100);
         document.getElementById('device-criticidad').value = device.criticidad || '';
-        document.getElementById('device-troncal').value = device.troncal || '';
         selectedTags = device.tags ? [...device.tags] : []; renderTags();
         document.getElementById('device-test-result').innerHTML = '';
         var gObj = inventory.groups.find(g => g.name === grp), gCreds = gObj ? (gObj.credential_ids || []) : [];
@@ -574,7 +560,6 @@
         var tipo = document.getElementById('device-tipo').value;
         var modelo = document.getElementById('device-modelo').value;
         var criticidad = document.getElementById('device-criticidad').value;
-        var troncal = document.getElementById('device-troncal').value;
         var cids = getSelectedDeviceCredentialIds();
 
         if (!sysname || !ip) { alert('Sysname e IP son requeridos'); return; }
@@ -590,7 +575,6 @@
             tipo: tipo,
             modelo: modelo,
             criticidad: criticidad,
-            troncal: troncal,
             tags: selectedTags,
             credential_ids: cids
         };

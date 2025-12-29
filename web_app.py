@@ -492,6 +492,15 @@ def api_get_devices():
     """Get devices with server-side filtering and pagination."""
     inv = load_inventory()
     
+    # Load localidades catalog to derive troncal from zona
+    localidades_catalog = {}
+    try:
+        catalogs = load_catalogs()
+        for loc in catalogs.get('localidades', []):
+            localidades_catalog[loc.get('id', '').lower()] = loc.get('zona', '')
+    except:
+        pass
+    
     # Get filter params from URL
     f_localidad = request.args.get('localidad', '').lower()
     f_tipo = request.args.get('tipo', '').lower()
@@ -515,7 +524,8 @@ def api_get_devices():
             d_localidad = (device.get('localidad') or '').lower()
             d_tipo = (device.get('tipo') or '').lower()
             d_criticidad = (device.get('criticidad') or '').lower()
-            d_troncal = (device.get('troncal') or '').lower()
+            # Derive troncal from localidad's zona
+            d_troncal = localidades_catalog.get(d_localidad, '').lower()
             d_sysname = (device.get('sysname') or device.get('hostname') or '').lower()
             d_nombre = (device.get('nombre') or '').lower()
             d_ip = (device.get('ip') or '').lower()
@@ -557,7 +567,7 @@ def api_get_devices():
                 'tipo': device.get('tipo', ''),
                 'modelo': device.get('modelo', ''),
                 'criticidad': device.get('criticidad', ''),
-                'troncal': device.get('troncal', ''),
+                'troncal': localidades_catalog.get(d_localidad, ''),  # Derived from localidad's zona
                 'tags': device.get('tags', []),
                 'credential_ids': device.get('credential_ids', []),
                 'group_name': group_name,
@@ -608,11 +618,17 @@ def api_filter_options():
     """Get unique values for filter dropdowns."""
     inv = load_inventory()
     
+    # Load localidades catalog for troncales (zonas)
+    try:
+        catalogs = load_catalogs()
+        troncales = set(loc.get('zona', '') for loc in catalogs.get('localidades', []) if loc.get('zona'))
+    except:
+        troncales = set()
+    
     localidades = set()
     tipos = set()
     vendors = set()
     grupos = set()
-    troncales = set()
     tags = set()
     modelos = set()
     
@@ -625,8 +641,6 @@ def api_filter_options():
                 localidades.add(device['localidad'])
             if device.get('tipo'):
                 tipos.add(device['tipo'])
-            if device.get('troncal'):
-                troncales.add(device['troncal'])
             if device.get('modelo'):
                 modelos.add(device['modelo'])
             for tag in device.get('tags', []):
@@ -637,7 +651,7 @@ def api_filter_options():
         'tipos': sorted(list(tipos)),
         'vendors': sorted(list(vendors)),
         'grupos': sorted(list(grupos)),
-        'troncales': sorted(list(troncales)),
+        'troncales': sorted(list(troncales)),  # From localidades zonas
         'modelos': sorted(list(modelos)),
         'tags': sorted(list(tags)),
         'criticidades': ['alta', 'media', 'baja']
