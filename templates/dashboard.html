@@ -162,27 +162,56 @@
             <span>📋 Últimas Ejecuciones</span>
             <button class="btn btn-sm btn-outline-secondary" onclick="loadJobs(1)">🔄</button>
         </div>
-        <!-- Jobs Filter Bar -->
-        <div class="row g-2">
-            <div class="col-md-3">
+        <!-- Jobs Filter Bar - Full version -->
+        <div class="row g-2 mb-2">
+            <div class="col-md-2">
                 <select class="form-select form-select-sm" id="jobs-filter-localidad" onchange="loadJobs(1)">
-                    <option value="">📍 Todas las localidades</option>
+                    <option value="">📍 Localidad</option>
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
+                <select class="form-select form-select-sm" id="jobs-filter-troncal" onchange="loadJobs(1)">
+                    <option value="">🔗 Troncal</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select form-select-sm" id="jobs-filter-tipo" onchange="loadJobs(1)">
+                    <option value="">🏷️ Tipo</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select form-select-sm" id="jobs-filter-vendor" onchange="loadJobs(1)">
+                    <option value="">🏭 Vendor</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select form-select-sm" id="jobs-filter-grupo" onchange="loadJobs(1)">
+                    <option value="">📁 Grupo</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select form-select-sm" id="jobs-filter-criticidad" onchange="loadJobs(1)">
+                    <option value="">⚠️ Criticidad</option>
+                    <option value="alta">🔴 Alta</option>
+                    <option value="media">🟡 Media</option>
+                    <option value="baja">🟢 Baja</option>
+                </select>
+            </div>
+        </div>
+        <div class="row g-2">
+            <div class="col-md-4">
+                <input type="text" class="form-control form-control-sm" id="jobs-filter-search"
+                    placeholder="🔍 Buscar..." onkeyup="loadJobs(1)">
+            </div>
+            <div class="col-md-2">
                 <select class="form-select form-select-sm" id="jobs-filter-status" onchange="loadJobs(1)">
-                    <option value="">📊 Todos los estados</option>
+                    <option value="">📊 Estado</option>
                     <option value="SUCCESS">✅ Exitosos</option>
                     <option value="ERROR">❌ Fallidos</option>
                     <option value="WARNING">⚠️ Advertencias</option>
                 </select>
             </div>
-            <div class="col-md-3">
-                <select class="form-select form-select-sm" id="jobs-filter-vendor" onchange="loadJobs(1)">
-                    <option value="">🏭 Todos los vendors</option>
-                </select>
-            </div>
-            <div class="col-md-3 text-end">
+            <div class="col-md-6 text-end">
                 <small class="text-muted" id="jobs-total-count"></small>
             </div>
         </div>
@@ -458,14 +487,26 @@
 
     function populateJobsFilters() {
         fetch('/api/filter-options').then(r => r.json()).then(opts => {
-            // Filtros de Jobs (Últimas Ejecuciones)
+            // Filtros de Jobs (Últimas Ejecuciones) - FULL
             const selLoc = document.getElementById('jobs-filter-localidad');
-            selLoc.innerHTML = '<option value="">📍 Todas las localidades</option>';
+            selLoc.innerHTML = '<option value="">📍 Localidad</option>';
             opts.localidades.forEach(v => selLoc.innerHTML += '<option value="' + v + '">' + v + '</option>');
 
+            const selTroncal = document.getElementById('jobs-filter-troncal');
+            selTroncal.innerHTML = '<option value="">🔗 Troncal</option>';
+            opts.troncales.forEach(v => selTroncal.innerHTML += '<option value="' + v + '">' + v + '</option>');
+
+            const selTipo = document.getElementById('jobs-filter-tipo');
+            selTipo.innerHTML = '<option value="">🏷️ Tipo</option>';
+            opts.tipos.forEach(v => selTipo.innerHTML += '<option value="' + v + '">' + v + '</option>');
+
             const selVendor = document.getElementById('jobs-filter-vendor');
-            selVendor.innerHTML = '<option value="">🏭 Todos los vendors</option>';
+            selVendor.innerHTML = '<option value="">🏭 Vendor</option>';
             opts.vendors.forEach(v => selVendor.innerHTML += '<option value="' + v + '">' + v.charAt(0).toUpperCase() + v.slice(1) + '</option>');
+
+            const selGrupo = document.getElementById('jobs-filter-grupo');
+            selGrupo.innerHTML = '<option value="">📁 Grupo</option>';
+            opts.grupos.forEach(v => selGrupo.innerHTML += '<option value="' + v + '">' + v + '</option>');
 
             // Filtros del Modal de Backup
             const filterLoc = document.getElementById('filter-localidad');
@@ -497,12 +538,22 @@
     function loadJobs(page) {
         let url = '/api/jobs?page=' + page + '&per_page=10';
         const loc = document.getElementById('jobs-filter-localidad').value;
-        const status = document.getElementById('jobs-filter-status').value;
+        const troncal = document.getElementById('jobs-filter-troncal').value;
+        const tipo = document.getElementById('jobs-filter-tipo').value;
         const vendor = document.getElementById('jobs-filter-vendor').value;
+        const grupo = document.getElementById('jobs-filter-grupo').value;
+        const criticidad = document.getElementById('jobs-filter-criticidad').value;
+        const status = document.getElementById('jobs-filter-status').value;
+        const search = document.getElementById('jobs-filter-search').value;
 
         if (loc) url += '&localidad=' + encodeURIComponent(loc);
-        if (status) url += '&status=' + encodeURIComponent(status);
+        if (troncal) url += '&troncal=' + encodeURIComponent(troncal);
+        if (tipo) url += '&tipo=' + encodeURIComponent(tipo);
         if (vendor) url += '&vendor=' + encodeURIComponent(vendor);
+        if (grupo) url += '&grupo=' + encodeURIComponent(grupo);
+        if (criticidad) url += '&criticidad=' + encodeURIComponent(criticidad);
+        if (status) url += '&status=' + encodeURIComponent(status);
+        if (search) url += '&search=' + encodeURIComponent(search);
 
         fetch(url).then(r => r.json()).then(data => {
             var tb = document.getElementById('jobs-table'); tb.innerHTML = '';

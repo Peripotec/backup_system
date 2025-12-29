@@ -1054,10 +1054,9 @@ def api_list_files(subpath=""):
     for g in inv.get('groups', []):
         for d in g.get('devices', []):
             if (d.get('sysname') or d.get('hostname')).lower() == device_name.lower():
-                # Assuming physical structure is GroupName/Hostname
-                # But hostname in folder might be different if sysname is used?
-                # Currently backup engine uses os.path.join(repo_dir, group_name, device['hostname'])
-                phys_path = os.path.join(g['name'], d['hostname'])
+                # Physical folder uses sysname (as set by engine)
+                device_folder_name = d.get('sysname') or d.get('hostname')
+                phys_path = os.path.join(g['name'], device_folder_name)
                 break
         if phys_path: break
     
@@ -1250,17 +1249,53 @@ def api_jobs_paginated():
     vendor = request.args.get('vendor')
     if vendor:
         filters['vendor'] = vendor.lower()
-        
-    # 2. Filter by localidad requires inventory lookup
+    
+    # 2. Search filter
+    search = request.args.get('search')
+    if search:
+        filters['search'] = search.lower()
+    
+    # 3. Filter by localidad/troncal/tipo/grupo/criticidad requires inventory lookup
     localidad = request.args.get('localidad')
-    if localidad:
-        localidad = localidad.lower()
+    troncal = request.args.get('troncal')
+    tipo = request.args.get('tipo')
+    grupo = request.args.get('grupo')
+    criticidad = request.args.get('criticidad')
+    
+    # If any inventory-based filter, load inventory and catalogs
+    if localidad or troncal or tipo or grupo or criticidad:
         inv = load_inventory()
+        catalogs = load_catalogs()
+        
+        # Build lookup: localidad -> zona (troncal)
+        loc_zona_map = {}
+        for loc in catalogs.get('localidades', []):
+            loc_zona_map[loc.get('id', '').lower()] = (loc.get('zona') or '').lower()
+        
         matching_hosts = []
         for group in inv.get('groups', []):
+            g_name = group.get('name', '')
+            g_vendor = group.get('vendor', '').lower()
+            
             for device in group.get('devices', []):
                 d_loc = (device.get('localidad') or '').lower()
-                if d_loc == localidad:
+                d_tipo = (device.get('tipo') or '').lower()
+                d_crit = (device.get('criticidad') or '').lower()
+                d_troncal = loc_zona_map.get(d_loc, '')
+                
+                match = True
+                if localidad and d_loc != localidad.lower():
+                    match = False
+                if troncal and d_troncal != troncal.lower():
+                    match = False
+                if tipo and d_tipo != tipo.lower():
+                    match = False
+                if grupo and g_name.lower() != grupo.lower():
+                    match = False
+                if criticidad and d_crit != criticidad.lower():
+                    match = False
+                    
+                if match:
                     matching_hosts.append(device.get('sysname') or device.get('hostname'))
         
         filters['hostname_in'] = matching_hosts

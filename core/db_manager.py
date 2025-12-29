@@ -155,6 +155,10 @@ class DBManager:
                 if filters.get('vendor'):
                     query += " AND vendor = ?"
                     params.append(filters['vendor'])
+                if filters.get('search'):
+                    query += " AND (hostname LIKE ? OR message LIKE ?)"
+                    search_term = f"%{filters['search']}%"
+                    params.extend([search_term, search_term])
                 if filters.get('hostname_in') is not None:
                     # If list is empty but filter key exists, return no results
                     if not filters['hostname_in']:
@@ -187,6 +191,10 @@ class DBManager:
                 if filters.get('vendor'):
                     query += " AND vendor = ?"
                     params.append(filters['vendor'])
+                if filters.get('search'):
+                    query += " AND (hostname LIKE ? OR message LIKE ?)"
+                    search_term = f"%{filters['search']}%"
+                    params.extend([search_term, search_term])
                 if filters.get('hostname_in') is not None:
                     if not filters['hostname_in']:
                         query += " AND 1=0"
@@ -198,7 +206,6 @@ class DBManager:
             cursor.execute(query, params)
             return cursor.fetchone()[0]
         finally:
-            conn.close()
             conn.close()
 
     def get_stats_24h(self):
