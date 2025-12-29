@@ -101,7 +101,7 @@
                     <th>📍 Ubicación</th>
                     <th>🔗 Troncal</th>
                     <th>Equipo</th>
-                    <th>⚠️</th>
+                    <th>Criticidad</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
@@ -338,7 +338,8 @@
 
             devices.forEach(d => {
                 var sysname = d.sysname || d.hostname;
-                var nombre = d.nombre ? '<br><small class="text-muted">' + d.nombre + '</small>' : '';
+                var nombre = d.nombre || sysname; // Si no hay nombre, mostrar sysname
+                var sysnameSecondary = d.nombre ? '<br><small class="text-muted">' + sysname + '</small>' : '';
 
                 // Criticidad badge con texto
                 var critBadge = '';
@@ -369,7 +370,7 @@
                 }
 
                 tbody.innerHTML += '<tr>' +
-                    '<td><a href="#" onclick="openEditDeviceModal(\'' + d.group_name + '\', ' + JSON.stringify(d).replace(/"/g, '&quot;') + '); return false;"><strong>' + sysname + '</strong></a>' + nombre +
+                    '<td><a href="#" onclick="openEditDeviceModal(\'' + d.group_name + '\', ' + JSON.stringify(d).replace(/"/g, '&quot;') + '); return false;"><strong>' + nombre + '</strong></a>' + sysnameSecondary +
                     (tagsHtml ? '<div class="mt-1">' + tagsHtml + '</div>' : '') + '</td>' +
                     '<td><code class="clickable-ip" onclick="copyToClipboard(\'' + d.ip + '\')" title="Click para copiar">' + d.ip + '</code></td>' +
                     '<td>' + locBadge + '</td>' +
@@ -424,6 +425,16 @@
         fetch('/api/device_models').then(r => r.json()).then(d => { deviceModels = d; });
         fetch('/api/localidades').then(r => r.json()).then(d => { localidades = d; renderLocalidadDropdown(); });
         fetch('/api/tags').then(r => r.json()).then(d => { existingTags = d; });
+
+        // Populate group dropdown from inventory
+        renderGroupDropdown();
+    }
+
+    function renderGroupDropdown() {
+        var sel = document.getElementById('device-group');
+        if (!sel || !inventory.groups) return;
+        sel.innerHTML = '<option value="">Seleccionar grupo...</option>' +
+            inventory.groups.map(g => '<option value="' + g.name + '">' + g.name + ' (' + g.vendor + ')</option>').join('');
     }
 
     function renderTypeDropdown() {
