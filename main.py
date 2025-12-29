@@ -3,7 +3,6 @@ import sys
 from core.engine import BackupEngine
 from core.logger import log
 
-from settings import RETENTION_DAYS
 
 def main():
     parser = argparse.ArgumentParser(description="Scalable Network Backup System")
@@ -11,6 +10,7 @@ def main():
     parser.add_argument("--device", help="Run backup only for a specific device (sysname or hostname)")
     parser.add_argument("--dry-run", action="store_true", help="Simulate backup without connecting to devices")
     parser.add_argument("--test-email", action="store_true", help="Send a test email and exit")
+    parser.add_argument("--cleanup-only", action="store_true", help="Run cleanup without backup")
     
     args = parser.parse_args()
 
@@ -20,6 +20,12 @@ def main():
         notifier = Notifier()
         log.info("Sending test email...")
         notifier.send_summary(1, 1, 0, {}, {"TestDevice": "This is a test diff"}, 0.1)
+        sys.exit(0)
+
+    # Cleanup Only Mode
+    if args.cleanup_only:
+        engine = BackupEngine()
+        engine.cleanup_old_backups()
         sys.exit(0)
 
     # Normal Execution
@@ -32,9 +38,10 @@ def main():
     
     engine.run(target_group=args.group, target_device=args.device)
     
-    # Cleanup only on full runs or generic maintenance
+    # Cleanup after full runs (reads config from DB)
     if not args.group and not args.device:
-        engine.cleanup_old_backups(RETENTION_DAYS)
+        engine.cleanup_old_backups()
 
 if __name__ == "__main__":
     main()
+

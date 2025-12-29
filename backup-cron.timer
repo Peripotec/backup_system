@@ -1,0 +1,12 @@
+[Unit]
+Description=Network Backup System - Daily Timer
+Requires=backup-cron.service
+
+[Timer]
+# Run daily at 02:00 (configurable via web overrides execution time)
+OnCalendar=*-*-* 02:00:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

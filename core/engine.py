@@ -12,6 +12,7 @@ from core.db_manager import DBManager
 from core.git_manager import GitManager
 from core.notifier import Notifier
 from core.vault import get_credentials_for_device
+from core.config_manager import get_config_manager
 
 class BackupEngine:
     def __init__(self, dry_run=False):
@@ -148,9 +149,28 @@ class BackupEngine:
             return {"status": "ERROR", "hostname": sysname, "error": str(e)}
 
 
-    def cleanup_old_backups(self, retention_days):
-        """Delete generic backups older than N days."""
-        log.info(f"Cleaning backups older than {retention_days} days...")
+    def cleanup_old_backups(self):
+        """Delete backups older than N days. Reads config from DB."""
+        config = get_config_manager()
+        
+        # Check if cleanup is enabled
+        cleanup_enabled = config.get_setting('cleanup_enabled')
+        if cleanup_enabled != 'true':
+            log.info("Cleanup disabled in settings. Skipping.")
+            return
+        
+        # Get retention days from config (with guardrails)
+        try:
+            retention_days = int(config.get_setting('archive_retention_days') or 90)
+        except (ValueError, TypeError):
+            retention_days = 90
+        
+        # Guardrail: minimum 7 days to prevent accidental deletion
+        if retention_days < 7:
+            log.warning(f"Retention days {retention_days} too low. Using minimum of 7.")
+            retention_days = 7
+        
+        log.info(f"Starting cleanup: deleting files older than {retention_days} days...")
         
         # 1. DB Cleanup
         self.db.delete_old_jobs(retention_days)
@@ -158,6 +178,10 @@ class BackupEngine:
         # 2. File Cleanup
         limit = time.time() - (retention_days * 86400)
         count = 0
+        
+        if not os.path.exists(ARCHIVE_DIR):
+            log.warning(f"Archive directory does not exist: {ARCHIVE_DIR}")
+            return
         
         # Walk ARCHIVE_DIR
         for root, dirs, files in os.walk(ARCHIVE_DIR):
@@ -167,6 +191,7 @@ class BackupEngine:
                     mtime = os.path.getmtime(path)
                     if mtime < limit:
                         os.remove(path)
+                        log.debug(f"Deleted: {path}")
                         count += 1
                 except Exception as e:
                     log.error(f"Error cleaning {path}: {e}")

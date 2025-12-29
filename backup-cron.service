@@ -1,0 +1,15 @@
+[Unit]
+Description=Network Backup System - Scheduled Backup
+After=network.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/opt/backup_system
+ExecStart=/opt/backup_system/venv/bin/python3 /opt/backup_system/main.py
+StandardOutput=journal
+StandardError=journal
+
+# Hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
