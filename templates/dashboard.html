@@ -445,19 +445,41 @@
     function addLog(t, m) { var p = document.getElementById('log-panel'); p.innerHTML += '<div class="log-' + t + '">' + m + '</div>'; p.scrollTop = p.scrollHeight; }
 
     function populateJobsFilters() {
-        const localidades = new Set(), vendors = new Set();
-        document.querySelectorAll('.device-item').forEach(el => {
-            if (el.dataset.localidad) localidades.add(el.dataset.localidad);
-            if (el.dataset.vendor) vendors.add(el.dataset.vendor);
+        fetch('/api/filter-options').then(r => r.json()).then(opts => {
+            // Filtros de Jobs (Últimas Ejecuciones)
+            const selLoc = document.getElementById('jobs-filter-localidad');
+            selLoc.innerHTML = '<option value="">📍 Todas las localidades</option>';
+            opts.localidades.forEach(v => selLoc.innerHTML += '<option value="' + v + '">' + v + '</option>');
+
+            const selVendor = document.getElementById('jobs-filter-vendor');
+            selVendor.innerHTML = '<option value="">🏭 Todos los vendors</option>';
+            opts.vendors.forEach(v => selVendor.innerHTML += '<option value="' + v + '">' + v.charAt(0).toUpperCase() + v.slice(1) + '</option>');
+
+            // Filtros del Modal de Backup
+            const filterLoc = document.getElementById('filter-localidad');
+            if (filterLoc) {
+                filterLoc.innerHTML = '<option value="">📍 Localidad</option>';
+                opts.localidades.forEach(v => filterLoc.innerHTML += '<option value="' + v + '">' + v + '</option>');
+            }
+
+            const filterTipo = document.getElementById('filter-tipo');
+            if (filterTipo) {
+                filterTipo.innerHTML = '<option value="">🏷️ Tipo</option>';
+                opts.tipos.forEach(v => filterTipo.innerHTML += '<option value="' + v + '">' + v + '</option>');
+            }
+
+            const filterVendor = document.getElementById('filter-vendor');
+            if (filterVendor) {
+                filterVendor.innerHTML = '<option value="">🏭 Vendor</option>';
+                opts.vendors.forEach(v => filterVendor.innerHTML += '<option value="' + v + '">' + v.charAt(0).toUpperCase() + v.slice(1) + '</option>');
+            }
+
+            const filterCrit = document.getElementById('filter-criticidad');
+            if (filterCrit) {
+                filterCrit.innerHTML = '<option value="">⚠️ Criticidad</option>';
+                opts.criticidades.forEach(v => filterCrit.innerHTML += '<option value="' + v + '">' + v.charAt(0).toUpperCase() + v.slice(1) + '</option>');
+            }
         });
-
-        const selLoc = document.getElementById('jobs-filter-localidad');
-        selLoc.innerHTML = '<option value="">📍 Todas las localidades</option>';
-        [...localidades].sort().forEach(v => selLoc.innerHTML += '<option value="' + v + '">' + v.charAt(0).toUpperCase() + v.slice(1) + '</option>');
-
-        const selVendor = document.getElementById('jobs-filter-vendor');
-        selVendor.innerHTML = '<option value="">🏭 Todos los vendors</option>';
-        [...vendors].sort().forEach(v => selVendor.innerHTML += '<option value="' + v + '">' + v.charAt(0).toUpperCase() + v.slice(1) + '</option>');
     }
 
     function loadJobs(page) {
