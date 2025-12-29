@@ -217,6 +217,21 @@ class DBManager:
         finally:
             conn.close()
 
+    def get_recent_jobs(self, limit=50):
+        """Get recent jobs for dashboard display."""
+        conn = self._get_connection()
+        conn.row_factory = sqlite3.Row
+        try:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT * FROM jobs 
+                ORDER BY id DESC 
+                LIMIT ?
+            ''', (limit,))
+            return [dict(row) for row in cursor.fetchall()]
+        finally:
+            conn.close()
+
     # ========================
     # DEVICE TYPES CATALOG
     # ========================
