@@ -165,6 +165,19 @@ class FilterBar {
         this.applyFilters();
     }
 
+    /**
+     * Set a specific filter value programmatically (for interactive navigation)
+     * @param {string} filterId - Filter ID
+     * @param {string} value - Value to set
+     */
+    setFilter(filterId, value) {
+        const select = document.getElementById(`filter-${filterId}`);
+        if (select) {
+            select.value = value;
+            this.applyFilters();
+        }
+    }
+
     saveToURL(filters) {
         const url = new URL(window.location);
 
@@ -283,6 +296,28 @@ class FilterBar {
         
         .filter-select {
             min-width: 130px;
+        }
+        
+        /* Clickable badges for interactive filtering */
+        .clickable-badge {
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        
+        .clickable-badge:hover {
+            transform: scale(1.05);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .clickable-ip {
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: 3px;
+            transition: background-color 0.15s ease;
+        }
+        
+        .clickable-ip:hover {
+            background-color: rgba(0,123,255,0.1);
         }
         
         @media (max-width: 768px) {

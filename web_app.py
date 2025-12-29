@@ -498,10 +498,12 @@ def api_get_devices():
     f_vendor = request.args.get('vendor', '').lower()
     f_criticidad = request.args.get('criticidad', '').lower()
     f_grupo = request.args.get('grupo', '').lower()
+    f_troncal = request.args.get('troncal', '').lower()
+    f_tag = request.args.get('tag', '').lower()
     f_search = request.args.get('search', '').lower()
     page = int(request.args.get('page', 1))
     per_page = int(request.args.get('per_page', 50))
-    group_by = request.args.get('group_by', 'group')  # group, localidad, tipo, vendor, criticidad
+    group_by = request.args.get('group_by', 'group')  # group, localidad, tipo, vendor, criticidad, troncal
     
     # Flatten all devices and apply filters
     all_devices = []
@@ -513,9 +515,12 @@ def api_get_devices():
             d_localidad = (device.get('localidad') or '').lower()
             d_tipo = (device.get('tipo') or '').lower()
             d_criticidad = (device.get('criticidad') or '').lower()
+            d_troncal = (device.get('troncal') or '').lower()
             d_sysname = (device.get('sysname') or device.get('hostname') or '').lower()
             d_nombre = (device.get('nombre') or '').lower()
-            d_ip = device.get('ip', '')
+            d_ip = (device.get('ip') or '').lower()
+            d_modelo = (device.get('modelo') or '').lower()
+            d_tags = [t.lower() for t in device.get('tags', [])]
             
             # Apply filters
             if f_localidad and d_localidad != f_localidad:
@@ -528,8 +533,20 @@ def api_get_devices():
                 continue
             if f_grupo and group_name.lower() != f_grupo:
                 continue
-            if f_search and f_search not in d_sysname and f_search not in d_nombre and f_search not in d_ip:
+            if f_troncal and d_troncal != f_troncal:
                 continue
+            if f_tag and f_tag not in d_tags:
+                continue
+            
+            # Global search - searches ALL fields
+            if f_search:
+                searchable = ' '.join([
+                    d_sysname, d_nombre, d_ip, d_localidad, d_tipo,
+                    d_modelo, d_troncal, group_vendor.lower(), group_name.lower(),
+                    ' '.join(d_tags)
+                ])
+                if f_search not in searchable:
+                    continue
             
             all_devices.append({
                 'sysname': device.get('sysname') or device.get('hostname'),
@@ -540,6 +557,7 @@ def api_get_devices():
                 'tipo': device.get('tipo', ''),
                 'modelo': device.get('modelo', ''),
                 'criticidad': device.get('criticidad', ''),
+                'troncal': device.get('troncal', ''),
                 'tags': device.get('tags', []),
                 'credential_ids': device.get('credential_ids', []),
                 'group_name': group_name,
@@ -566,6 +584,8 @@ def api_get_devices():
             key = d['vendor'] or 'Sin definir'
         elif group_by == 'criticidad':
             key = d['criticidad'] or 'Sin definir'
+        elif group_by == 'troncal':
+            key = d['troncal'] or 'Sin definir'
         else:  # group
             key = d['group_name']
         
@@ -592,6 +612,9 @@ def api_filter_options():
     tipos = set()
     vendors = set()
     grupos = set()
+    troncales = set()
+    tags = set()
+    modelos = set()
     
     for group in inv.get('groups', []):
         grupos.add(group.get('name', ''))
@@ -602,12 +625,21 @@ def api_filter_options():
                 localidades.add(device['localidad'])
             if device.get('tipo'):
                 tipos.add(device['tipo'])
+            if device.get('troncal'):
+                troncales.add(device['troncal'])
+            if device.get('modelo'):
+                modelos.add(device['modelo'])
+            for tag in device.get('tags', []):
+                tags.add(tag)
     
     return jsonify({
         'localidades': sorted(list(localidades)),
         'tipos': sorted(list(tipos)),
         'vendors': sorted(list(vendors)),
         'grupos': sorted(list(grupos)),
+        'troncales': sorted(list(troncales)),
+        'modelos': sorted(list(modelos)),
+        'tags': sorted(list(tags)),
         'criticidades': ['alta', 'media', 'baja']
     })
 

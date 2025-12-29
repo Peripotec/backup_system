@@ -82,6 +82,7 @@
             <select class="form-select form-select-sm" id="group-by" style="width: auto;">
                 <option value="group">Agrupar por: Grupo</option>
                 <option value="localidad">Agrupar por: Localidad</option>
+                <option value="troncal">Agrupar por: Troncal</option>
                 <option value="tipo">Agrupar por: Tipo</option>
                 <option value="vendor">Agrupar por: Vendor</option>
                 <option value="criticidad">Agrupar por: Criticidad</option>
@@ -95,12 +96,12 @@
         <table class="table table-hover table-striped mb-0">
             <thead class="table-dark">
                 <tr>
-                    <th>Sysname</th>
-                    <th>Nombre</th>
+                    <th>Dispositivo</th>
                     <th>IP</th>
-                    <th>Localidad</th>
-                    <th>Tipo</th>
-                    <th>Grupo</th>
+                    <th>📍 Ubicación</th>
+                    <th>🔗 Troncal</th>
+                    <th>Equipo</th>
+                    <th>⚠️</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
@@ -201,7 +202,13 @@
                             </select>
                         </div>
                     </div>
-                    <div class="col-md-8">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">🔗 Troncal</label>
+                            <select class="form-select" id="device-troncal"></select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
                         <div class="mb-3">
                             <label class="form-label">Tags</label>
                             <div class="tag-input-container" id="tags-container">
@@ -247,6 +254,7 @@
             container: '#filter-bar-container',
             filters: [
                 { id: 'localidad', label: '📍 Localidad', type: 'select', options: 'dynamic' },
+                { id: 'troncal', label: '🔗 Troncal', type: 'select', options: 'dynamic' },
                 { id: 'tipo', label: '🏷️ Tipo', type: 'select', options: 'dynamic' },
                 { id: 'vendor', label: '🏭 Vendor', type: 'select', options: 'dynamic' },
                 { id: 'grupo', label: '📁 Grupo', type: 'select', options: 'dynamic' },
@@ -256,10 +264,11 @@
                         { value: 'media', label: '🟡 Media' },
                         { value: 'baja', label: '🟢 Baja' }
                     ]
-                }
+                },
+                { id: 'tag', label: '🏷️ Tag', type: 'select', options: 'dynamic' }
             ],
             searchEnabled: true,
-            searchPlaceholder: '🔍 Buscar sysname, IP...',
+            searchPlaceholder: '🔍 Buscar en todo...',
             onFilter: function (filters) {
                 currentPage = 1;
                 loadDevices();
@@ -269,9 +278,18 @@
         // Load filter options from API
         fetch('/api/filter-options').then(r => r.json()).then(opts => {
             filterBar.populateFilter('localidad', opts.localidades);
+            filterBar.populateFilter('troncal', opts.troncales);
             filterBar.populateFilter('tipo', opts.tipos);
             filterBar.populateFilter('vendor', opts.vendors);
             filterBar.populateFilter('grupo', opts.grupos);
+            filterBar.populateFilter('tag', opts.tags);
+
+            // Populate troncal dropdown in modal
+            var tronSel = document.getElementById('device-troncal');
+            if (tronSel) {
+                tronSel.innerHTML = '<option value="">Sin definir</option>' +
+                    opts.troncales.map(t => '<option value="' + t + '">' + t + '</option>').join('');
+            }
 
             // Initial load with URL params already applied by FilterBar
             loadDevices();
@@ -314,24 +332,69 @@
 
             devices.forEach(d => {
                 var sysname = d.sysname || d.hostname;
-                var nombre = d.nombre || '';
-                var localidad = d.localidad || '-';
-                var tipo = d.tipo || '-';
+                var nombre = d.nombre ? '<br><small class="text-muted">' + d.nombre + '</small>' : '';
+
+                // Criticidad badge
                 var critBadge = '';
-                if (d.criticidad === 'alta') critBadge = ' <span class="badge bg-danger">Alta</span>';
-                else if (d.criticidad === 'media') critBadge = ' <span class="badge bg-warning">Media</span>';
+                if (d.criticidad === 'alta') critBadge = '<span class="badge bg-danger">🔴</span>';
+                else if (d.criticidad === 'media') critBadge = '<span class="badge bg-warning">🟡</span>';
+                else if (d.criticidad === 'baja') critBadge = '<span class="badge bg-success">🟢</span>';
+
+                // Ubicación badges (clickeables para filtrar)
+                var locBadge = d.localidad ?
+                    '<span class="badge bg-info clickable-badge" onclick="quickFilter(\'localidad\', \'' + d.localidad + '\')" title="Filtrar por localidad">📍' + d.localidad + '</span> ' : '';
+
+                // Troncal badge
+                var tronBadge = d.troncal ?
+                    '<span class="badge bg-primary clickable-badge" onclick="quickFilter(\'troncal\', \'' + d.troncal + '\')" title="Filtrar por troncal">🔗' + d.troncal + '</span>' :
+                    '<span class="text-muted">-</span>';
+
+                // Equipo info
+                var vendorBadge = '<span class="badge bg-secondary clickable-badge" onclick="quickFilter(\'vendor\', \'' + d.vendor + '\')" title="Filtrar por vendor">🏭' + d.vendor + '</span>';
+                var tipoBadge = d.tipo ? '<br><span class="badge bg-light text-dark clickable-badge" onclick="quickFilter(\'tipo\', \'' + d.tipo + '\')" title="Filtrar por tipo">' + d.tipo + '</span>' : '';
+                var modeloInfo = d.modelo ? '<br><small class="text-muted">' + d.modelo + '</small>' : '';
+
+                // Tags row (chips)
+                var tagsHtml = '';
+                if (d.tags && d.tags.length > 0) {
+                    tagsHtml = d.tags.map(t =>
+                        '<span class="badge bg-light text-dark clickable-badge me-1" onclick="quickFilter(\'tag\', \'' + t + '\')" title="Filtrar por tag">' + t + '</span>'
+                    ).join('');
+                }
 
                 tbody.innerHTML += '<tr>' +
-                    '<td><strong>' + sysname + '</strong>' + critBadge + '</td>' +
-                    '<td>' + nombre + '</td>' +
-                    '<td><code>' + d.ip + '</code></td>' +
-                    '<td>' + localidad + '</td>' +
-                    '<td>' + tipo + '</td>' +
-                    '<td><span class="badge bg-info">' + d.group_name + '</span></td>' +
+                    '<td><a href="#" onclick="openEditDeviceModal(\'' + d.group_name + '\', ' + JSON.stringify(d).replace(/"/g, '&quot;') + '); return false;"><strong>' + sysname + '</strong></a>' + nombre +
+                    (tagsHtml ? '<div class="mt-1">' + tagsHtml + '</div>' : '') + '</td>' +
+                    '<td><code class="clickable-ip" onclick="copyToClipboard(\'' + d.ip + '\')" title="Click para copiar">' + d.ip + '</code></td>' +
+                    '<td>' + locBadge + '</td>' +
+                    '<td>' + tronBadge + '</td>' +
+                    '<td>' + vendorBadge + tipoBadge + modeloInfo + '</td>' +
+                    '<td class="text-center">' + critBadge + '</td>' +
                     '<td><span class="btn-action" onclick=\'openEditDeviceModal(' + JSON.stringify(d.group_name) + ', ' + JSON.stringify(d) + ')\'>✏️</span>' +
                     '<span class="btn-action" onclick="deleteDevice(\'' + d.group_name + '\', \'' + sysname + '\')">🗑️</span></td>' +
                     '</tr>';
             });
+        });
+    }
+
+    // Quick filter - click on badge to filter by that value
+    function quickFilter(field, value) {
+        filterBar.setFilter(field, value);
+        loadDevices();
+    }
+
+    // Copy IP to clipboard
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(() => {
+            // Visual feedback
+            var el = event.target;
+            var original = el.textContent;
+            el.textContent = '✓ Copiado';
+            el.classList.add('text-success');
+            setTimeout(() => {
+                el.textContent = original;
+                el.classList.remove('text-success');
+            }, 1000);
         });
     }
 
@@ -470,6 +533,7 @@
         onGroupChange();
         setTimeout(() => { document.getElementById('device-modelo').value = device.modelo || ''; }, 100);
         document.getElementById('device-criticidad').value = device.criticidad || '';
+        document.getElementById('device-troncal').value = device.troncal || '';
         selectedTags = device.tags ? [...device.tags] : []; renderTags();
         document.getElementById('device-test-result').innerHTML = '';
         var gObj = inventory.groups.find(g => g.name === grp), gCreds = gObj ? (gObj.credential_ids || []) : [];
@@ -493,6 +557,7 @@
         var tipo = document.getElementById('device-tipo').value;
         var modelo = document.getElementById('device-modelo').value;
         var criticidad = document.getElementById('device-criticidad').value;
+        var troncal = document.getElementById('device-troncal').value;
         var cids = getSelectedDeviceCredentialIds();
 
         if (!sysname || !ip) { alert('Sysname e IP son requeridos'); return; }
@@ -508,6 +573,7 @@
             tipo: tipo,
             modelo: modelo,
             criticidad: criticidad,
+            troncal: troncal,
             tags: selectedTags,
             credential_ids: cids
         };
