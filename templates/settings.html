@@ -280,16 +280,28 @@
 
                 <!-- Test Email -->
                 <div class="d-flex gap-2 mt-4">
+                    {% if can_test_email %}
                     <button class="btn btn-outline-primary" onclick="sendTestEmail()" id="btn-test-email">
                         📧 Enviar Email de Prueba
                     </button>
+                    {% else %}
+                    <button class="btn btn-outline-secondary" disabled
+                        title="No tenés permisos para enviar email de prueba">
+                        📧 Enviar Email de Prueba
+                    </button>
+                    {% endif %}
                     <span id="test-email-result" class="align-self-center"></span>
                 </div>
             </div>
         </div>
 
         <div class="d-flex justify-content-end mt-3">
+            {% if can_edit %}
             <button class="btn btn-primary" onclick="saveSettings()" id="btn-save">💾 Guardar Configuración</button>
+            {% else %}
+            <button class="btn btn-secondary" disabled title="No tenés permisos para editar configuración">💾 Guardar
+                Configuración</button>
+            {% endif %}
         </div>
     </div>
 </div>
