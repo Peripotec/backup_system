@@ -135,6 +135,35 @@ ROLE_PERMISSIONS = {
                    'test_email', 'manage_users', 'manage_roles']
 }
 
+# Catálogo de permisos por categoría (source of truth para UI de roles)
+PERMISSIONS_CATALOG = {
+    'Visualización': [
+        {'id': 'view_dashboard', 'label': 'Dashboard', 'description': 'Ver dashboard principal'},
+        {'id': 'view_files', 'label': 'Archivos', 'description': 'Ver archivos de backup'},
+        {'id': 'view_diff', 'label': 'Comparar versiones', 'description': 'Ver diferencias entre backups'},
+        {'id': 'view_inventory', 'label': 'Ver inventario', 'description': 'Ver lista de dispositivos'},
+        {'id': 'view_vault', 'label': 'Ver credenciales', 'description': 'Ver vault de credenciales'},
+        {'id': 'view_settings', 'label': 'Ver configuración', 'description': 'Ver configuración del sistema'},
+    ],
+    'Edición': [
+        {'id': 'run_backup', 'label': 'Ejecutar backup', 'description': 'Ejecutar backups manualmente'},
+        {'id': 'edit_inventory', 'label': 'Editar inventario', 'description': 'Modificar dispositivos'},
+        {'id': 'edit_vault', 'label': 'Editar credenciales', 'description': 'Modificar vault'},
+        {'id': 'edit_settings', 'label': 'Editar configuración', 'description': 'Modificar config del sistema'},
+    ],
+    'Email': [
+        {'id': 'test_email', 'label': 'Enviar email de prueba', 'description': 'Usar botón de test en Config → Email'},
+    ],
+    'Administración': [
+        {'id': 'manage_users', 'label': 'Gestionar usuarios', 'description': 'Crear/editar/eliminar usuarios'},
+        {'id': 'manage_roles', 'label': 'Gestionar roles', 'description': 'Crear/editar/eliminar roles'},
+    ]
+}
+
+# Lista plana de todos los permisos válidos (para validación)
+ALL_VALID_PERMISSIONS = [p['id'] for cat in PERMISSIONS_CATALOG.values() for p in cat]
+
+
 def has_permission(user_or_role, permission):
     """Check if user has a specific permission. Accepts user dict or role string."""
     if isinstance(user_or_role, dict):
@@ -1599,7 +1628,7 @@ def api_delete_token(token_id):
 def admin_roles():
     cfg = get_config_manager()
     roles = cfg.get_all_roles()
-    return render_template('roles.html', roles=roles)
+    return render_template('roles.html', roles=roles, permissions_catalog=PERMISSIONS_CATALOG)
 
 @app.route('/api/roles', methods=['GET'])
 @requires_auth
