@@ -164,18 +164,46 @@ PERMISSIONS_CATALOG = {
 ALL_VALID_PERMISSIONS = [p['id'] for cat in PERMISSIONS_CATALOG.values() for p in cat]
 
 
+def get_effective_permissions(user):
+    """
+    Get effective permissions for a user from DB.
+    Priority: user explicit permissions > role permissions from DB > role defaults
+    """
+    if not user:
+        return []
+    
+    # 1. Check user's explicit permissions first
+    user_perms = user.get('permissions', [])
+    if user_perms:
+        return user_perms
+    
+    # 2. Get role permissions from DB (source of truth)
+    role_name = user.get('role', 'viewer')
+    cfg = get_config_manager()
+    role = cfg.get_role(role_name)
+    if role and role.get('permissions'):
+        return role['permissions']
+    
+    # 3. Fallback to hardcoded defaults if role not in DB
+    return ROLE_PERMISSIONS.get(role_name, [])
+
+
 def has_permission(user_or_role, permission):
-    """Check if user has a specific permission. Accepts user dict or role string."""
+    """
+    Check if user has a specific permission.
+    Queries role permissions from DB, not from hardcoded defaults.
+    """
     if isinstance(user_or_role, dict):
-        # User dict - check user's explicit permissions first
-        user_perms = user_or_role.get('permissions', [])
-        if user_perms:
-            return permission in user_perms
-        # Fallback to role defaults
-        role = user_or_role.get('role', 'viewer')
-        return permission in ROLE_PERMISSIONS.get(role, [])
+        # User dict - get effective permissions
+        perms = get_effective_permissions(user_or_role)
+        return permission in perms
     else:
-        # Role string - use role defaults
+        # Role string - get from DB
+        cfg = get_config_manager()
+        role = cfg.get_role(user_or_role)
+        if role and role.get('permissions'):
+            return permission in role['permissions']
+        # Fallback to defaults
         return permission in ROLE_PERMISSIONS.get(user_or_role, [])
 
 def requires_role(*roles):
@@ -1431,10 +1459,21 @@ def admin_settings():
     user = session.get('user', {})
     can_test_email = has_permission(user, 'test_email')
     can_edit_settings = has_permission(user, 'edit_settings')
+    
+    # Get unique vendors from inventory (dynamic, not hardcoded)
+    inv = load_inventory()
+    vendors_set = set()
+    for group in inv.get('groups', []):
+        vendor = group.get('vendor', '')
+        if vendor:
+            vendors_set.add(vendor)
+    vendors = sorted(list(vendors_set))
+    
     return render_template('settings.html', 
                           settings=settings, 
                           can_test_email=can_test_email,
-                          can_edit_settings=can_edit_settings)
+                          can_edit_settings=can_edit_settings,
+                          vendors=vendors)
 
 @app.route('/api/settings', methods=['GET'])
 @requires_auth

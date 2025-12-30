@@ -107,30 +107,23 @@
                     <!-- Schedule por Vendor -->
                     <div class="schedule-section">
                         <h6>Horarios por Vendor (Opcional)</h6>
+                        {% if vendors %}
                         <div class="row g-2 mb-2">
+                            {% for vendor in vendors %}
                             <div class="col-md-3">
-                                <input type="text" class="form-control" id="schedule_vendor_huawei"
+                                <input type="text" class="form-control vendor-schedule"
+                                    id="schedule_vendor_{{ vendor|lower|replace(' ', '_') }}" data-vendor="{{ vendor }}"
                                     placeholder="HH:MM, HH:MM">
-                                <small class="text-muted">Huawei</small>
+                                <small class="text-muted">{{ vendor }}</small>
                             </div>
-                            <div class="col-md-3">
-                                <input type="text" class="form-control" id="schedule_vendor_cisco"
-                                    placeholder="HH:MM, HH:MM">
-                                <small class="text-muted">Cisco</small>
-                            </div>
-                            <div class="col-md-3">
-                                <input type="text" class="form-control" id="schedule_vendor_hp"
-                                    placeholder="HH:MM, HH:MM">
-                                <small class="text-muted">HP</small>
-                            </div>
-                            <div class="col-md-3">
-                                <input type="text" class="form-control" id="schedule_vendor_zte"
-                                    placeholder="HH:MM, HH:MM">
-                                <small class="text-muted">ZTE</small>
-                            </div>
+                            {% endfor %}
                         </div>
+                        {% else %}
+                        <div class="alert alert-warning">No hay vendors detectados en el inventario.</div>
+                        {% endif %}
                         <div class="form-text">Los vendors con schedule específico se ejecutan en esos horarios. Los
-                            vacíos usan el global.</div>
+                            vacíos
+                            usan el global.</div>
                     </div>
 
                     <div class="alert alert-info" role="alert">
@@ -314,14 +307,20 @@
 
     function loadSettingsToForm() {
         // Campos principales
+        // Campos fijos
         ['global_schedule', 'backup_enabled', 'archive_retention_days', 'cleanup_enabled',
             'smtp_enabled', 'smtp_host', 'smtp_port', 'smtp_from', 'smtp_transport', 'smtp_auth',
             'smtp_user', 'smtp_timeout', 'email_recipients',
-            'notify_on_error', 'notify_on_success', 'tftp_server', 'log_level',
-            'schedule_vendor_huawei', 'schedule_vendor_cisco', 'schedule_vendor_hp', 'schedule_vendor_zte'
+            'notify_on_error', 'notify_on_success', 'tftp_server', 'log_level'
         ].forEach(f => {
             var el = document.getElementById(f);
             if (el && settings[f] !== undefined) el.value = settings[f];
+        });
+
+        // Cargar vendors dinámicamente
+        document.querySelectorAll('.vendor-schedule').forEach(el => {
+            var key = el.id; // e.g. schedule_vendor_huawei
+            if (settings[key] !== undefined) el.value = settings[key];
         });
     }
 
@@ -355,17 +354,26 @@
         btn.disabled = true;
         btn.textContent = '⏳ Guardando...';
 
-        // Validate schedules
-        var scheduleFields = ['global_schedule', 'schedule_vendor_huawei', 'schedule_vendor_cisco',
-            'schedule_vendor_hp', 'schedule_vendor_zte'];
-        for (var i = 0; i < scheduleFields.length; i++) {
-            var val = document.getElementById(scheduleFields[i]).value;
-            if (!validateSchedule(val)) {
-                alert('Error: Formato de horario inválido en ' + scheduleFields[i] + '. Use HH:MM separados por coma.');
-                btn.disabled = false;
-                btn.textContent = '💾 Guardar Configuración';
-                return;
+        // Validate global schedule
+        if (!validateSchedule(document.getElementById('global_schedule').value)) {
+            alert('Error: Formato de horario inválido en global_schedule. Use HH:MM separados por coma.');
+            btn.disabled = false;
+            btn.textContent = '💾 Guardar Configuración';
+            return;
+        }
+
+        // Validate vendor schedules dinámicamente
+        var vendorScheduleError = false;
+        document.querySelectorAll('.vendor-schedule').forEach(el => {
+            if (!validateSchedule(el.value)) {
+                alert('Error: Formato de horario inválido en ' + el.dataset.vendor + '. Use HH:MM separados por coma.');
+                vendorScheduleError = true;
             }
+        });
+        if (vendorScheduleError) {
+            btn.disabled = false;
+            btn.textContent = '💾 Guardar Configuración';
+            return;
         }
 
         var data = {
@@ -386,13 +394,13 @@
             notify_on_error: document.getElementById('notify_on_error').value,
             notify_on_success: document.getElementById('notify_on_success').value,
             tftp_server: document.getElementById('tftp_server').value,
-            log_level: document.getElementById('log_level').value,
-            // Vendor schedules
-            schedule_vendor_huawei: document.getElementById('schedule_vendor_huawei').value,
-            schedule_vendor_cisco: document.getElementById('schedule_vendor_cisco').value,
-            schedule_vendor_hp: document.getElementById('schedule_vendor_hp').value,
-            schedule_vendor_zte: document.getElementById('schedule_vendor_zte').value
+            log_level: document.getElementById('log_level').value
         };
+
+        // Agregar vendor schedules dinámicamente
+        document.querySelectorAll('.vendor-schedule').forEach(el => {
+            data[el.id] = el.value;
+        });
 
         fetch('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
             .then(r => r.json())
