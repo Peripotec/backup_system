@@ -3,9 +3,10 @@ import os
 import zipfile
 import tempfile
 from vendors.base_vendor import BackupVendor
-from settings import TFTP_ROOT, SERVER_IP
+from settings import TFTP_ROOT
 from core.logger import log
 from core.vault import save_preferred_credential_for_device
+from core.config_manager import get_config_manager
 
 class Huawei(BackupVendor):
     def backup(self):
@@ -13,6 +14,16 @@ class Huawei(BackupVendor):
         Huawei backup via Telnet + TFTP.
         Extracts vrpcfg.cfg from the zip for text versioning.
         """
+        # Get TFTP server from DB config (single source of truth)
+        config = get_config_manager()
+        tftp_server = config.get_setting('tftp_server') or '127.0.0.1'
+        
+        # Guardrail: Abort if TFTP server is localhost (remote device can't reach it)
+        if tftp_server in ('127.0.0.1', 'localhost', '::1'):
+            raise ValueError(f"TFTP server is '{tftp_server}' - remote device cannot reach localhost. Configure correct IP in Settings.")
+        
+        self._debug_log(f"TFTP Server: {tftp_server}")
+        
         tn = self.connect_telnet()
         
         # Try login with credential pool
@@ -95,7 +106,7 @@ class Huawei(BackupVendor):
         temp_filename = f"{self.hostname}.zip"
         
         # Command: tftp <server> put <local> <remote>
-        cmd = f"tftp {SERVER_IP} put {config_filename} {temp_filename}"
+        cmd = f"tftp {tftp_server} put {config_filename} {temp_filename}"
         self._debug_log(f"Ejecutando transferencia TFTP...")
         self.send_command(tn, cmd)
         

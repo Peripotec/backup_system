@@ -1,14 +1,25 @@
 from vendors.base_vendor import BackupVendor
-from settings import FTP_ROOT, SERVER_IP
+from settings import FTP_ROOT
+from core.config_manager import get_config_manager
 import time
 import os
 
 class ZteOlt(BackupVendor):
-    def __init__(self, dev_info, db, git):
-        super().__init__(dev_info, db, git)
+    def __init__(self, dev_info, db, git, credentials=None):
+        super().__init__(dev_info, db, git, credentials)
         self.git_enabled = False # Binary files usually
 
     def backup(self):
+        # Get TFTP/FTP server from DB config (single source of truth)
+        config = get_config_manager()
+        tftp_server = config.get_setting('tftp_server') or '127.0.0.1'
+        
+        # Guardrail: Abort if server is localhost
+        if tftp_server in ('127.0.0.1', 'localhost', '::1'):
+            raise ValueError(f"TFTP/FTP server is '{tftp_server}' - remote device cannot reach localhost. Configure correct IP in Settings.")
+        
+        self._debug_log(f"FTP Server: {tftp_server}")
+        
         tn = self.connect_telnet()
         
         self.read_until(tn, ["Username:", "Login:"])
@@ -37,7 +48,7 @@ class ZteOlt(BackupVendor):
         # Unique filename
         temp_filename = f"{self.hostname}.dat"
         
-        cmd = f"file upload cfg-startup startrun.dat ftp ipaddress {SERVER_IP} user {ftp_user} password {ftp_pass} {temp_filename}\n"
+        cmd = f"file upload cfg-startup startrun.dat ftp ipaddress {tftp_server} user {ftp_user} password {ftp_pass} {temp_filename}\n"
         tn.write(cmd.encode('ascii'))
         
         # This can take a while
@@ -57,3 +68,4 @@ class ZteOlt(BackupVendor):
             time.sleep(1)
             
         return self.process_file(expected_path, is_text=False)
+
