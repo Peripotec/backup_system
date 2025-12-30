@@ -146,11 +146,11 @@ class ConfigManager:
              ['view_dashboard', 'view_files', 'view_diff', 'run_backup', 'view_inventory']),
             ('admin', '⚙️', 'Administrador - Configurar sistema, vault e inventario',
              ['view_dashboard', 'view_files', 'view_diff', 'run_backup', 'view_inventory', 
-              'edit_inventory', 'view_vault', 'edit_vault', 'view_settings', 'edit_settings', 'test_email']),
+              'edit_inventory', 'view_vault', 'edit_vault', 'view_settings', 'edit_settings']),
             ('superadmin', '🛡️', 'Super Administrador - Acceso total incluyendo gestión de usuarios',
              ['view_dashboard', 'view_files', 'view_diff', 'run_backup', 'view_inventory', 
               'edit_inventory', 'view_vault', 'edit_vault', 'view_settings', 'edit_settings',
-              'manage_users', 'manage_roles', 'test_email']),
+              'manage_users', 'manage_roles']),
         ]
         for name, emoji, description, permissions in default_roles:
             if not self.get_role(name):

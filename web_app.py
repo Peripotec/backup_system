@@ -132,7 +132,7 @@ ROLE_PERMISSIONS = {
               'edit_inventory', 'view_vault', 'edit_vault', 'view_settings', 'edit_settings', 'test_email'],
     'superadmin': ['view_dashboard', 'view_files', 'view_diff', 'run_backup', 'view_inventory', 
                    'edit_inventory', 'view_vault', 'edit_vault', 'view_settings', 'edit_settings',
-                   'manage_users', 'manage_roles', 'test_email']
+                   'test_email', 'manage_users', 'manage_roles']
 }
 
 def has_permission(user_or_role, permission):
@@ -1398,12 +1398,14 @@ def download_file(filepath):
 def admin_settings():
     cfg = get_config_manager()
     settings = cfg.get_all_settings()
-    # Pass user permissions to template for conditional UI
+    # Check if user can send test emails
     user = session.get('user', {})
     can_test_email = has_permission(user, 'test_email')
-    can_edit = has_permission(user, 'edit_settings')
-    return render_template('settings.html', settings=settings, 
-                          can_test_email=can_test_email, can_edit=can_edit)
+    can_edit_settings = has_permission(user, 'edit_settings')
+    return render_template('settings.html', 
+                          settings=settings, 
+                          can_test_email=can_test_email,
+                          can_edit_settings=can_edit_settings)
 
 @app.route('/api/settings', methods=['GET'])
 @requires_auth
@@ -1424,8 +1426,8 @@ def api_update_settings():
     cfg.update_settings(data)
     return jsonify({"status": "ok", "message": "Settings updated"})
 
-# Rate limit storage for test-email (in-memory, resets on restart)
-_test_email_rate_limit = {}
+# Rate limit store for test-email (in-memory, simple approach)
+_test_email_cooldown = {}
 
 @app.route('/api/settings/test-email', methods=['POST'])
 @requires_auth
@@ -1435,42 +1437,39 @@ def api_test_email():
     Send a test email to verify SMTP configuration.
     Rate limited: 1 request per 60 seconds per user.
     """
-    from core.notifier import Notifier
     import time
+    from core.notifier import Notifier
     
-    # Get user info for rate limiting and logging
     user = session.get('user', {})
-    username = user.get('username', 'anonymous')
+    user_id = user.get('username', 'anonymous')
     user_role = user.get('role', 'unknown')
-    user_ip = request.remote_addr
+    client_ip = request.remote_addr
     
     # Rate limit check (60 seconds cooldown)
     now = time.time()
-    rate_key = f"{username}:{user_ip}"
-    last_attempt = _test_email_rate_limit.get(rate_key, 0)
-    cooldown = 60
-    
-    if now - last_attempt < cooldown:
-        remaining = int(cooldown - (now - last_attempt))
-        log.warning(f"Test email rate limited: user={username}, role={user_role}, ip={user_ip}")
+    last_request = _test_email_cooldown.get(user_id, 0)
+    if now - last_request < 60:
+        remaining = int(60 - (now - last_request))
+        log.warning(f"Test email rate limited: user={user_id} ip={client_ip}")
         return jsonify({
             "status": "error", 
             "message": f"Esperá {remaining} segundos antes de volver a enviar un email de prueba."
         }), 429
     
-    # Update rate limit
-    _test_email_rate_limit[rate_key] = now
+    # Update cooldown
+    _test_email_cooldown[user_id] = now
     
     # Send test email
     notifier = Notifier()
     success, message = notifier.send_test_email()
     
-    # Log result (without sensitive data)
+    # Logging (sin credenciales)
+    result_str = "OK" if success else "ERROR"
+    log.info(f"Test email: user={user_id} role={user_role} ip={client_ip} result={result_str}")
+    
     if success:
-        log.info(f"Test email OK: user={username}, role={user_role}, ip={user_ip}")
         return jsonify({"status": "ok", "message": message})
     else:
-        log.warning(f"Test email FAILED: user={username}, role={user_role}, ip={user_ip}, error={message}")
         return jsonify({"status": "error", "message": message}), 400
 
 # ==========================
