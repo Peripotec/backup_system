@@ -273,3 +273,96 @@ class BackupEngine:
         self.notifier.send_summary(total, success, errors, failed_hosts, diff_summary, duration)
         
         log.info(f"Run Completed. Success: {success}, Errors: {errors}")
+
+    def run_scheduled(self, current_time_hhmm):
+        """
+        Run backup for devices whose schedule matches the current time.
+        Uses ConfigManager's schedule inheritance:
+        device -> model -> vendor -> global
+        
+        Args:
+            current_time_hhmm: Current time as HH:MM string
+        """
+        log.info(f"=== Ejecución Programada ({current_time_hhmm}) ===")
+        run_id = self.db.start_run()
+        
+        # Collect all devices with their vendor info
+        all_devices = []
+        if 'groups' not in self.inventory:
+            log.warning("No groups found in inventory.")
+            return
+        
+        for group in self.inventory['groups']:
+            vendor_type = group['vendor']
+            grp_credential_ids = group.get('credential_ids', [])
+            
+            for device in group['devices']:
+                # Enrich device with vendor and group info for schedule calculation
+                enriched = device.copy()
+                enriched['vendor'] = vendor_type
+                enriched['_group_name'] = group['name']
+                enriched['_group_cred_ids'] = grp_credential_ids
+                all_devices.append(enriched)
+        
+        # Filter devices by current schedule
+        matching_devices = get_config_manager().get_devices_for_current_time(
+            all_devices, 
+            current_time_hhmm
+        )
+        
+        if not matching_devices:
+            log.info(f"No hay dispositivos programados para {current_time_hhmm}")
+            self.db.end_run(run_id, 0, 0, 0)
+            return
+        
+        log.info(f"Dispositivos a respaldar: {len(matching_devices)}")
+        
+        tasks = []
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+            for device in matching_devices:
+                # Extract metadata we added
+                grp_name = device.pop('_group_name')
+                grp_credential_ids = device.pop('_group_cred_ids')
+                vendor_type = device.get('vendor')
+                
+                # Credential handling (same logic as run())
+                device_cred_ids = device.get('credential_ids', [])
+                if device_cred_ids:
+                    all_cred_ids = list(device_cred_ids)
+                    for grp_cred in grp_credential_ids:
+                        if grp_cred not in all_cred_ids:
+                            all_cred_ids.append(grp_cred)
+                    device_cred_ids = all_cred_ids
+                else:
+                    device_cred_ids = grp_credential_ids
+                
+                future = executor.submit(
+                    self.process_device,
+                    device,
+                    grp_name,
+                    vendor_type,
+                    device_cred_ids
+                )
+                tasks.append(future)
+        
+        # Collect Results
+        results = []
+        for future in concurrent.futures.as_completed(tasks):
+            results.append(future.result())
+        
+        # Stats
+        total = len(results)
+        success = sum(1 for r in results if r['status'] == "SUCCESS")
+        errors = total - success
+        
+        failed_hosts = {r['hostname']: r.get('error', 'Unknown') for r in results if r['status'] == "ERROR"}
+        diff_summary = {r['hostname']: r['diff'] for r in results if r.get('diff')}
+        
+        self.db.end_run(run_id, total, success, errors)
+        
+        # Notify
+        duration = 0
+        self.notifier.send_summary(total, success, errors, failed_hosts, diff_summary, duration)
+        
+        log.info(f"Ejecución programada completada. Éxito: {success}, Errores: {errors}")
+

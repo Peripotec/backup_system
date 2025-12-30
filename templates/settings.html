@@ -30,6 +30,23 @@
         opacity: 0.5;
         pointer-events: none;
     }
+
+    .schedule-section {
+        border-left: 3px solid var(--border-color);
+        padding-left: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .schedule-section h6 {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .backup-disabled .schedule-inputs {
+        opacity: 0.5;
+        pointer-events: none;
+    }
 </style>
 {% endblock %}
 
@@ -40,54 +57,146 @@
         <span class="save-indicator" id="save-indicator">✓ Guardado</span>
     </div>
     <div class="card-body">
+        <!-- TABS UNIFICADOS: Backup (todo) + Email -->
         <ul class="nav nav-tabs" role="tablist">
             <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#backup">📅
                     Backup</button></li>
-            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#retention">🗂️
-                    Retención</button></li>
             <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#email">📧 Email</button>
             </li>
-            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#system">🖥️
-                    Sistema</button></li>
         </ul>
 
         <div class="tab-content p-4">
-            <!-- Backup -->
+            <!-- ======================== -->
+            <!-- TAB: BACKUP (UNIFICADO) -->
+            <!-- ======================== -->
             <div class="tab-pane fade show active" id="backup">
-                <h5>Programación de Backups</h5>
-                <div class="row mb-3">
-                    <div class="col-md-6"><label class="form-label">Horario Global</label><input type="text"
-                            class="form-control" id="global_schedule" placeholder="02:00, 14:00">
-                        <div class="form-text">Separados por coma.</div>
+
+                <!-- Sección: Estado Global -->
+                <div class="mb-4">
+                    <h5>🔧 Estado Global</h5>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label class="form-label">Backups Automáticos</label>
+                            <select class="form-select" id="backup_enabled" onchange="toggleBackupState()">
+                                <option value="true">Habilitado</option>
+                                <option value="false">Deshabilitado</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="col-md-6"><label class="form-label">Backups Automáticos</label><select
-                            class="form-select" id="backup_enabled">
-                            <option value="true">Habilitado</option>
-                            <option value="false">Deshabilitado</option>
-                        </select></div>
+                </div>
+
+                <hr>
+
+                <!-- Sección: Programación -->
+                <div class="mb-4 schedule-inputs" id="schedule-section">
+                    <h5>📅 Programación</h5>
+
+                    <!-- Schedule Global (Fallback) -->
+                    <div class="schedule-section">
+                        <h6>Horario Global (Fallback)</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <input type="text" class="form-control" id="global_schedule" placeholder="02:00, 14:00"
+                                    pattern="^(\d{2}:\d{2})(,\s*\d{2}:\d{2})*$">
+                                <div class="form-text">Formato: HH:MM separados por coma. Se usa cuando no hay schedule
+                                    específico.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Schedule por Vendor -->
+                    <div class="schedule-section">
+                        <h6>Horarios por Vendor (Opcional)</h6>
+                        <div class="row g-2 mb-2">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control" id="schedule_vendor_huawei"
+                                    placeholder="HH:MM, HH:MM">
+                                <small class="text-muted">Huawei</small>
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control" id="schedule_vendor_cisco"
+                                    placeholder="HH:MM, HH:MM">
+                                <small class="text-muted">Cisco</small>
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control" id="schedule_vendor_hp"
+                                    placeholder="HH:MM, HH:MM">
+                                <small class="text-muted">HP</small>
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control" id="schedule_vendor_zte"
+                                    placeholder="HH:MM, HH:MM">
+                                <small class="text-muted">ZTE</small>
+                            </div>
+                        </div>
+                        <div class="form-text">Los vendors con schedule específico se ejecutan en esos horarios. Los
+                            vacíos usan el global.</div>
+                    </div>
+
+                    <div class="alert alert-info" role="alert">
+                        <strong>Herencia de Schedules:</strong> Device → Modelo → Vendor → Global.<br>
+                        Cada nivel más específico sobreescribe al anterior. Los schedules de Device se configuran en el
+                        Inventario.
+                    </div>
+                </div>
+
+                <hr>
+
+                <!-- Sección: Retención -->
+                <div class="mb-4 schedule-inputs">
+                    <h5>🗂️ Retención y Limpieza</h5>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label class="form-label">Días de Retención</label>
+                            <input type="number" class="form-control" id="archive_retention_days" min="7" max="365"
+                                value="90">
+                            <div class="form-text">Mínimo 7 días. Los archivos más antiguos se eliminan automáticamente.
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Auto-Limpieza</label>
+                            <select class="form-select" id="cleanup_enabled">
+                                <option value="true">Habilitado</option>
+                                <option value="false">Deshabilitado</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <hr>
+
+                <!-- Sección: Sistema -->
+                <div class="mb-4">
+                    <h5>🖥️ Sistema</h5>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label class="form-label">Servidor TFTP/FTP</label>
+                            <input type="text" class="form-control" id="tftp_server" placeholder="200.2.124.167">
+                            <div class="form-text">IP pública del servidor (la que ven los equipos remotos).</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Nivel de Log</label>
+                            <select class="form-select" id="log_level">
+                                <option value="DEBUG">DEBUG</option>
+                                <option value="INFO">INFO</option>
+                                <option value="WARNING">WARNING</option>
+                                <option value="ERROR">ERROR</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <!-- Retention -->
-            <div class="tab-pane fade" id="retention">
-                <h5>Retención</h5>
-                <div class="row mb-3">
-                    <div class="col-md-6"><label class="form-label">Días de Retención</label><input type="number"
-                            class="form-control" id="archive_retention_days" min="7" max="365"></div>
-                    <div class="col-md-6"><label class="form-label">Auto-Limpieza</label><select class="form-select"
-                            id="cleanup_enabled">
-                            <option value="true">Habilitado</option>
-                            <option value="false">Deshabilitado</option>
-                        </select></div>
-                </div>
-            </div>
-            <!-- Email -->
+
+            <!-- ======================== -->
+            <!-- TAB: EMAIL -->
+            <!-- ======================== -->
             <div class="tab-pane fade" id="email">
-                <h5>Configuración SMTP Enterprise</h5>
+                <h5>📧 Configuración SMTP Enterprise</h5>
 
                 <!-- Estado -->
                 <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label">Estado</label>
+                    <div class="col-md-4">
+                        <label class="form-label">Notificaciones por Email</label>
                         <select class="form-select" id="smtp_enabled">
                             <option value="true">Habilitado</option>
                             <option value="false">Deshabilitado</option>
@@ -97,10 +206,12 @@
 
                 <!-- Servidor -->
                 <div class="row mb-3">
-                    <div class="col-md-6"><label class="form-label">Servidor SMTP</label><input type="text"
-                            class="form-control" id="smtp_host" placeholder="smtp.empresa.com"></div>
-                    <div class="col-md-3"><label class="form-label">Puerto</label><input type="number"
-                            class="form-control" id="smtp_port" placeholder="25" min="1" max="65535"></div>
+                    <div class="col-md-4"><label class="form-label">Servidor SMTP</label>
+                        <input type="text" class="form-control" id="smtp_host" placeholder="smtp.empresa.com">
+                    </div>
+                    <div class="col-md-2"><label class="form-label">Puerto</label>
+                        <input type="number" class="form-control" id="smtp_port" placeholder="25" min="1" max="65535">
+                    </div>
                     <div class="col-md-3"><label class="form-label">Transporte</label>
                         <select class="form-select" id="smtp_transport">
                             <option value="plain">Plain (sin cifrado)</option>
@@ -108,19 +219,22 @@
                             <option value="ssl">SSL/TLS (465)</option>
                         </select>
                     </div>
+                    <div class="col-md-2"><label class="form-label">Timeout (seg)</label>
+                        <input type="number" class="form-control" id="smtp_timeout" placeholder="15" min="5" max="60">
+                    </div>
                 </div>
 
                 <!-- From -->
                 <div class="row mb-3">
-                    <div class="col-md-6"><label class="form-label">Remitente (From)</label><input type="text"
-                            class="form-control" id="smtp_from" placeholder="Backup System <alertas@empresa.com>"></div>
-                    <div class="col-md-6"><label class="form-label">Timeout (seg)</label><input type="number"
-                            class="form-control" id="smtp_timeout" placeholder="15" min="5" max="60"></div>
+                    <div class="col-md-6"><label class="form-label">Remitente (From)</label>
+                        <input type="text" class="form-control" id="smtp_from"
+                            placeholder="Sistema de Backup <alertas@empresa.com>">
+                    </div>
                 </div>
 
                 <!-- Auth Toggle -->
                 <div class="row mb-3">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label class="form-label">Autenticación</label>
                         <select class="form-select" id="smtp_auth" onchange="toggleAuthFields()">
                             <option value="false">Sin autenticación</option>
@@ -131,31 +245,37 @@
 
                 <!-- Auth Fields -->
                 <div class="row mb-3 auth-fields" id="auth-fields">
-                    <div class="col-md-6"><label class="form-label">Usuario</label><input type="text"
-                            class="form-control" id="smtp_user"></div>
-                    <div class="col-md-6"><label class="form-label">Contraseña</label><input type="password"
-                            class="form-control" id="smtp_pass" placeholder="•••••• (dejar vacío para mantener)">
+                    <div class="col-md-4"><label class="form-label">Usuario</label>
+                        <input type="text" class="form-control" id="smtp_user">
+                    </div>
+                    <div class="col-md-4"><label class="form-label">Contraseña</label>
+                        <input type="password" class="form-control" id="smtp_pass"
+                            placeholder="•••••• (vacío para mantener)">
                     </div>
                 </div>
 
                 <!-- Destinatarios -->
-                <div class="mb-3"><label class="form-label">Destinatarios (CSV)</label><input type="text"
-                        class="form-control" id="email_recipients" placeholder="noc@empresa.com, admin@empresa.com">
+                <div class="mb-3">
+                    <label class="form-label">Destinatarios (CSV)</label>
+                    <input type="text" class="form-control" id="email_recipients"
+                        placeholder="noc@empresa.com, admin@empresa.com">
                     <div class="form-text">Separar múltiples emails con coma.</div>
                 </div>
 
                 <!-- Notificaciones -->
                 <div class="row mb-3">
-                    <div class="col-md-6"><label class="form-label">Notificar en Errores</label><select
-                            class="form-select" id="notify_on_error">
+                    <div class="col-md-4"><label class="form-label">Notificar en Errores</label>
+                        <select class="form-select" id="notify_on_error">
                             <option value="true">Sí</option>
                             <option value="false">No</option>
-                        </select></div>
-                    <div class="col-md-6"><label class="form-label">Notificar en Éxito</label><select
-                            class="form-select" id="notify_on_success">
+                        </select>
+                    </div>
+                    <div class="col-md-4"><label class="form-label">Notificar en Éxito</label>
+                        <select class="form-select" id="notify_on_success">
                             <option value="false">No</option>
                             <option value="true">Sí</option>
-                        </select></div>
+                        </select>
+                    </div>
                 </div>
 
                 <!-- Test Email -->
@@ -166,27 +286,10 @@
                     <span id="test-email-result" class="align-self-center"></span>
                 </div>
             </div>
-            <!-- System -->
-            <div class="tab-pane fade" id="system">
-                <h5>Sistema</h5>
-                <div class="row mb-3">
-                    <div class="col-md-6"><label class="form-label">Servidor TFTP/FTP</label><input type="text"
-                            class="form-control" id="tftp_server" placeholder="200.2.124.167">
-                        <div class="form-text">IP pública del servidor de backup (la que ven los equipos remotos).</div>
-                    </div>
-                    <div class="col-md-6"><label class="form-label">Nivel de Log</label><select class="form-select"
-                            id="log_level">
-                            <option value="DEBUG">DEBUG</option>
-                            <option value="INFO">INFO</option>
-                            <option value="WARNING">WARNING</option>
-                            <option value="ERROR">ERROR</option>
-                        </select></div>
-                </div>
-            </div>
         </div>
 
         <div class="d-flex justify-content-end mt-3">
-            <button class="btn btn-primary" onclick="saveSettings()">💾 Guardar Configuración</button>
+            <button class="btn btn-primary" onclick="saveSettings()" id="btn-save">💾 Guardar Configuración</button>
         </div>
     </div>
 </div>
@@ -199,29 +302,65 @@
     document.addEventListener('DOMContentLoaded', function () {
         loadSettingsToForm();
         toggleAuthFields();
+        toggleBackupState();
     });
 
     function loadSettingsToForm() {
+        // Campos principales
         ['global_schedule', 'backup_enabled', 'archive_retention_days', 'cleanup_enabled',
             'smtp_enabled', 'smtp_host', 'smtp_port', 'smtp_from', 'smtp_transport', 'smtp_auth',
             'smtp_user', 'smtp_timeout', 'email_recipients',
-            'notify_on_error', 'notify_on_success', 'tftp_server', 'log_level'].forEach(f => {
-                var el = document.getElementById(f);
-                if (el && settings[f] !== undefined) el.value = settings[f];
-            });
+            'notify_on_error', 'notify_on_success', 'tftp_server', 'log_level',
+            'schedule_vendor_huawei', 'schedule_vendor_cisco', 'schedule_vendor_hp', 'schedule_vendor_zte'
+        ].forEach(f => {
+            var el = document.getElementById(f);
+            if (el && settings[f] !== undefined) el.value = settings[f];
+        });
     }
 
     function toggleAuthFields() {
         var authEnabled = document.getElementById('smtp_auth').value === 'true';
         var authFields = document.getElementById('auth-fields');
-        if (authEnabled) {
-            authFields.classList.remove('disabled');
-        } else {
-            authFields.classList.add('disabled');
+        authFields.classList.toggle('disabled', !authEnabled);
+    }
+
+    function toggleBackupState() {
+        var backupEnabled = document.getElementById('backup_enabled').value === 'true';
+        var section = document.getElementById('schedule-section');
+        section.classList.toggle('disabled', !backupEnabled);
+    }
+
+    function validateSchedule(value) {
+        if (!value.trim()) return true; // Empty is OK
+        var parts = value.split(',');
+        for (var i = 0; i < parts.length; i++) {
+            var p = parts[i].trim();
+            if (!/^\d{2}:\d{2}$/.test(p)) return false;
+            var h = parseInt(p.substring(0, 2));
+            var m = parseInt(p.substring(3, 5));
+            if (h < 0 || h > 23 || m < 0 || m > 59) return false;
         }
+        return true;
     }
 
     function saveSettings() {
+        var btn = document.getElementById('btn-save');
+        btn.disabled = true;
+        btn.textContent = '⏳ Guardando...';
+
+        // Validate schedules
+        var scheduleFields = ['global_schedule', 'schedule_vendor_huawei', 'schedule_vendor_cisco',
+            'schedule_vendor_hp', 'schedule_vendor_zte'];
+        for (var i = 0; i < scheduleFields.length; i++) {
+            var val = document.getElementById(scheduleFields[i]).value;
+            if (!validateSchedule(val)) {
+                alert('Error: Formato de horario inválido en ' + scheduleFields[i] + '. Use HH:MM separados por coma.');
+                btn.disabled = false;
+                btn.textContent = '💾 Guardar Configuración';
+                return;
+            }
+        }
+
         var data = {
             global_schedule: document.getElementById('global_schedule').value,
             backup_enabled: document.getElementById('backup_enabled').value,
@@ -240,18 +379,31 @@
             notify_on_error: document.getElementById('notify_on_error').value,
             notify_on_success: document.getElementById('notify_on_success').value,
             tftp_server: document.getElementById('tftp_server').value,
-            log_level: document.getElementById('log_level').value
+            log_level: document.getElementById('log_level').value,
+            // Vendor schedules
+            schedule_vendor_huawei: document.getElementById('schedule_vendor_huawei').value,
+            schedule_vendor_cisco: document.getElementById('schedule_vendor_cisco').value,
+            schedule_vendor_hp: document.getElementById('schedule_vendor_hp').value,
+            schedule_vendor_zte: document.getElementById('schedule_vendor_zte').value
         };
 
         fetch('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
             .then(r => r.json())
             .then(resp => {
-                if (resp.error) alert('Error: ' + resp.error);
-                else {
+                btn.disabled = false;
+                btn.textContent = '💾 Guardar Configuración';
+                if (resp.error) {
+                    alert('Error: ' + resp.error);
+                } else {
                     var ind = document.getElementById('save-indicator');
                     ind.style.display = 'inline';
                     setTimeout(() => ind.style.display = 'none', 2000);
                 }
+            })
+            .catch(err => {
+                btn.disabled = false;
+                btn.textContent = '💾 Guardar Configuración';
+                alert('Error de conexión');
             });
     }
 

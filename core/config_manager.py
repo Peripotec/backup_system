@@ -218,6 +218,154 @@ class ConfigManager:
         return True
     
     # ==================
+    # SCHEDULING METHODS
+    # ==================
+    
+    def parse_schedule(self, schedule_str):
+        """
+        Parse a schedule string (CSV of HH:MM times) into sorted list.
+        Returns empty list if invalid.
+        """
+        if not schedule_str or not schedule_str.strip():
+            return []
+        
+        times = []
+        for part in schedule_str.split(','):
+            part = part.strip()
+            # Validate HH:MM format
+            if len(part) == 5 and part[2] == ':':
+                try:
+                    h, m = int(part[:2]), int(part[3:])
+                    if 0 <= h < 24 and 0 <= m < 60:
+                        times.append(part)
+                except ValueError:
+                    continue
+        
+        # Deduplicate and sort
+        return sorted(list(set(times)))
+    
+    def get_schedule_for_vendor(self, vendor):
+        """Get schedule for a specific vendor."""
+        key = f"schedule_vendor_{vendor.lower()}"
+        return self.get_setting(key) or ''
+    
+    def set_schedule_for_vendor(self, vendor, schedule_str):
+        """Set schedule for a specific vendor."""
+        key = f"schedule_vendor_{vendor.lower()}"
+        # Validate and normalize
+        times = self.parse_schedule(schedule_str)
+        self.set_setting(key, ', '.join(times))
+        log.info(f"Schedule updated for vendor {vendor}: {times}")
+    
+    def get_schedule_for_model(self, vendor, model):
+        """Get schedule for a specific vendor+model combination."""
+        key = f"schedule_model_{vendor.lower()}_{model.lower().replace(' ', '_')}"
+        return self.get_setting(key) or ''
+    
+    def set_schedule_for_model(self, vendor, model, schedule_str):
+        """Set schedule for a specific vendor+model combination."""
+        key = f"schedule_model_{vendor.lower()}_{model.lower().replace(' ', '_')}"
+        times = self.parse_schedule(schedule_str)
+        self.set_setting(key, ', '.join(times))
+        log.info(f"Schedule updated for {vendor}/{model}: {times}")
+    
+    def get_effective_schedule(self, device):
+        """
+        Get effective schedule for a device using inheritance:
+        device -> model -> vendor -> global
+        
+        Returns tuple: (list of HH:MM times, source)
+        Source is one of: 'device', 'model', 'vendor', 'global'
+        
+        A device only matches ONE bucket (first match wins).
+        Empty schedule = inherit from parent level (not "disable").
+        """
+        # 1. Check device-specific schedule (stored in inventory)
+        device_schedule = device.get('schedule', '')
+        if device_schedule:
+            return self.parse_schedule(device_schedule), 'device'
+        
+        # 2. Check vendor+model schedule
+        vendor = device.get('vendor', '')
+        model = device.get('modelo', '')
+        if vendor and model:
+            model_schedule = self.get_schedule_for_model(vendor, model)
+            if model_schedule:
+                return self.parse_schedule(model_schedule), 'model'
+        
+        # 3. Check vendor schedule
+        if vendor:
+            vendor_schedule = self.get_schedule_for_vendor(vendor)
+            if vendor_schedule:
+                return self.parse_schedule(vendor_schedule), 'vendor'
+        
+        # 4. Fallback to global schedule
+        global_schedule = self.get_setting('global_schedule') or ''
+        return self.parse_schedule(global_schedule), 'global'
+
+    
+    def get_devices_for_current_time(self, devices, current_time_hhmm):
+        """
+        Given a list of devices and current time (HH:MM), return devices
+        that should be backed up now based on their effective schedule.
+        
+        Tracks which "bucket" each device came from for debugging.
+        A device only belongs to ONE bucket (first match wins in inheritance).
+        """
+        matching = []
+        seen_ids = set()
+        
+        # Counters for logging
+        buckets = {'device': 0, 'model': 0, 'vendor': 0, 'global': 0}
+        
+        for device in devices:
+            device_id = device.get('sysname') or device.get('hostname')
+            if device_id in seen_ids:
+                continue
+            
+            schedule, source = self.get_effective_schedule(device)
+            if current_time_hhmm in schedule:
+                # Tag device with its schedule source for debugging
+                device['_schedule_source'] = source
+                matching.append(device)
+                seen_ids.add(device_id)
+                buckets[source] = buckets.get(source, 0) + 1
+        
+        # Log summary of what was selected and why
+        if matching:
+            summary_parts = []
+            for src, count in buckets.items():
+                if count > 0:
+                    summary_parts.append(f"{count} por {src}")
+            log.info(f"Tick {current_time_hhmm}: {len(matching)} devices ({', '.join(summary_parts)})")
+        
+        return matching
+    
+    def should_run_backup_now(self, current_time_hhmm):
+        """
+        Check if any backup should run at the current time.
+        Used by the timer wrapper to early-exit if not needed.
+        """
+        # If backups are globally disabled, never run
+        if self.get_setting('backup_enabled') != 'true':
+            return False, "Backups deshabilitados globalmente"
+        
+        # Check if current time matches global schedule
+        global_schedule = self.parse_schedule(self.get_setting('global_schedule') or '')
+        if current_time_hhmm in global_schedule:
+            return True, "Horario global"
+        
+        # Check all vendor schedules
+        all_settings = self.get_all_settings()
+        for key, value in all_settings.items():
+            if key.startswith('schedule_vendor_') or key.startswith('schedule_model_'):
+                times = self.parse_schedule(value)
+                if current_time_hhmm in times:
+                    return True, f"Horario específico: {key}"
+        
+        return False, "Fuera de horario programado"
+    
+    # ==================
     # USER METHODS
     # ==================
     

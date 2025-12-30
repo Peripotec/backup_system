@@ -1,12 +1,13 @@
 [Unit]
-Description=Network Backup System - Scheduled Backup
+Description=Network Backup System - Scheduled Runner
 After=network.target
 
 [Service]
 Type=oneshot
 User=root
 WorkingDirectory=/opt/backup_system
-ExecStart=/opt/backup_system/venv/bin/python3 /opt/backup_system/main.py
+# Usar el scheduled_runner.py que hace early-exit inteligente
+ExecStart=/opt/backup_system/venv/bin/python3 /opt/backup_system/scheduled_runner.py
 StandardOutput=journal
 StandardError=journal
 

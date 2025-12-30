@@ -1,12 +1,19 @@
 [Unit]
-Description=Network Backup System - Daily Timer
+Description=Network Backup System - Minute Timer
 Requires=backup-cron.service
 
 [Timer]
-# Run daily at 02:00 (configurable via web overrides execution time)
-OnCalendar=*-*-* 02:00:00
-Persistent=true
-RandomizedDelaySec=300
+# Estrategia: Timer cada minuto + early-exit en scheduled_runner.py
+# Ventajas:
+# - Cambios de horario desde web aplican inmediatamente (sin daemon-reload)
+# - Más flexible que regenerar OnCalendar dinámicamente
+# - Locking previene ejecuciones simultáneas
+#
+# El scheduled_runner.py consulta la DB y hace early-exit si no corresponde
+
+OnCalendar=*:*:00
+AccuracySec=30s
+Persistent=false
 
 [Install]
 WantedBy=timers.target
