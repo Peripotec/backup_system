@@ -21,6 +21,15 @@
         display: none;
         color: #28a745;
     }
+
+    .auth-fields {
+        transition: opacity 0.3s;
+    }
+
+    .auth-fields.disabled {
+        opacity: 0.5;
+        pointer-events: none;
+    }
 </style>
 {% endblock %}
 
@@ -63,7 +72,7 @@
                 <h5>Retención</h5>
                 <div class="row mb-3">
                     <div class="col-md-6"><label class="form-label">Días de Retención</label><input type="number"
-                            class="form-control" id="archive_retention_days" min="1" max="365"></div>
+                            class="form-control" id="archive_retention_days" min="7" max="365"></div>
                     <div class="col-md-6"><label class="form-label">Auto-Limpieza</label><select class="form-select"
                             id="cleanup_enabled">
                             <option value="true">Habilitado</option>
@@ -73,42 +82,98 @@
             </div>
             <!-- Email -->
             <div class="tab-pane fade" id="email">
-                <h5>Configuración SMTP</h5>
+                <h5>Configuración SMTP Enterprise</h5>
+
+                <!-- Estado -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Estado</label>
+                        <select class="form-select" id="smtp_enabled">
+                            <option value="true">Habilitado</option>
+                            <option value="false">Deshabilitado</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Servidor -->
                 <div class="row mb-3">
                     <div class="col-md-6"><label class="form-label">Servidor SMTP</label><input type="text"
-                            class="form-control" id="smtp_host" placeholder="smtp.gmail.com"></div>
-                    <div class="col-md-6"><label class="form-label">Puerto</label><input type="number"
-                            class="form-control" id="smtp_port" placeholder="587"></div>
+                            class="form-control" id="smtp_host" placeholder="smtp.empresa.com"></div>
+                    <div class="col-md-3"><label class="form-label">Puerto</label><input type="number"
+                            class="form-control" id="smtp_port" placeholder="25" min="1" max="65535"></div>
+                    <div class="col-md-3"><label class="form-label">Transporte</label>
+                        <select class="form-select" id="smtp_transport">
+                            <option value="plain">Plain (sin cifrado)</option>
+                            <option value="starttls">STARTTLS</option>
+                            <option value="ssl">SSL/TLS (465)</option>
+                        </select>
+                    </div>
                 </div>
+
+                <!-- From -->
                 <div class="row mb-3">
+                    <div class="col-md-6"><label class="form-label">Remitente (From)</label><input type="text"
+                            class="form-control" id="smtp_from" placeholder="Backup System <alertas@empresa.com>"></div>
+                    <div class="col-md-6"><label class="form-label">Timeout (seg)</label><input type="number"
+                            class="form-control" id="smtp_timeout" placeholder="15" min="5" max="60"></div>
+                </div>
+
+                <!-- Auth Toggle -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Autenticación</label>
+                        <select class="form-select" id="smtp_auth" onchange="toggleAuthFields()">
+                            <option value="false">Sin autenticación</option>
+                            <option value="true">Requiere autenticación</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Auth Fields -->
+                <div class="row mb-3 auth-fields" id="auth-fields">
                     <div class="col-md-6"><label class="form-label">Usuario</label><input type="text"
                             class="form-control" id="smtp_user"></div>
                     <div class="col-md-6"><label class="form-label">Contraseña</label><input type="password"
-                            class="form-control" id="smtp_pass">
-                        <div class="form-text">Deja vacío para mantener.</div>
+                            class="form-control" id="smtp_pass" placeholder="•••••• (dejar vacío para mantener)">
                     </div>
                 </div>
-                <div class="mb-3"><label class="form-label">Destinatarios</label><input type="text" class="form-control"
-                        id="email_recipients" placeholder="admin@example.com"></div>
+
+                <!-- Destinatarios -->
+                <div class="mb-3"><label class="form-label">Destinatarios (CSV)</label><input type="text"
+                        class="form-control" id="email_recipients" placeholder="noc@empresa.com, admin@empresa.com">
+                    <div class="form-text">Separar múltiples emails con coma.</div>
+                </div>
+
+                <!-- Notificaciones -->
                 <div class="row mb-3">
-                    <div class="col-md-6"><label class="form-label">Notificar Errores</label><select class="form-select"
-                            id="notify_on_error">
+                    <div class="col-md-6"><label class="form-label">Notificar en Errores</label><select
+                            class="form-select" id="notify_on_error">
                             <option value="true">Sí</option>
                             <option value="false">No</option>
                         </select></div>
-                    <div class="col-md-6"><label class="form-label">Notificar Éxito</label><select class="form-select"
-                            id="notify_on_success">
-                            <option value="true">Sí</option>
+                    <div class="col-md-6"><label class="form-label">Notificar en Éxito</label><select
+                            class="form-select" id="notify_on_success">
                             <option value="false">No</option>
+                            <option value="true">Sí</option>
                         </select></div>
+                </div>
+
+                <!-- Test Email -->
+                <div class="d-flex gap-2 mt-4">
+                    <button class="btn btn-outline-primary" onclick="sendTestEmail()" id="btn-test-email">
+                        📧 Enviar Email de Prueba
+                    </button>
+                    <span id="test-email-result" class="align-self-center"></span>
                 </div>
             </div>
             <!-- System -->
             <div class="tab-pane fade" id="system">
                 <h5>Sistema</h5>
                 <div class="row mb-3">
-                    <div class="col-md-6"><label class="form-label">Servidor TFTP</label><input type="text"
-                            class="form-control" id="tftp_server" placeholder="192.168.1.100"></div>
+                    <div class="col-md-6"><label class="form-label">Servidor TFTP/FTP</label><input type="text"
+                            class="form-control" id="tftp_server" placeholder="200.2.124.167">
+                        <div class="form-text">IP pública del servidor de backup (la que ven los equipos remotos).</div>
+                    </div>
                     <div class="col-md-6"><label class="form-label">Nivel de Log</label><select class="form-select"
                             id="log_level">
                             <option value="DEBUG">DEBUG</option>
@@ -131,15 +196,29 @@
 <script>
     var settings = {{ settings | tojson | safe }};
 
-    document.addEventListener('DOMContentLoaded', function () { loadSettingsToForm(); });
+    document.addEventListener('DOMContentLoaded', function () {
+        loadSettingsToForm();
+        toggleAuthFields();
+    });
 
     function loadSettingsToForm() {
         ['global_schedule', 'backup_enabled', 'archive_retention_days', 'cleanup_enabled',
-            'smtp_host', 'smtp_port', 'smtp_user', 'email_recipients',
+            'smtp_enabled', 'smtp_host', 'smtp_port', 'smtp_from', 'smtp_transport', 'smtp_auth',
+            'smtp_user', 'smtp_timeout', 'email_recipients',
             'notify_on_error', 'notify_on_success', 'tftp_server', 'log_level'].forEach(f => {
                 var el = document.getElementById(f);
                 if (el && settings[f] !== undefined) el.value = settings[f];
             });
+    }
+
+    function toggleAuthFields() {
+        var authEnabled = document.getElementById('smtp_auth').value === 'true';
+        var authFields = document.getElementById('auth-fields');
+        if (authEnabled) {
+            authFields.classList.remove('disabled');
+        } else {
+            authFields.classList.add('disabled');
+        }
     }
 
     function saveSettings() {
@@ -148,10 +227,15 @@
             backup_enabled: document.getElementById('backup_enabled').value,
             archive_retention_days: document.getElementById('archive_retention_days').value,
             cleanup_enabled: document.getElementById('cleanup_enabled').value,
+            smtp_enabled: document.getElementById('smtp_enabled').value,
             smtp_host: document.getElementById('smtp_host').value,
             smtp_port: document.getElementById('smtp_port').value,
+            smtp_from: document.getElementById('smtp_from').value,
+            smtp_transport: document.getElementById('smtp_transport').value,
+            smtp_auth: document.getElementById('smtp_auth').value,
             smtp_user: document.getElementById('smtp_user').value,
             smtp_pass: document.getElementById('smtp_pass').value,
+            smtp_timeout: document.getElementById('smtp_timeout').value,
             email_recipients: document.getElementById('email_recipients').value,
             notify_on_error: document.getElementById('notify_on_error').value,
             notify_on_success: document.getElementById('notify_on_success').value,
@@ -168,6 +252,29 @@
                     ind.style.display = 'inline';
                     setTimeout(() => ind.style.display = 'none', 2000);
                 }
+            });
+    }
+
+    function sendTestEmail() {
+        var btn = document.getElementById('btn-test-email');
+        var result = document.getElementById('test-email-result');
+        btn.disabled = true;
+        result.innerHTML = '<span class="text-muted">Enviando...</span>';
+
+        fetch('/api/settings/test-email', { method: 'POST' })
+            .then(r => r.json())
+            .then(resp => {
+                btn.disabled = false;
+                if (resp.status === 'ok') {
+                    result.innerHTML = '<span class="text-success">✓ ' + resp.message + '</span>';
+                } else {
+                    result.innerHTML = '<span class="text-danger">✗ ' + resp.message + '</span>';
+                }
+                setTimeout(() => result.innerHTML = '', 5000);
+            })
+            .catch(err => {
+                btn.disabled = false;
+                result.innerHTML = '<span class="text-danger">✗ Error de conexión</span>';
             });
     }
 </script>

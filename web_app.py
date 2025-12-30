@@ -1413,11 +1413,24 @@ def api_get_settings():
 def api_update_settings():
     cfg = get_config_manager()
     data = request.json
-    # Don't allow updating password via this endpoint
+    # Don't allow updating password via this endpoint if empty
     if 'smtp_pass' in data and data['smtp_pass'] == '':
         del data['smtp_pass']  # Keep existing password if empty
     cfg.update_settings(data)
     return jsonify({"status": "ok", "message": "Settings updated"})
+
+@app.route('/api/settings/test-email', methods=['POST'])
+@requires_auth
+@requires_permission('edit_settings')
+def api_test_email():
+    """Send a test email to verify SMTP configuration."""
+    from core.notifier import Notifier
+    notifier = Notifier()
+    success, message = notifier.send_test_email()
+    if success:
+        return jsonify({"status": "ok", "message": message})
+    else:
+        return jsonify({"status": "error", "message": message}), 400
 
 # ==========================
 # ADMIN: USERS

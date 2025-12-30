@@ -115,11 +115,16 @@ class ConfigManager:
             'archive_retention_days': '90',
             'cleanup_enabled': 'true',
             
-            # Email
+            # Email - Enterprise SMTP config
+            'smtp_enabled': 'false',
             'smtp_host': '',
-            'smtp_port': '587',
+            'smtp_port': '25',
+            'smtp_from': 'Backup System <backup@localhost>',
+            'smtp_transport': 'plain',  # plain, starttls, ssl
+            'smtp_auth': 'false',
             'smtp_user': '',
             'smtp_pass': '',
+            'smtp_timeout': '15',
             'email_recipients': '',
             'notify_on_error': 'true',
             'notify_on_success': 'false',
