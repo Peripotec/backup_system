@@ -542,11 +542,23 @@ def cancel_backup():
 # ==========================
 
 def load_inventory():
+    """
+    Load inventory from configured source (YAML or NetBox).
+    Uses InventoryProvider for future NetBox integration.
+    Returns dict with 'groups' key for backward compatibility.
+    """
     try:
-        with open(INVENTORY_FILE, 'r') as f:
-            return yaml.safe_load(f) or {"groups": []}
-    except:
-        return {"groups": []}
+        from core.inventory_provider import get_inventory_provider
+        provider = get_inventory_provider()
+        return provider.get_raw_inventory()
+    except Exception as e:
+        log.warning(f"Error loading inventory via provider, falling back to YAML: {e}")
+        # Fallback to direct YAML read
+        try:
+            with open(INVENTORY_FILE, 'r') as f:
+                return yaml.safe_load(f) or {"groups": []}
+        except:
+            return {"groups": []}
 
 def save_inventory(data):
     with open(INVENTORY_FILE, 'w') as f:
