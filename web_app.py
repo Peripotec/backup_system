@@ -1469,10 +1469,11 @@ def download_file(filepath):
 def admin_settings():
     cfg = get_config_manager()
     settings = cfg.get_all_settings()
-    # Check if user can send test emails
-    user = session.get('user', {})
-    can_test_email = has_permission(user, 'test_email')
-    can_edit_settings = has_permission(user, 'edit_settings')
+    
+    # Check if user can send test emails (use get_current_user() to get fresh data from DB)
+    user = get_current_user()
+    can_test_email = has_permission(user, 'test_email') if user else False
+    can_edit_settings = has_permission(user, 'edit_settings') if user else False
     
     # Get unique vendors from inventory (dynamic, not hardcoded)
     inv = load_inventory()
