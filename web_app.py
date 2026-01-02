@@ -167,7 +167,7 @@ ALL_VALID_PERMISSIONS = [p['id'] for cat in PERMISSIONS_CATALOG.values() for p i
 def get_effective_permissions(user):
     """
     Get effective permissions for a user from DB.
-    Priority: user explicit permissions > role permissions from DB > role defaults
+    Priority: user explicit permissions > role permissions from DB > role defaults (fallback only)
     """
     if not user:
         log.debug("get_effective_permissions: no user provided")
@@ -187,16 +187,14 @@ def get_effective_permissions(user):
     role = cfg.get_role(role_name)
     
     if role:
+        # Role exists in DB - use its permissions (even if empty list)
         role_perms = role.get('permissions', [])
         log.debug(f"get_effective_permissions: role '{role_name}' from DB has perms: {role_perms}")
-        if role_perms:
-            return role_perms
-    else:
-        log.debug(f"get_effective_permissions: role '{role_name}' NOT FOUND in DB")
+        return role_perms  # Return DB permissions, even if empty
     
-    # 3. Fallback to hardcoded defaults if role not in DB
+    # 3. Fallback to hardcoded defaults ONLY if role doesn't exist in DB
+    log.warning(f"Role '{role_name}' not found in DB, using hardcoded fallback defaults")
     default_perms = ROLE_PERMISSIONS.get(role_name, [])
-    log.debug(f"get_effective_permissions: using fallback defaults: {default_perms}")
     return default_perms
 
 
