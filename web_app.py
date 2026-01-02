@@ -563,11 +563,13 @@ def load_catalogs():
 
 @app.route('/api/inventory')
 @requires_auth
+@requires_permission('view_inventory')
 def api_get_inventory():
     return jsonify(load_inventory())
 
 @app.route('/api/devices')
 @requires_auth
+@requires_permission('view_inventory')
 def api_get_devices():
     """Get devices with server-side filtering and pagination."""
     inv = load_inventory()
@@ -694,6 +696,7 @@ def api_get_devices():
 
 @app.route('/api/filter-options')
 @requires_auth
+@requires_permission('view_inventory')
 def api_filter_options():
     """Get unique values for filter dropdowns."""
     inv = load_inventory()
@@ -739,6 +742,7 @@ def api_filter_options():
 
 @app.route('/api/inventory/group', methods=['POST'])
 @requires_auth
+@requires_permission('edit_inventory')
 def api_add_group():
     data = request.json
     inv = load_inventory()
@@ -773,6 +777,7 @@ def api_add_group():
 
 @app.route('/api/inventory/group/<group_name>', methods=['PUT'])
 @requires_auth
+@requires_permission('edit_inventory')
 def api_edit_group(group_name):
     """Edit an existing group."""
     data = request.json
@@ -788,6 +793,7 @@ def api_edit_group(group_name):
 
 @app.route('/api/inventory/group/<group_name>', methods=['DELETE'])
 @requires_auth
+@requires_permission('edit_inventory')
 def api_delete_group(group_name):
     """Delete a group and all its devices."""
     inv = load_inventory()
@@ -934,6 +940,7 @@ def api_add_device():
 
 @app.route('/api/inventory/device/<group_name>/<hostname>', methods=['DELETE'])
 @requires_auth
+@requires_permission('edit_inventory')
 def api_delete_device(group_name, hostname):
     inv = load_inventory()
     for g in inv["groups"]:
@@ -945,6 +952,7 @@ def api_delete_device(group_name, hostname):
 
 @app.route('/api/inventory/device/<group_name>/<hostname>', methods=['PUT'])
 @requires_auth
+@requires_permission('edit_inventory')
 def api_edit_device(group_name, hostname):
     """Edit an existing device. Supports moving to different group. Sysname is immutable."""
     data = request.json
@@ -1014,6 +1022,7 @@ def api_edit_device(group_name, hostname):
 
 @app.route('/api/inventory/test', methods=['POST'])
 @requires_auth
+@requires_permission('view_inventory')
 def api_test_connection():
     """Test connection to a device before saving."""
     import socket
