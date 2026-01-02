@@ -33,7 +33,7 @@ def get_or_create_secret_key():
         with open(SECRET_KEY_FILE, 'w') as f:
             f.write(key)
         os.chmod(SECRET_KEY_FILE, 0o600)  # Only owner can read
-    except:
+    except Exception:
         pass  # Fallback to in-memory key
     return key
 
@@ -386,7 +386,7 @@ def index():
             "free_gb": round(free / (1024**3), 2),
             "total_gb": round(total / (1024**3), 2)
         }
-    except:
+    except Exception:
         disk_info = {"percent": 0, "free_gb": 0, "total_gb": 0}
 
     return render_template('dashboard.html', stats=stats, jobs=jobs, disk=disk_info, backup_status=backup_status, inventory=inv)
@@ -596,7 +596,7 @@ def load_inventory():
         try:
             with open(INVENTORY_FILE, 'r') as f:
                 return yaml.safe_load(f) or {"groups": []}
-        except:
+        except Exception:
             return {"groups": []}
 
 def save_inventory(data):
@@ -631,7 +631,7 @@ def api_get_devices():
         catalogs = load_catalogs()
         for loc in catalogs.get('localidades', []):
             localidades_catalog[loc.get('id', '').lower()] = loc.get('zona', '')
-    except:
+    except Exception:
         pass
     
     # Get filter params from URL
@@ -756,7 +756,7 @@ def api_filter_options():
     try:
         catalogs = load_catalogs()
         troncales = set(loc.get('zona', '') for loc in catalogs.get('localidades', []) if loc.get('zona'))
-    except:
+    except Exception:
         troncales = set()
     
     localidades = set()
@@ -1274,7 +1274,7 @@ def api_file_content(filepath):
         with open(target, 'r', errors='ignore') as f:
             content = f.read()
         return jsonify({"filename": os.path.basename(filepath), "content": content})
-    except:
+    except Exception:
         return jsonify({"error": "Cannot read file"}), 500
 
 @app.route('/api/files/delete/<path:filepath>', methods=['DELETE'])
@@ -1541,7 +1541,7 @@ def inventory():
     try:
         with open(INVENTORY_FILE, 'r') as f:
             content = f.read()
-    except:
+    except Exception:
         content = "# Inventory not found"
     
     inv = load_inventory()
