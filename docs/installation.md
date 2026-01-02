@@ -271,3 +271,116 @@ systemctl restart backup-web
 
 # Reimportar usuarios si es necesario
 ```
+
+## Smoke Tests (Verificación Post-Deploy)
+
+Después de instalar o actualizar, ejecutar estos tests para verificar que todo funciona.
+
+### 1. Health Check (sin autenticación)
+
+```bash
+# Directo a Gunicorn
+curl -sS http://127.0.0.1:5000/api/health
+
+# Vía Nginx (si aplica)
+curl -sS http://localhost/api/health
+
+# Con trailing slash (no debe dar 301)
+curl -sS http://127.0.0.1:5000/api/health/
+```
+
+**Respuesta esperada (HTTP 200):**
+```json
+{"app":"ok","database":"ok","inventory":"ok","timestamp":"2026-01-02T15:00:00.000000"}
+```
+
+**Si hay error (HTTP 503):**
+```json
+{"app":"ok","database":"error","inventory":"ok","timestamp":"..."}
+```
+
+### 2. Login y Obtención de Cookie
+
+Para tests que requieren autenticación:
+
+**Opción A: Desde Browser (Recomendado)**
+1. Abrir http://localhost:5000/login
+2. Login con usuario admin
+3. Abrir DevTools (F12) → Application → Cookies
+4. Copiar el valor de la cookie `session`
+
+**Opción B: Via curl**
+```bash
+# Login y guardar cookie
+curl -c cookies.txt -X POST http://127.0.0.1:5000/login \
+  -d "username=admin&password=TU_PASSWORD"
+
+# Usar cookie en siguientes requests
+curl -b cookies.txt http://127.0.0.1:5000/api/settings
+```
+
+### 3. Validación de Schedules (requiere auth)
+
+```bash
+# Schedule inválido (debe rechazar)
+curl -sS -X PUT http://127.0.0.1:5000/api/settings \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{"global_schedule":"25:99"}'
+# Esperado: {"status":"error","message":"Formato de horario inválido..."}
+
+# Schedule válido (debe aceptar)
+curl -sS -X PUT http://127.0.0.1:5000/api/settings \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{"global_schedule":"02:00,14:00"}'
+# Esperado: {"status":"ok","message":"Settings updated"}
+```
+
+### 4. RBAC (Verificar Permisos)
+
+```bash
+# Sin autenticación → 401 en APIs protegidas
+curl -sS http://127.0.0.1:5000/api/vault
+# Esperado: {"error":"Authentication required"}
+
+# Con auth pero sin permiso → 403
+# (crear usuario viewer y probar acceso a vault)
+```
+
+### 5. Scheduler (verificar timer)
+
+```bash
+# Ver estado del timer
+systemctl status backup-cron.timer
+
+# Ver última ejecución
+journalctl -u backup-cron.service -n 20
+
+# Forzar ejecución manual
+systemctl start backup-cron.service
+```
+
+### 6. Email Test (requiere auth + permiso test_email)
+
+```bash
+# Con cookie de admin
+curl -sS -X POST http://127.0.0.1:5000/api/settings/test-email \
+  -b cookies.txt
+# Esperado: {"status":"ok","message":"Email enviado correctamente"}
+
+# Segundo intento dentro de 60s → Rate limit
+curl -sS -X POST http://127.0.0.1:5000/api/settings/test-email \
+  -b cookies.txt
+# Esperado: 429 + {"status":"error","message":"Esperá X segundos..."}
+```
+
+## Checklist de Verificación
+
+- [ ] `curl /api/health` → 200 OK
+- [ ] `curl /api/health/` → 200 OK (no 301)
+- [ ] Login web funciona
+- [ ] Dashboard carga dispositivos
+- [ ] Timer systemd activo
+- [ ] TFTP responde (puerto 69)
+- [ ] Test email envía correctamente
