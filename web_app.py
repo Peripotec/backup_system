@@ -1618,6 +1618,32 @@ def api_update_settings():
     username = current_user.get('username', 'unknown') if current_user else 'unknown'
     changed_keys = list(data.keys())
     
+    # Validate schedule formats (HH:MM,HH:MM,...)
+    def validate_schedule_format(value):
+        """Validate schedule string is valid HH:MM format."""
+        if not value or not value.strip():
+            return True  # Empty is valid (inherit from parent)
+        import re
+        for time_str in value.split(','):
+            time_str = time_str.strip()
+            if not time_str:
+                continue
+            if not re.match(r'^\d{2}:\d{2}$', time_str):
+                return False
+            h, m = time_str.split(':')
+            if not (0 <= int(h) <= 23 and 0 <= int(m) <= 59):
+                return False
+        return True
+    
+    # Check all schedule-related keys
+    schedule_keys = [k for k in data.keys() if 'schedule' in k.lower()]
+    for key in schedule_keys:
+        if not validate_schedule_format(str(data.get(key, ''))):
+            return jsonify({
+                "status": "error",
+                "message": f"Formato de horario inválido en '{key}'. Use HH:MM separado por comas."
+            }), 400
+    
     # Don't allow updating password via this endpoint if empty
     if 'smtp_pass' in data and data['smtp_pass'] == '':
         del data['smtp_pass']  # Keep existing password if empty
