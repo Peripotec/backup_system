@@ -132,6 +132,12 @@ class ConfigManager:
             # System
             'tftp_server': '127.0.0.1',
             'log_level': 'INFO',
+            
+            # Inventory Source (NetBox integration)
+            'inventory_source': 'yaml',  # yaml | netbox
+            'netbox_url': '',             # e.g., https://netbox.example.com
+            'netbox_token': '',           # API token
+            'netbox_filter_tag': 'backup-enabled',  # Tag to filter devices
         }
         
         for key, value in defaults.items():
