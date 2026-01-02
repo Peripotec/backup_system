@@ -6,11 +6,13 @@ Sistema de backup automatizado para dispositivos de red con soporte multi-vendor
 
 | Documento | Descripción |
 |-----------|-------------|
+| [Instalación](installation.md) | Guía de instalación y despliegue |
 | [Arquitectura](architecture.md) | Arquitectura general del sistema |
 | [Inventory Providers](inventory-providers.md) | Guía de proveedores de inventario |
 | [Integración NetBox](netbox-integration.md) | Cómo integrar con NetBox |
 | [Scheduling](scheduling.md) | Sistema de programación de backups |
 | [RBAC](rbac.md) | Control de acceso basado en roles |
+| [Vendors](vendors.md) | Vendors soportados y cómo agregar nuevos |
 | [API Reference](api-reference.md) | Documentación de la API REST |
 
 ## 🚀 Quick Start
