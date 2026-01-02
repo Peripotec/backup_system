@@ -815,6 +815,7 @@ def api_get_vendors():
 
 @app.route('/api/vault')
 @requires_auth
+@requires_permission('view_vault')
 def api_get_vault():
     """Get all credentials (without passwords)."""
     from core.vault import get_credentials_list
@@ -822,6 +823,7 @@ def api_get_vault():
 
 @app.route('/api/vault', methods=['POST'])
 @requires_auth
+@requires_permission('edit_vault')
 def api_add_vault_credential():
     """Add a new credential to vault."""
     from core.vault import add_credential
@@ -843,6 +845,7 @@ def api_add_vault_credential():
 
 @app.route('/api/vault/<cred_id>', methods=['PUT'])
 @requires_auth
+@requires_permission('edit_vault')
 def api_update_vault_credential(cred_id):
     """Update an existing credential."""
     from core.vault import update_credential
@@ -860,6 +863,7 @@ def api_update_vault_credential(cred_id):
 
 @app.route('/api/vault/<cred_id>', methods=['DELETE'])
 @requires_auth
+@requires_permission('edit_vault')
 def api_delete_vault_credential(cred_id):
     """Delete a credential from vault."""
     from core.vault import delete_credential
