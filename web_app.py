@@ -1522,8 +1522,48 @@ def api_update_settings():
     cfg.update_settings(data)
     return jsonify({"status": "ok", "message": "Settings updated"})
 
-# Rate limit store for test-email (in-memory, simple approach)
-_test_email_cooldown = {}
+# ==========================
+# Rate Limit with TTL Cache
+# ==========================
+
+class TTLCache:
+    """Simple TTL cache for rate limiting. Auto-cleans expired entries."""
+    
+    def __init__(self, ttl_seconds=60, max_size=1000):
+        self.ttl = ttl_seconds
+        self.max_size = max_size
+        self._cache = {}  # {key: (value, expiry_time)}
+    
+    def get(self, key, default=None):
+        """Get value if exists and not expired."""
+        import time
+        if key in self._cache:
+            value, expiry = self._cache[key]
+            if time.time() < expiry:
+                return value
+            else:
+                del self._cache[key]  # Cleanup expired
+        return default
+    
+    def set(self, key, value):
+        """Set value with TTL expiry."""
+        import time
+        # Cleanup if cache is too large
+        if len(self._cache) >= self.max_size:
+            self._cleanup()
+        self._cache[key] = (value, time.time() + self.ttl)
+    
+    def _cleanup(self):
+        """Remove expired entries."""
+        import time
+        now = time.time()
+        expired = [k for k, (v, exp) in self._cache.items() if exp <= now]
+        for k in expired:
+            del self._cache[k]
+
+
+# Rate limit store for test-email (with TTL to avoid memory leak)
+_test_email_cooldown = TTLCache(ttl_seconds=120, max_size=1000)
 
 @app.route('/api/settings/test-email', methods=['POST'])
 @requires_auth
@@ -1536,9 +1576,10 @@ def api_test_email():
     import time
     from core.notifier import Notifier
     
-    user = session.get('user', {})
-    user_id = user.get('username', 'anonymous')
-    user_role = user.get('role', 'unknown')
+    # Use get_current_user() for fresh data from DB
+    user = get_current_user()
+    user_id = user.get('username', 'anonymous') if user else 'anonymous'
+    user_role = user.get('role', 'unknown') if user else 'unknown'
     client_ip = request.remote_addr
     
     # Rate limit check (60 seconds cooldown)
@@ -1553,15 +1594,15 @@ def api_test_email():
         }), 429
     
     # Update cooldown
-    _test_email_cooldown[user_id] = now
+    _test_email_cooldown.set(user_id, now)
     
     # Send test email
     notifier = Notifier()
     success, message = notifier.send_test_email()
     
-    # Logging (sin credenciales)
+    # Audit logging (sin credenciales)
     result_str = "OK" if success else "ERROR"
-    log.info(f"Test email: user={user_id} role={user_role} ip={client_ip} result={result_str}")
+    log.info(f"AUDIT: test_email user={user_id} role={user_role} ip={client_ip} result={result_str}")
     
     if success:
         return jsonify({"status": "ok", "message": message})
