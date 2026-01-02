@@ -266,6 +266,47 @@ def inject_user():
 def access_denied():
     return render_template('access_denied.html'), 403
 
+
+# ==========================
+# HEALTH CHECK (NOC Monitoring)
+# ==========================
+
+@app.route('/api/health')
+def health_check():
+    """
+    Health check endpoint for NOC monitoring and load balancers.
+    No authentication required for external monitoring tools.
+    """
+    from datetime import datetime
+    import os
+    
+    checks = {'app': 'ok', 'timestamp': datetime.now().isoformat()}
+    all_ok = True
+    
+    # Check database connection
+    try:
+        cfg = get_config_manager()
+        cfg.get_setting('smtp_enabled')  # Simple query to verify DB
+        checks['database'] = 'ok'
+    except Exception:
+        checks['database'] = 'error'
+        all_ok = False
+    
+    # Check inventory file exists
+    try:
+        if os.path.exists(INVENTORY_FILE):
+            checks['inventory'] = 'ok'
+        else:
+            checks['inventory'] = 'missing'
+            all_ok = False
+    except Exception:
+        checks['inventory'] = 'error'
+        all_ok = False
+    
+    status_code = 200 if all_ok else 503
+    return jsonify(checks), status_code
+
+
 # ==========================
 # LOGIN / LOGOUT
 # ==========================
