@@ -271,7 +271,7 @@ def access_denied():
 # HEALTH CHECK (NOC Monitoring)
 # ==========================
 
-@app.route('/api/health')
+@app.route('/api/health', strict_slashes=False)
 def health_check():
     """
     Health check endpoint for NOC monitoring and load balancers.
