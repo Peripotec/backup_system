@@ -170,22 +170,34 @@ def get_effective_permissions(user):
     Priority: user explicit permissions > role permissions from DB > role defaults
     """
     if not user:
+        log.debug("get_effective_permissions: no user provided")
         return []
     
     # 1. Check user's explicit permissions first
     user_perms = user.get('permissions', [])
     if user_perms:
+        log.debug(f"get_effective_permissions: using user explicit perms: {user_perms}")
         return user_perms
     
     # 2. Get role permissions from DB (source of truth)
     role_name = user.get('role', 'viewer')
+    log.debug(f"get_effective_permissions: user role is '{role_name}'")
+    
     cfg = get_config_manager()
     role = cfg.get_role(role_name)
-    if role and role.get('permissions'):
-        return role['permissions']
+    
+    if role:
+        role_perms = role.get('permissions', [])
+        log.debug(f"get_effective_permissions: role '{role_name}' from DB has perms: {role_perms}")
+        if role_perms:
+            return role_perms
+    else:
+        log.debug(f"get_effective_permissions: role '{role_name}' NOT FOUND in DB")
     
     # 3. Fallback to hardcoded defaults if role not in DB
-    return ROLE_PERMISSIONS.get(role_name, [])
+    default_perms = ROLE_PERMISSIONS.get(role_name, [])
+    log.debug(f"get_effective_permissions: using fallback defaults: {default_perms}")
+    return default_perms
 
 
 def has_permission(user_or_role, permission):
@@ -196,7 +208,9 @@ def has_permission(user_or_role, permission):
     if isinstance(user_or_role, dict):
         # User dict - get effective permissions
         perms = get_effective_permissions(user_or_role)
-        return permission in perms
+        result = permission in perms
+        log.debug(f"has_permission: checking '{permission}' in perms - result: {result}")
+        return result
     else:
         # Role string - get from DB
         cfg = get_config_manager()
