@@ -773,6 +773,12 @@ def api_add_group():
         inv["groups"] = []
     inv["groups"].append(new_group)
     save_inventory(inv)
+    
+    # Audit log
+    current_user = get_current_user()
+    username = current_user.get('username', 'unknown') if current_user else 'unknown'
+    log.info(f"AUDIT: inventory_group_create user={username} ip={request.remote_addr} group={name}")
+    
     return jsonify({"status": "ok", "message": "Grupo creado"})
 
 @app.route('/api/inventory/group/<group_name>', methods=['PUT'])
@@ -799,9 +805,17 @@ def api_delete_group(group_name):
     inv = load_inventory()
     original_len = len(inv.get("groups", []))
     inv["groups"] = [g for g in inv.get("groups", []) if g["name"] != group_name]
+    
+    # Audit log
+    current_user = get_current_user()
+    username = current_user.get('username', 'unknown') if current_user else 'unknown'
+    
     if len(inv["groups"]) < original_len:
         save_inventory(inv)
+        log.info(f"AUDIT: inventory_group_delete user={username} ip={request.remote_addr} group={group_name} result=OK")
         return jsonify({"status": "ok", "message": "Grupo eliminado"})
+    
+    log.info(f"AUDIT: inventory_group_delete user={username} ip={request.remote_addr} group={group_name} result=NOT_FOUND")
     return jsonify({"error": "Grupo no encontrado"}), 404
 
 @app.route('/api/vendors')
@@ -844,7 +858,17 @@ def api_add_vault_credential():
     if not cred_id or not name:
         return jsonify({"error": "ID y nombre son requeridos"}), 400
     
+    # Get current user for audit
+    current_user = get_current_user()
+    username = current_user.get('username', 'unknown') if current_user else 'unknown'
+    client_ip = request.remote_addr
+    
     success, message = add_credential(cred_id, name, user, password, extra_pass)
+    
+    # Audit log (no secrets)
+    result_str = "OK" if success else "ERROR"
+    log.info(f"AUDIT: vault_create user={username} ip={client_ip} cred_id={cred_id} result={result_str}")
+    
     if success:
         return jsonify({"status": "ok", "message": message})
     return jsonify({"error": message}), 400
@@ -862,7 +886,17 @@ def api_update_vault_credential(cred_id):
     password = data.get("pass")
     extra_pass = data.get("extra_pass")
     
+    # Get current user for audit
+    current_user = get_current_user()
+    username = current_user.get('username', 'unknown') if current_user else 'unknown'
+    client_ip = request.remote_addr
+    
     success, message = update_credential(cred_id, name, user, password, extra_pass)
+    
+    # Audit log (no secrets)
+    result_str = "OK" if success else "ERROR"
+    log.info(f"AUDIT: vault_update user={username} ip={client_ip} cred_id={cred_id} result={result_str}")
+    
     if success:
         return jsonify({"status": "ok", "message": message})
     return jsonify({"error": message}), 404
@@ -873,7 +907,18 @@ def api_update_vault_credential(cred_id):
 def api_delete_vault_credential(cred_id):
     """Delete a credential from vault."""
     from core.vault import delete_credential
+    
+    # Get current user for audit
+    current_user = get_current_user()
+    username = current_user.get('username', 'unknown') if current_user else 'unknown'
+    client_ip = request.remote_addr
+    
     success, message = delete_credential(cred_id)
+    
+    # Audit log
+    result_str = "OK" if success else "ERROR"
+    log.info(f"AUDIT: vault_delete user={username} ip={client_ip} cred_id={cred_id} result={result_str}")
+    
     if success:
         return jsonify({"status": "ok", "message": message})
     return jsonify({"error": message}), 404
@@ -1516,10 +1561,22 @@ def api_get_settings():
 def api_update_settings():
     cfg = get_config_manager()
     data = request.json
+    
+    # Get user for audit before any changes
+    current_user = get_current_user()
+    username = current_user.get('username', 'unknown') if current_user else 'unknown'
+    changed_keys = list(data.keys())
+    
     # Don't allow updating password via this endpoint if empty
     if 'smtp_pass' in data and data['smtp_pass'] == '':
         del data['smtp_pass']  # Keep existing password if empty
+        changed_keys.remove('smtp_pass')
+    
     cfg.update_settings(data)
+    
+    # Audit log (no values, only keys changed)
+    log.info(f"AUDIT: settings_update user={username} ip={request.remote_addr} keys={changed_keys}")
+    
     return jsonify({"status": "ok", "message": "Settings updated"})
 
 # ==========================
