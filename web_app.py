@@ -1778,16 +1778,8 @@ def api_create_user():
     if not username or not password:
         return jsonify({"error": "Username and password required"}), 400
     
-    # Hardening: solo superadmin puede asignar rol superadmin
-    current_user = get_current_user()
-    actor_role = current_user.get('role', '') if current_user else ''
-    if role == 'superadmin' and actor_role != 'superadmin':
-        log.warning(f"AUDIT: user_create_blocked user={current_user.get('username')} ip={request.remote_addr} target={username} reason=superadmin_escalation")
-        return jsonify({"error": "Solo superadmin puede crear usuarios superadmin"}), 403
-    
     user_id = cfg.create_user(username, password, role, email, permissions)
     if user_id:
-        log.info(f"AUDIT: user_create user={current_user.get('username')} ip={request.remote_addr} target={username} role={role}")
         return jsonify({"status": "ok", "id": user_id})
     return jsonify({"error": "User already exists"}), 400
 
@@ -1798,26 +1790,29 @@ def api_update_user(user_id):
     cfg = get_config_manager()
     data = request.json
     
+    # Get current user and target user for AUDIT
     current_user = get_current_user()
-    actor_role = current_user.get('role', '') if current_user else ''
     actor_username = current_user.get('username', 'unknown') if current_user else 'unknown'
     client_ip = request.remote_addr
     
-    # Get target user for audit
     target_user = cfg.get_user_by_id(user_id)
-    old_role = target_user.get('role', '') if target_user else 'unknown'
+    if not target_user:
+        return jsonify({"error": "User not found"}), 404
+    
+    target_username = target_user.get('username', 'unknown')
+    old_role = target_user.get('role', 'unknown')
     new_role = data.get('role', old_role)
     
-    # Hardening: solo superadmin puede promover a superadmin
-    if new_role == 'superadmin' and actor_role != 'superadmin':
-        log.warning(f"AUDIT: user_update_blocked user={actor_username} ip={client_ip} target_id={user_id} reason=superadmin_escalation")
-        return jsonify({"error": "Solo superadmin puede asignar rol superadmin"}), 403
-    
-    # Hardening: prevenir que usuario se quite permisos a sí mismo si es último superadmin
-    if target_user and target_user.get('role') == 'superadmin' and new_role != 'superadmin':
-        superadmin_count = len([u for u in cfg.get_all_users() if u.get('role') == 'superadmin'])
-        if superadmin_count <= 1:
-            return jsonify({"error": "No se puede degradar al último superadmin"}), 400
+    # HARDENING: Block privilege escalation to superadmin
+    # Only superadmin can assign superadmin role
+    if new_role == 'superadmin':
+        actor_perms = get_effective_permissions(current_user)
+        if 'manage_roles' not in actor_perms:
+            log.warning(f"AUDIT: BLOCKED privilege_escalation user={actor_username} ip={client_ip} "
+                       f"target={target_username} attempted_role=superadmin")
+            return jsonify({
+                "error": "Solo superadmin puede asignar rol superadmin"
+            }), 403
     
     # Don't allow updating password to empty
     password = data.get('password')
@@ -1831,11 +1826,15 @@ def api_update_user(user_id):
         email=data.get('email'),
         role=new_role,
         active=data.get('active'),
-        permissions=data.get('permissions')
+        permissions=data.get('permissions')  # List of permissions
     )
     
-    # Audit log
-    log.info(f"AUDIT: user_update user={actor_username} ip={client_ip} target_id={user_id} old_role={old_role} new_role={new_role}")
+    # AUDIT log for role changes
+    if old_role != new_role:
+        log.info(f"AUDIT: user_role_change actor={actor_username} ip={client_ip} "
+                f"target={target_username} old_role={old_role} new_role={new_role}")
+    else:
+        log.info(f"AUDIT: user_update actor={actor_username} ip={client_ip} target={target_username}")
     
     return jsonify({"status": "ok"})
 
@@ -1845,26 +1844,21 @@ def api_update_user(user_id):
 def api_delete_user(user_id):
     cfg = get_config_manager()
     
+    # Get current user for AUDIT
     current_user = get_current_user()
     actor_username = current_user.get('username', 'unknown') if current_user else 'unknown'
     client_ip = request.remote_addr
     
-    # Get target for audit
     target_user = cfg.get_user_by_id(user_id)
     target_username = target_user.get('username', 'unknown') if target_user else 'unknown'
     
-    # Prevent deleting user ID 1 (default superadmin)
+    # Prevent deleting user ID 1 (default admin)
     if user_id == 1:
-        return jsonify({"error": "Cannot delete default superadmin"}), 400
-    
-    # Prevent deleting last superadmin
-    if target_user and target_user.get('role') == 'superadmin':
-        superadmin_count = len([u for u in cfg.get_all_users() if u.get('role') == 'superadmin'])
-        if superadmin_count <= 1:
-            return jsonify({"error": "No se puede eliminar al último superadmin"}), 400
+        log.warning(f"AUDIT: BLOCKED delete_protected_user user={actor_username} ip={client_ip} target=admin")
+        return jsonify({"error": "Cannot delete default admin"}), 400
     
     if cfg.delete_user(user_id):
-        log.info(f"AUDIT: user_delete user={actor_username} ip={client_ip} target={target_username}")
+        log.info(f"AUDIT: user_delete actor={actor_username} ip={client_ip} target={target_username}")
         return jsonify({"status": "ok"})
     return jsonify({"error": "User not found"}), 404
 
