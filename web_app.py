@@ -1868,42 +1868,79 @@ def api_delete_user(user_id):
 
 @app.route('/api/tokens', methods=['GET'])
 @requires_auth
+@requires_permission('manage_users')
 def api_get_tokens():
+    """List API tokens for current user (or all if superadmin)."""
     cfg = get_config_manager()
-    auth = request.authorization
-    user = cfg.get_user(auth.username)
-    if user:
-        return jsonify(cfg.get_user_tokens(user['id']))
-    return jsonify([])
+    
+    # Use session-based auth (consistent with rest of app)
+    current_user = get_current_user()
+    if not current_user:
+        return jsonify({"error": "Authentication required"}), 401
+    
+    user_id = current_user.get('id')
+    username = current_user.get('username', 'unknown')
+    
+    # Superadmin can see all tokens, others only their own
+    if has_permission(current_user, 'manage_roles'):
+        tokens = cfg.get_all_tokens()
+    else:
+        tokens = cfg.get_user_tokens(user_id)
+    
+    log.debug(f"Token list: user={username} count={len(tokens) if tokens else 0}")
+    return jsonify(tokens or [])
 
 @app.route('/api/tokens', methods=['POST'])
 @requires_auth
+@requires_permission('manage_users')
 def api_create_token():
+    """Create a new API token for current user."""
     cfg = get_config_manager()
-    auth = request.authorization
-    user = cfg.get_user(auth.username)
-    if not user:
-        return jsonify({"error": "User not found"}), 404
+    
+    current_user = get_current_user()
+    if not current_user:
+        return jsonify({"error": "Authentication required"}), 401
+    
+    user_id = current_user.get('id')
+    username = current_user.get('username', 'unknown')
+    client_ip = request.remote_addr
     
     data = request.json or {}
     name = data.get('name', 'API Token')
     expires_days = data.get('expires_days')
     
-    token = cfg.create_api_token(user['id'], name, expires_days)
+    token = cfg.create_api_token(user_id, name, expires_days)
     if token:
+        log.info(f"AUDIT: token_create user={username} ip={client_ip} token_name={name}")
         return jsonify({"status": "ok", "token": token})
+    
+    log.warning(f"AUDIT: token_create_failed user={username} ip={client_ip}")
     return jsonify({"error": "Failed to create token"}), 500
 
 @app.route('/api/tokens/<int:token_id>', methods=['DELETE'])
 @requires_auth
+@requires_permission('manage_users')
 def api_delete_token(token_id):
+    """Delete an API token."""
     cfg = get_config_manager()
-    auth = request.authorization
-    user = cfg.get_user(auth.username)
     
-    if cfg.delete_api_token(token_id, user['id'] if user else None):
+    current_user = get_current_user()
+    if not current_user:
+        return jsonify({"error": "Authentication required"}), 401
+    
+    user_id = current_user.get('id')
+    username = current_user.get('username', 'unknown')
+    client_ip = request.remote_addr
+    
+    # Only allow deleting own tokens unless superadmin
+    owner_id = user_id if not has_permission(current_user, 'manage_roles') else None
+    
+    if cfg.delete_api_token(token_id, owner_id):
+        log.info(f"AUDIT: token_delete user={username} ip={client_ip} token_id={token_id}")
         return jsonify({"status": "ok"})
-    return jsonify({"error": "Token not found"}), 404
+    
+    log.warning(f"AUDIT: token_delete_failed user={username} ip={client_ip} token_id={token_id}")
+    return jsonify({"error": "Token not found or access denied"}), 404
 
 # ==========================
 # ADMIN: ROLES
