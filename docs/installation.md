@@ -183,6 +183,8 @@ ufw allow 21/tcp
 
 ## Nginx Reverse Proxy (Producción)
 
+### Config básica (solo HTTP)
+
 ```nginx
 server {
     listen 80;
@@ -192,8 +194,76 @@ server {
         proxy_pass http://127.0.0.1:5000;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
+```
+
+### Config con HTTPS + excepción para health check
+
+Cuando se usa redirect HTTP→HTTPS, es necesario excluir `/api/health` para que herramientas de monitoreo (Zabbix, Prometheus, etc.) puedan acceder sin TLS:
+
+```nginx
+# Servidor HTTP (puerto 80)
+server {
+    listen 80;
+    server_name backup.example.com;
+    
+    # IMPORTANTE: Health check SIN redirect a HTTPS
+    # Permite monitoreo por HTTP desde herramientas NOC
+    location = /api/health {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+    
+    # También permitir con trailing slash
+    location = /api/health/ {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+    
+    # Todo lo demás redirige a HTTPS
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# Servidor HTTPS (puerto 443)
+server {
+    listen 443 ssl http2;
+    server_name backup.example.com;
+    
+    ssl_certificate /etc/letsencrypt/live/backup.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/backup.example.com/privkey.pem;
+    
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+}
+```
+
+### Verificar config de Nginx
+
+```bash
+# Test sintaxis
+nginx -t
+
+# Reload
+systemctl reload nginx
+
+# Verificar health por HTTP (debe ser 200, no 301)
+curl -sSI http://localhost/api/health
+# Esperado: HTTP/1.1 200 OK
+
+curl -sSI http://localhost/api/health/
+# Esperado: HTTP/1.1 200 OK (no 301)
 ```
 
 ## SSL con Certbot
