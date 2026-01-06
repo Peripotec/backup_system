@@ -320,6 +320,12 @@
                         <i class="bi bi-key"></i> Vault
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if '/vendor-templates' in request.path %}active{% endif %}"
+                        href="/admin/vendor-templates">
+                        <i class="bi bi-diagram-3"></i> Vendor Templates
+                    </a>
+                </li>
                 {% endif %}
                 {% if has_permission('view_settings') %}
                 <li class="nav-item">

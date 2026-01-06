@@ -1,0 +1,440 @@
+{% extends "base.html" %}
+
+{% block title %}Vendor Templates{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>🔧 Vendor Templates</h1>
+    <p class="subtitle">Configurar secuencias de backup para diferentes vendors</p>
+</div>
+
+<div class="content-card">
+    <div class="card-header">
+        <h2>Templates Disponibles</h2>
+        <button class="btn btn-primary" onclick="showCreateModal()">
+            <i class="fas fa-plus"></i> Nuevo Template
+        </button>
+    </div>
+    
+    <div id="templates-list" class="templates-grid">
+        <div class="loading">Cargando templates...</div>
+    </div>
+</div>
+
+<!-- Modal: Create/Edit Template -->
+<div id="template-modal" class="modal" style="display:none;">
+    <div class="modal-content modal-lg">
+        <div class="modal-header">
+            <h3 id="modal-title">Nuevo Template</h3>
+            <button class="close-btn" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="template-form">
+                <input type="hidden" id="template-id" value="">
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="template-name">Nombre *</label>
+                        <input type="text" id="template-name" required placeholder="ej: hp_1920">
+                    </div>
+                    <div class="form-group">
+                        <label for="template-protocol">Protocolo</label>
+                        <select id="template-protocol">
+                            <option value="telnet">Telnet</option>
+                            <option value="ssh">SSH</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="template-port">Puerto</label>
+                        <input type="number" id="template-port" value="23">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="template-description">Descripción</label>
+                    <input type="text" id="template-description" placeholder="Descripción del template">
+                </div>
+                
+                <div class="form-group">
+                    <label>Secuencia de Comandos</label>
+                    <div class="steps-help">
+                        <small>Variables: <code>{{ user }}</code> <code>{{ password }}</code> <code>{{ extra_pass }}</code> <code>{{ hostname }}</code> <code>{{ ip }}</code> <code>{{ tftp_server }}</code></small>
+                    </div>
+                    <table class="steps-table" id="steps-table">
+                        <thead>
+                            <tr>
+                                <th style="width:40px">#</th>
+                                <th>Esperar (Expect)</th>
+                                <th>Enviar (Send)</th>
+                                <th style="width:80px">Ocultar</th>
+                                <th style="width:80px">Timeout</th>
+                                <th style="width:60px"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="steps-body">
+                            <!-- Steps will be added dynamically -->
+                        </tbody>
+                    </table>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="addStep()">
+                        <i class="fas fa-plus"></i> Agregar Paso
+                    </button>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="template-filename">Archivo Resultado</label>
+                        <input type="text" id="template-filename" value="{{ hostname }}.cfg">
+                    </div>
+                    <div class="form-group">
+                        <label for="template-timeout">Timeout (seg)</label>
+                        <input type="number" id="template-timeout" value="60">
+                    </div>
+                    <div class="form-group">
+                        <label>Tipo</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="is_text" value="1" checked> Texto (Git)</label>
+                            <label><input type="radio" name="is_text" value="0"> Binario</label>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+            <button class="btn btn-primary" onclick="saveTemplate()">Guardar</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.templates-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+    padding: 1rem;
+}
+
+.template-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+    transition: all 0.2s;
+}
+
+.template-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transform: translateY(-2px);
+}
+
+.template-card h4 {
+    margin: 0 0 0.5rem 0;
+    color: var(--primary-color);
+}
+
+.template-card .protocol-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.protocol-badge.telnet { background: #4CAF50; color: white; }
+.protocol-badge.ssh { background: #2196F3; color: white; }
+
+.template-card .steps-count {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.template-card .actions {
+    margin-top: 1rem;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.steps-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.5rem 0;
+}
+
+.steps-table th, .steps-table td {
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    text-align: left;
+}
+
+.steps-table input[type="text"], .steps-table input[type="number"] {
+    width: 100%;
+    padding: 0.25rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--input-bg);
+    color: var(--text-color);
+}
+
+.steps-table input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+}
+
+.steps-help {
+    background: var(--bg-secondary);
+    padding: 0.5rem;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+}
+
+.steps-help code {
+    background: var(--code-bg);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: monospace;
+}
+
+.form-row {
+    display: flex;
+    gap: 1rem;
+}
+
+.form-row .form-group {
+    flex: 1;
+}
+
+.radio-group {
+    display: flex;
+    gap: 1rem;
+}
+
+.radio-group label {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    cursor: pointer;
+}
+
+.modal-lg {
+    max-width: 900px;
+}
+
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.85rem;
+}
+
+.btn-danger-outline {
+    background: transparent;
+    border: 1px solid #dc3545;
+    color: #dc3545;
+}
+
+.btn-danger-outline:hover {
+    background: #dc3545;
+    color: white;
+}
+</style>
+
+<script>
+let currentTemplates = [];
+let stepCounter = 0;
+
+document.addEventListener('DOMContentLoaded', loadTemplates);
+
+function loadTemplates() {
+    fetch('/api/vendor-templates')
+        .then(r => r.json())
+        .then(data => {
+            currentTemplates = data;
+            renderTemplates(data);
+        })
+        .catch(err => {
+            document.getElementById('templates-list').innerHTML = 
+                '<div class="error">Error cargando templates</div>';
+        });
+}
+
+function renderTemplates(templates) {
+    const container = document.getElementById('templates-list');
+    
+    if (!templates || templates.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <p>No hay templates configurados</p>
+                <button class="btn btn-primary" onclick="showCreateModal()">
+                    Crear primer template
+                </button>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = templates.map(t => `
+        <div class="template-card">
+            <h4>${t.name}</h4>
+            <span class="protocol-badge ${t.protocol}">${t.protocol}:${t.port}</span>
+            <p class="steps-count">${t.steps ? t.steps.length : 0} pasos</p>
+            <p style="color:var(--text-muted);font-size:0.85rem">${t.description || 'Sin descripción'}</p>
+            <div class="actions">
+                <button class="btn btn-secondary btn-sm" onclick="editTemplate(${t.id})">
+                    <i class="fas fa-edit"></i> Editar
+                </button>
+                <button class="btn btn-danger-outline btn-sm" onclick="deleteTemplate(${t.id}, '${t.name}')">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function showCreateModal() {
+    document.getElementById('modal-title').textContent = 'Nuevo Template';
+    document.getElementById('template-id').value = '';
+    document.getElementById('template-form').reset();
+    document.getElementById('steps-body').innerHTML = '';
+    stepCounter = 0;
+    
+    // Add default steps for a typical login
+    addStep('Username:', '{{ user }}', false, 10);
+    addStep('Password:', '{{ password }}', true, 10);
+    addStep('>', '', false, 10);
+    
+    document.getElementById('template-modal').style.display = 'flex';
+}
+
+function editTemplate(id) {
+    const template = currentTemplates.find(t => t.id === id);
+    if (!template) return;
+    
+    document.getElementById('modal-title').textContent = 'Editar Template: ' + template.name;
+    document.getElementById('template-id').value = template.id;
+    document.getElementById('template-name').value = template.name;
+    document.getElementById('template-description').value = template.description || '';
+    document.getElementById('template-protocol').value = template.protocol || 'telnet';
+    document.getElementById('template-port').value = template.port || 23;
+    document.getElementById('template-filename').value = template.result_filename || '{{ hostname }}.cfg';
+    document.getElementById('template-timeout').value = template.timeout || 60;
+    
+    // Radio for is_text
+    document.querySelector(`input[name="is_text"][value="${template.is_text ? '1' : '0'}"]`).checked = true;
+    
+    // Load steps
+    document.getElementById('steps-body').innerHTML = '';
+    stepCounter = 0;
+    if (template.steps && template.steps.length > 0) {
+        template.steps.forEach(step => {
+            addStep(step.expect || '', step.send || '', step.hide || false, step.timeout || 10);
+        });
+    }
+    
+    document.getElementById('template-modal').style.display = 'flex';
+}
+
+function closeModal() {
+    document.getElementById('template-modal').style.display = 'none';
+}
+
+function addStep(expect = '', send = '', hide = false, timeout = 10) {
+    stepCounter++;
+    const row = document.createElement('tr');
+    row.id = 'step-row-' + stepCounter;
+    row.innerHTML = `
+        <td>${stepCounter}</td>
+        <td><input type="text" class="step-expect" value="${expect}" placeholder="ej: Username:"></td>
+        <td><input type="text" class="step-send" value="${send}" placeholder="ej: {{ user }}"></td>
+        <td style="text-align:center"><input type="checkbox" class="step-hide" ${hide ? 'checked' : ''}></td>
+        <td><input type="number" class="step-timeout" value="${timeout}" style="width:60px"></td>
+        <td>
+            <button type="button" class="btn btn-danger-outline btn-sm" onclick="removeStep(${stepCounter})">
+                <i class="fas fa-times"></i>
+            </button>
+        </td>
+    `;
+    document.getElementById('steps-body').appendChild(row);
+}
+
+function removeStep(num) {
+    const row = document.getElementById('step-row-' + num);
+    if (row) row.remove();
+    renumberSteps();
+}
+
+function renumberSteps() {
+    const rows = document.querySelectorAll('#steps-body tr');
+    rows.forEach((row, idx) => {
+        row.cells[0].textContent = idx + 1;
+    });
+}
+
+function collectSteps() {
+    const rows = document.querySelectorAll('#steps-body tr');
+    const steps = [];
+    rows.forEach(row => {
+        const expect = row.querySelector('.step-expect').value.trim();
+        const send = row.querySelector('.step-send').value.trim();
+        const hide = row.querySelector('.step-hide').checked;
+        const timeout = parseInt(row.querySelector('.step-timeout').value) || 10;
+        
+        // Only add if there's something
+        if (expect || send) {
+            steps.push({ expect, send, hide, timeout });
+        }
+    });
+    return steps;
+}
+
+function saveTemplate() {
+    const id = document.getElementById('template-id').value;
+    const data = {
+        name: document.getElementById('template-name').value,
+        description: document.getElementById('template-description').value,
+        protocol: document.getElementById('template-protocol').value,
+        port: parseInt(document.getElementById('template-port').value) || 23,
+        steps: collectSteps(),
+        result_filename: document.getElementById('template-filename').value,
+        is_text: document.querySelector('input[name="is_text"]:checked').value === '1',
+        timeout: parseInt(document.getElementById('template-timeout').value) || 60
+    };
+    
+    if (!data.name) {
+        alert('El nombre es requerido');
+        return;
+    }
+    
+    const method = id ? 'PUT' : 'POST';
+    const url = id ? `/api/vendor-templates/${id}` : '/api/vendor-templates';
+    
+    fetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(result => {
+        if (result.error) {
+            alert('Error: ' + result.error);
+        } else {
+            closeModal();
+            loadTemplates();
+        }
+    })
+    .catch(err => alert('Error guardando template'));
+}
+
+function deleteTemplate(id, name) {
+    if (!confirm(`¿Eliminar template "${name}"?`)) return;
+    
+    fetch(`/api/vendor-templates/${id}`, { method: 'DELETE' })
+        .then(r => r.json())
+        .then(result => {
+            if (result.error) {
+                alert('Error: ' + result.error);
+            } else {
+                loadTemplates();
+            }
+        });
+}
+</script>
+{% endblock %}

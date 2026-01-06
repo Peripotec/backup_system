@@ -89,6 +89,24 @@ class ConfigManager:
                 )
             ''')
             
+            # Vendor Templates table - for configurable backup sequences
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS vendor_templates (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT UNIQUE NOT NULL,
+                    description TEXT,
+                    protocol TEXT DEFAULT 'telnet',
+                    port INTEGER DEFAULT 23,
+                    steps TEXT DEFAULT '[]',
+                    result_filename TEXT DEFAULT '{{ hostname }}.cfg',
+                    is_text INTEGER DEFAULT 1,
+                    timeout INTEGER DEFAULT 60,
+                    enabled INTEGER DEFAULT 1,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
             # Migration: Add permissions column if it doesn't exist (for existing DBs)
             try:
                 cursor.execute("SELECT permissions FROM users LIMIT 1")
@@ -781,6 +799,129 @@ class ConfigManager:
             cursor = conn.cursor()
             cursor.execute("SELECT COUNT(*) as count FROM users WHERE role = 'superadmin' AND active = 1")
             return cursor.fetchone()['count']
+        finally:
+            conn.close()
+    
+    # =========================================================================
+    # VENDOR TEMPLATES MANAGEMENT
+    # =========================================================================
+    
+    def get_vendor_templates(self):
+        """Get all vendor templates."""
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM vendor_templates ORDER BY name')
+            rows = cursor.fetchall()
+            templates = []
+            for row in rows:
+                template = dict(row)
+                template['steps'] = json.loads(template.get('steps') or '[]')
+                templates.append(template)
+            return templates
+        finally:
+            conn.close()
+    
+    def get_vendor_template(self, template_id):
+        """Get a single vendor template by ID."""
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM vendor_templates WHERE id = ?', (template_id,))
+            row = cursor.fetchone()
+            if row:
+                template = dict(row)
+                template['steps'] = json.loads(template.get('steps') or '[]')
+                return template
+            return None
+        finally:
+            conn.close()
+    
+    def get_vendor_template_by_name(self, name):
+        """Get a vendor template by name."""
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM vendor_templates WHERE name = ?', (name,))
+            row = cursor.fetchone()
+            if row:
+                template = dict(row)
+                template['steps'] = json.loads(template.get('steps') or '[]')
+                return template
+            return None
+        finally:
+            conn.close()
+    
+    def create_vendor_template(self, name, description='', protocol='telnet', port=23, 
+                                steps=None, result_filename='{{ hostname }}.cfg', 
+                                is_text=True, timeout=60):
+        """Create a new vendor template."""
+        if steps is None:
+            steps = []
+        
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO vendor_templates 
+                (name, description, protocol, port, steps, result_filename, is_text, timeout)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (name, description, protocol, port, json.dumps(steps), 
+                  result_filename, 1 if is_text else 0, timeout))
+            conn.commit()
+            template_id = cursor.lastrowid
+            log.info(f"Vendor template created: {name} (ID: {template_id})")
+            return template_id
+        except sqlite3.IntegrityError:
+            log.warning(f"Vendor template already exists: {name}")
+            return None
+        finally:
+            conn.close()
+    
+    def update_vendor_template(self, template_id, **kwargs):
+        """Update a vendor template."""
+        allowed_fields = ['name', 'description', 'protocol', 'port', 'steps', 
+                          'result_filename', 'is_text', 'timeout', 'enabled']
+        
+        updates = []
+        values = []
+        for field in allowed_fields:
+            if field in kwargs:
+                value = kwargs[field]
+                if field == 'steps':
+                    value = json.dumps(value) if isinstance(value, list) else value
+                elif field in ('is_text', 'enabled'):
+                    value = 1 if value else 0
+                updates.append(f"{field} = ?")
+                values.append(value)
+        
+        if not updates:
+            return False
+        
+        values.append(template_id)
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute(f'''
+                UPDATE vendor_templates 
+                SET {', '.join(updates)}, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            ''', values)
+            conn.commit()
+            log.info(f"Vendor template updated: ID {template_id}")
+            return cursor.rowcount > 0
+        finally:
+            conn.close()
+    
+    def delete_vendor_template(self, template_id):
+        """Delete a vendor template."""
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM vendor_templates WHERE id = ?', (template_id,))
+            conn.commit()
+            log.info(f"Vendor template deleted: ID {template_id}")
+            return cursor.rowcount > 0
         finally:
             conn.close()
 

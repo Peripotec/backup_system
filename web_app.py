@@ -2218,6 +2218,101 @@ def api_delete_localidad(loc_id):
         return jsonify({"status": "ok"})
     return jsonify({"error": "Localidad no encontrada"}), 404
 
+# =============================================================================
+# VENDOR TEMPLATES API
+# =============================================================================
+
+@app.route('/admin/vendor-templates')
+@requires_auth
+@requires_permission('manage_users')
+def admin_vendor_templates():
+    """Vendor templates management page."""
+    return render_template('vendor_templates.html')
+
+@app.route('/api/vendor-templates', methods=['GET'])
+@requires_auth
+@requires_permission('view_inventory')
+def api_get_vendor_templates():
+    """Get all vendor templates."""
+    config = get_config_manager()
+    templates = config.get_vendor_templates()
+    return jsonify(templates)
+
+@app.route('/api/vendor-templates/<int:template_id>', methods=['GET'])
+@requires_auth
+@requires_permission('view_inventory')
+def api_get_vendor_template(template_id):
+    """Get a single vendor template."""
+    config = get_config_manager()
+    template = config.get_vendor_template(template_id)
+    if template:
+        return jsonify(template)
+    return jsonify({"error": "Template not found"}), 404
+
+@app.route('/api/vendor-templates', methods=['POST'])
+@requires_auth
+@requires_permission('manage_users')
+def api_create_vendor_template():
+    """Create a new vendor template."""
+    data = request.get_json()
+    if not data or not data.get('name'):
+        return jsonify({"error": "Name is required"}), 400
+    
+    config = get_config_manager()
+    template_id = config.create_vendor_template(
+        name=data.get('name'),
+        description=data.get('description', ''),
+        protocol=data.get('protocol', 'telnet'),
+        port=data.get('port', 23),
+        steps=data.get('steps', []),
+        result_filename=data.get('result_filename', '{{ hostname }}.cfg'),
+        is_text=data.get('is_text', True),
+        timeout=data.get('timeout', 60)
+    )
+    
+    if template_id:
+        user = get_current_user()
+        log.info(f"AUDIT: vendor_template_create by={user.get('username')} template={data.get('name')}")
+        return jsonify({"id": template_id, "status": "created"})
+    return jsonify({"error": "Template already exists"}), 409
+
+@app.route('/api/vendor-templates/<int:template_id>', methods=['PUT'])
+@requires_auth
+@requires_permission('manage_users')
+def api_update_vendor_template(template_id):
+    """Update a vendor template."""
+    data = request.get_json()
+    config = get_config_manager()
+    
+    existing = config.get_vendor_template(template_id)
+    if not existing:
+        return jsonify({"error": "Template not found"}), 404
+    
+    success = config.update_vendor_template(template_id, **data)
+    if success:
+        user = get_current_user()
+        log.info(f"AUDIT: vendor_template_update by={user.get('username')} id={template_id}")
+        return jsonify({"status": "updated"})
+    return jsonify({"error": "Update failed"}), 500
+
+@app.route('/api/vendor-templates/<int:template_id>', methods=['DELETE'])
+@requires_auth
+@requires_permission('manage_users')
+def api_delete_vendor_template(template_id):
+    """Delete a vendor template."""
+    config = get_config_manager()
+    
+    existing = config.get_vendor_template(template_id)
+    if not existing:
+        return jsonify({"error": "Template not found"}), 404
+    
+    success = config.delete_vendor_template(template_id)
+    if success:
+        user = get_current_user()
+        log.info(f"AUDIT: vendor_template_delete by={user.get('username')} id={template_id} name={existing.get('name')}")
+        return jsonify({"status": "deleted"})
+    return jsonify({"error": "Delete failed"}), 500
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
 
