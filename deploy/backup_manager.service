@@ -3,7 +3,8 @@
 # =============================================================================
 # Archivo: /etc/systemd/system/backup_manager.service
 #
-# Path: /opt/backup_system (path real del deployment)
+# Path: /opt/backup_system
+# NOTA: Type=simple porque Gunicorn sin --preload no soporta notify
 # =============================================================================
 
 [Unit]
@@ -13,10 +14,9 @@ After=network.target
 Wants=network.target
 
 [Service]
-Type=notify
+Type=simple
 User=root
 Group=root
-RuntimeDirectory=backup_manager
 
 # Working directory
 WorkingDirectory=/opt/backup_system
@@ -41,6 +41,7 @@ ExecStart=/opt/backup_system/venv/bin/gunicorn \
     web_app:app
 
 # Socket permissions para Nginx
+ExecStartPost=/bin/sleep 1
 ExecStartPost=/bin/chmod 666 /opt/backup_system/backup_manager.sock
 
 # Cleanup socket on stop
