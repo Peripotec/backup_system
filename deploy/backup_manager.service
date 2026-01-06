@@ -1,0 +1,69 @@
+# =============================================================================
+# Systemd Unit - Backup Manager (Gunicorn)
+# =============================================================================
+# Archivo: /etc/systemd/system/backup_manager.service
+#
+# CAMBIOS vs versión anterior:
+# - Bind ABSOLUTO al socket (elimina fragilidad de path relativo)
+# - Permisos explícitos del socket para www-data
+# - Restart policy robusto
+# =============================================================================
+
+[Unit]
+Description=Backup Manager Gunicorn Application Server
+Documentation=https://github.com/Peripotec/backup_system
+After=network.target
+Wants=network.target
+
+[Service]
+Type=notify
+User=www-data
+Group=www-data
+RuntimeDirectory=backup_manager
+
+# Working directory
+WorkingDirectory=/var/www/backup_manager
+
+# Environment
+Environment="PATH=/var/www/backup_manager/venv/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="PYTHONUNBUFFERED=1"
+
+# =============================================================================
+# SOCKET BIND ABSOLUTO - Crítico para evitar 502
+# =============================================================================
+ExecStart=/var/www/backup_manager/venv/bin/gunicorn \
+    --bind unix:/var/www/backup_manager/backup_manager.sock \
+    --workers 2 \
+    --threads 4 \
+    --timeout 120 \
+    --graceful-timeout 30 \
+    --keep-alive 5 \
+    --access-logfile /var/log/backup_manager/access.log \
+    --error-logfile /var/log/backup_manager/error.log \
+    --capture-output \
+    web_app:app
+
+# Socket permissions para Nginx
+ExecStartPost=/bin/chmod 660 /var/www/backup_manager/backup_manager.sock
+ExecStartPost=/bin/chown www-data:www-data /var/www/backup_manager/backup_manager.sock
+
+# Cleanup socket on stop
+ExecStopPost=/bin/rm -f /var/www/backup_manager/backup_manager.sock
+
+# =============================================================================
+# Restart Policy - Self-healing
+# =============================================================================
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+# Security hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/www/backup_manager /var/log/backup_manager
+
+[Install]
+WantedBy=multi-user.target

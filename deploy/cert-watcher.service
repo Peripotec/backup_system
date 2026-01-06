@@ -1,0 +1,24 @@
+# =============================================================================
+# Systemd Service - Cert Watcher
+# =============================================================================
+# Archivo: /etc/systemd/system/cert-watcher.service
+# =============================================================================
+
+[Unit]
+Description=Certificate Watcher Service
+Documentation=https://github.com/Peripotec/backup_system
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/scripts/cert-watcher.sh
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+
+# No reintentar automáticamente (el timer lo maneja)
+Restart=no
+
+[Install]
+WantedBy=multi-user.target
