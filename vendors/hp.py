@@ -159,8 +159,25 @@ class Hp(BackupVendor):
         else:
             self._debug_log("Cmdline mode no requerido o ya activo")
         
-        # Small delay to ensure clean state
-        time.sleep(0.3)
+        # =====================================================
+        # LIMPIEZA DE BUFFER - Crucial para evitar comandos residuales
+        # =====================================================
+        time.sleep(0.5)
+        
+        # Flush any remaining data in the buffer
+        try:
+            tn.read_very_eager()  # Non-blocking read to clear buffer
+        except Exception:
+            pass
+        
+        # Send empty line and wait for clean prompt
+        self._debug_log("Verificando prompt limpio...")
+        self.send_command(tn, "")
+        idx_clean, _ = self.read_until(tn, [">", "#", "]"], timeout=5)
+        if idx_clean >= 0:
+            self._debug_log("✓ Prompt limpio, continuando con TFTP")
+        else:
+            self._debug_log("⚠ No se detectó prompt limpio, continuando de todos modos")
         
         # =====================================================
         # FASE 3: TFTP backup
