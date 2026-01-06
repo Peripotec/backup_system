@@ -59,8 +59,8 @@ curl -sS -o /dev/null -w "%{http_code}" https://localhost/api/health
 # Esperado: 200
 
 # Socket existe
-ls -la /var/www/backup_manager/backup_manager.sock
-# Esperado: srw-rw---- www-data www-data
+ls -la /opt/backup_system/backup_manager.sock
+# Esperado: srw-rw-rw- root root
 
 # Cert watcher timer activo
 systemctl status cert-watcher.timer
