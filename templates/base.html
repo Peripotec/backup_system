@@ -314,6 +314,7 @@
 
                 {% if has_permission('view_vault') or has_permission('view_settings') %}
                 <div class="sidebar-section">Administración</div>
+                {% if has_permission('view_vault') %}
                 <li class="nav-item">
                     <a class="nav-link {% if '/vault' in request.path %}active{% endif %}" href="/admin/vault">
                         <i class="bi bi-key"></i> Vault
