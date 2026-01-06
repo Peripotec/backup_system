@@ -15,7 +15,7 @@
             <i class="fas fa-plus"></i> Nuevo Template
         </button>
     </div>
-    
+
     <div id="templates-list" class="templates-grid">
         <div class="loading">Cargando templates...</div>
     </div>
@@ -31,69 +31,75 @@
         <div class="modal-body">
             <form id="template-form">
                 <input type="hidden" id="template-id" value="">
-                
-                <div class="form-row">
+
+                <div class="form-row-3">
                     <div class="form-group">
                         <label for="template-name">Nombre *</label>
-                        <input type="text" id="template-name" required placeholder="ej: hp_1920">
+                        <input type="text" id="template-name" class="form-control" required placeholder="ej: hp_1920">
                     </div>
                     <div class="form-group">
                         <label for="template-protocol">Protocolo</label>
-                        <select id="template-protocol">
+                        <select id="template-protocol" class="form-control">
                             <option value="telnet">Telnet</option>
                             <option value="ssh">SSH</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label for="template-port">Puerto</label>
-                        <input type="number" id="template-port" value="23">
+                        <input type="number" id="template-port" class="form-control" value="23">
                     </div>
                 </div>
-                
+
                 <div class="form-group">
                     <label for="template-description">Descripción</label>
-                    <input type="text" id="template-description" placeholder="Descripción del template">
+                    <input type="text" id="template-description" class="form-control"
+                        placeholder="Descripción del template">
                 </div>
-                
+
                 <div class="form-group">
                     <label>Secuencia de Comandos</label>
-                    <div class="steps-help">
-                        <small>Variables: <code>{{ user }}</code> <code>{{ password }}</code> <code>{{ extra_pass }}</code> <code>{{ hostname }}</code> <code>{{ ip }}</code> <code>{{ tftp_server }}</code></small>
+                    <div class="steps-container">
+                        <table class="steps-table" id="steps-table">
+                            <thead>
+                                <tr>
+                                    <th class="col-num">#</th>
+                                    <th class="col-expect">Esperar (Expect)</th>
+                                    <th class="col-send">Enviar (Send)</th>
+                                    <th class="col-hide">Ocultar</th>
+                                    <th class="col-timeout">Timeout</th>
+                                    <th class="col-actions"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="steps-body">
+                                <!-- Steps will be added dynamically -->
+                            </tbody>
+                        </table>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="addStep()">
+                            <i class="fas fa-plus"></i> Agregar Paso
+                        </button>
                     </div>
-                    <table class="steps-table" id="steps-table">
-                        <thead>
-                            <tr>
-                                <th style="width:40px">#</th>
-                                <th>Esperar (Expect)</th>
-                                <th>Enviar (Send)</th>
-                                <th style="width:80px">Ocultar</th>
-                                <th style="width:80px">Timeout</th>
-                                <th style="width:60px"></th>
-                            </tr>
-                        </thead>
-                        <tbody id="steps-body">
-                            <!-- Steps will be added dynamically -->
-                        </tbody>
-                    </table>
-                    <button type="button" class="btn btn-secondary btn-sm" onclick="addStep()">
-                        <i class="fas fa-plus"></i> Agregar Paso
-                    </button>
                 </div>
-                
-                <div class="form-row">
+
+                <div class="form-row-3">
                     <div class="form-group">
                         <label for="template-filename">Archivo Resultado</label>
-                        <input type="text" id="template-filename" value="{{ hostname }}.cfg">
+                        <select id="template-filename" class="form-control">
+                            <option value="{{ hostname }}.cfg">hostname.cfg</option>
+                            <option value="{{ hostname }}.zip">hostname.zip</option>
+                            <option value="{{ hostname }}.rsc">hostname.rsc</option>
+                            <option value="{{ hostname }}.dat">hostname.dat</option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label for="template-timeout">Timeout (seg)</label>
-                        <input type="number" id="template-timeout" value="60">
+                        <input type="number" id="template-timeout" class="form-control" value="60">
                     </div>
                     <div class="form-group">
-                        <label>Tipo</label>
+                        <label>Tipo de Archivo</label>
                         <div class="radio-group">
-                            <label><input type="radio" name="is_text" value="1" checked> Texto (Git)</label>
-                            <label><input type="radio" name="is_text" value="0"> Binario</label>
+                            <label class="radio-label"><input type="radio" name="is_text" value="1" checked> Texto
+                                (Git)</label>
+                            <label class="radio-label"><input type="radio" name="is_text" value="0"> Binario</label>
                         </div>
                     </div>
                 </div>
@@ -101,340 +107,643 @@
         </div>
         <div class="modal-footer">
             <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
-            <button class="btn btn-primary" onclick="saveTemplate()">Guardar</button>
+            <button class="btn btn-primary" onclick="saveTemplate()">
+                <i class="fas fa-save"></i> Guardar
+            </button>
         </div>
     </div>
 </div>
 
 <style>
-.templates-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1rem;
-    padding: 1rem;
-}
+    /* Templates Grid */
+    .templates-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1rem;
+        padding: 1rem;
+    }
 
-.template-card {
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 1rem;
-    transition: all 0.2s;
-}
+    .template-card {
+        background: var(--card-bg, #1e1e2e);
+        border: 1px solid var(--border-color, #333);
+        border-radius: 8px;
+        padding: 1rem;
+        transition: all 0.2s;
+    }
 
-.template-card:hover {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    transform: translateY(-2px);
-}
+    .template-card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        transform: translateY(-2px);
+        border-color: var(--primary-color, #4CAF50);
+    }
 
-.template-card h4 {
-    margin: 0 0 0.5rem 0;
-    color: var(--primary-color);
-}
+    .template-card h4 {
+        margin: 0 0 0.5rem 0;
+        color: var(--primary-color, #4CAF50);
+        font-size: 1.1rem;
+    }
 
-.template-card .protocol-badge {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-}
+    .template-card .meta {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
 
-.protocol-badge.telnet { background: #4CAF50; color: white; }
-.protocol-badge.ssh { background: #2196F3; color: white; }
+    .protocol-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
 
-.template-card .steps-count {
-    color: var(--text-muted);
-    font-size: 0.9rem;
-}
+    .protocol-badge.telnet {
+        background: #4CAF50;
+        color: white;
+    }
 
-.template-card .actions {
-    margin-top: 1rem;
-    display: flex;
-    gap: 0.5rem;
-}
+    .protocol-badge.ssh {
+        background: #2196F3;
+        color: white;
+    }
 
-.steps-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 0.5rem 0;
-}
+    .steps-badge {
+        background: var(--bg-secondary, #2a2a3a);
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        color: var(--text-muted, #888);
+    }
 
-.steps-table th, .steps-table td {
-    padding: 0.5rem;
-    border: 1px solid var(--border-color);
-    text-align: left;
-}
+    .template-card .description {
+        color: var(--text-muted, #888);
+        font-size: 0.85rem;
+        margin-bottom: 1rem;
+        min-height: 2.5em;
+    }
 
-.steps-table input[type="text"], .steps-table input[type="number"] {
-    width: 100%;
-    padding: 0.25rem;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    background: var(--input-bg);
-    color: var(--text-color);
-}
+    .template-card .actions {
+        display: flex;
+        gap: 0.5rem;
+    }
 
-.steps-table input[type="checkbox"] {
-    width: 20px;
-    height: 20px;
-}
+    /* Modal */
+    .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
 
-.steps-help {
-    background: var(--bg-secondary);
-    padding: 0.5rem;
-    border-radius: 4px;
-    margin-bottom: 0.5rem;
-}
+    .modal-content {
+        background: var(--card-bg, #1e1e2e);
+        border-radius: 8px;
+        max-height: 90vh;
+        overflow-y: auto;
+        width: 95%;
+    }
 
-.steps-help code {
-    background: var(--code-bg);
-    padding: 2px 6px;
-    border-radius: 3px;
-    font-family: monospace;
-}
+    .modal-lg {
+        max-width: 900px;
+    }
 
-.form-row {
-    display: flex;
-    gap: 1rem;
-}
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid var(--border-color, #333);
+    }
 
-.form-row .form-group {
-    flex: 1;
-}
+    .modal-header h3 {
+        margin: 0;
+    }
 
-.radio-group {
-    display: flex;
-    gap: 1rem;
-}
+    .close-btn {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        color: var(--text-muted, #888);
+        cursor: pointer;
+    }
 
-.radio-group label {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    cursor: pointer;
-}
+    .modal-body {
+        padding: 1.5rem;
+    }
 
-.modal-lg {
-    max-width: 900px;
-}
+    .modal-footer {
+        padding: 1rem 1.5rem;
+        border-top: 1px solid var(--border-color, #333);
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+    }
 
-.btn-sm {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.85rem;
-}
+    /* Forms */
+    .form-row-3 {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
 
-.btn-danger-outline {
-    background: transparent;
-    border: 1px solid #dc3545;
-    color: #dc3545;
-}
+    .form-group {
+        margin-bottom: 1rem;
+    }
 
-.btn-danger-outline:hover {
-    background: #dc3545;
-    color: white;
-}
+    .form-group label {
+        display: block;
+        margin-bottom: 0.25rem;
+        font-weight: 500;
+        font-size: 0.9rem;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid var(--border-color, #333);
+        border-radius: 4px;
+        background: var(--input-bg, #2a2a3a);
+        color: var(--text-color, #fff);
+        font-size: 0.9rem;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: var(--primary-color, #4CAF50);
+    }
+
+    .radio-group {
+        display: flex;
+        gap: 1rem;
+        padding-top: 0.5rem;
+    }
+
+    .radio-label {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        cursor: pointer;
+        font-size: 0.9rem;
+    }
+
+    /* Steps Table */
+    .steps-container {
+        background: var(--bg-secondary, #2a2a3a);
+        border-radius: 8px;
+        padding: 1rem;
+    }
+
+    .steps-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 1rem;
+    }
+
+    .steps-table th {
+        text-align: left;
+        padding: 0.5rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-muted, #888);
+        border-bottom: 1px solid var(--border-color, #333);
+    }
+
+    .steps-table td {
+        padding: 0.25rem;
+        vertical-align: middle;
+    }
+
+    .col-num {
+        width: 40px;
+        text-align: center;
+    }
+
+    .col-expect {
+        width: 25%;
+    }
+
+    .col-send {
+        width: 40%;
+    }
+
+    .col-hide {
+        width: 60px;
+        text-align: center;
+    }
+
+    .col-timeout {
+        width: 70px;
+    }
+
+    .col-actions {
+        width: 40px;
+    }
+
+    .steps-table input[type="text"],
+    .steps-table select {
+        width: 100%;
+        padding: 0.4rem;
+        border: 1px solid var(--border-color, #333);
+        border-radius: 4px;
+        background: var(--input-bg, #1e1e2e);
+        color: var(--text-color, #fff);
+        font-size: 0.85rem;
+    }
+
+    .steps-table input[type="number"] {
+        width: 60px;
+        padding: 0.4rem;
+        border: 1px solid var(--border-color, #333);
+        border-radius: 4px;
+        background: var(--input-bg, #1e1e2e);
+        color: var(--text-color, #fff);
+        font-size: 0.85rem;
+        text-align: center;
+    }
+
+    .steps-table input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+    }
+
+    .send-cell {
+        display: flex;
+        gap: 0.25rem;
+    }
+
+    .send-type-select {
+        width: 120px !important;
+        flex-shrink: 0;
+    }
+
+    .send-value-input {
+        flex: 1;
+    }
+
+    /* Buttons */
+    .btn {
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .btn-primary {
+        background: var(--primary-color, #4CAF50);
+        color: white;
+    }
+
+    .btn-secondary {
+        background: var(--bg-secondary, #2a2a3a);
+        color: var(--text-color, #fff);
+        border: 1px solid var(--border-color, #333);
+    }
+
+    .btn-danger {
+        background: #dc3545;
+        color: white;
+    }
+
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.8rem;
+    }
+
+    .btn-icon {
+        padding: 0.25rem;
+        background: transparent;
+        color: var(--text-muted, #888);
+        border: none;
+    }
+
+    .btn-icon:hover {
+        color: #dc3545;
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: var(--text-muted, #888);
+    }
 </style>
 
 <script>
-let currentTemplates = [];
-let stepCounter = 0;
+    let currentTemplates = [];
+    let stepCounter = 0;
 
-document.addEventListener('DOMContentLoaded', loadTemplates);
+    // Value types for the send field dropdown
+    const VALUE_TYPES = [
+        { value: 'text', label: 'Texto', placeholder: 'Comando o texto' },
+        { value: 'user', label: '🔑 Usuario', variable: '{{ user }}' },
+        { value: 'password', label: '🔒 Contraseña', variable: '{{ password }}' },
+        { value: 'extra_pass', label: '🔐 Extra Pass', variable: '{{ extra_pass }}' },
+        { value: 'hostname', label: '💻 Hostname', variable: '{{ hostname }}' },
+        { value: 'ip', label: '🌐 IP', variable: '{{ ip }}' },
+        { value: 'tftp_server', label: '📡 TFTP Server', variable: '{{ tftp_server }}' },
+    ];
 
-function loadTemplates() {
-    fetch('/api/vendor-templates')
-        .then(r => r.json())
-        .then(data => {
-            currentTemplates = data;
-            renderTemplates(data);
-        })
-        .catch(err => {
-            document.getElementById('templates-list').innerHTML = 
-                '<div class="error">Error cargando templates</div>';
-        });
-}
+    document.addEventListener('DOMContentLoaded', loadTemplates);
 
-function renderTemplates(templates) {
-    const container = document.getElementById('templates-list');
-    
-    if (!templates || templates.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state">
+    function loadTemplates() {
+        fetch('/api/vendor-templates')
+            .then(r => r.json())
+            .then(data => {
+                currentTemplates = data;
+                renderTemplates(data);
+            })
+            .catch(err => {
+                document.getElementById('templates-list').innerHTML =
+                    '<div class="error">Error cargando templates</div>';
+            });
+    }
+
+    function renderTemplates(templates) {
+        const container = document.getElementById('templates-list');
+
+        if (!templates || templates.length === 0) {
+            container.innerHTML = `
+            <div class="empty-state" style="grid-column: 1/-1;">
                 <p>No hay templates configurados</p>
                 <button class="btn btn-primary" onclick="showCreateModal()">
-                    Crear primer template
+                    <i class="fas fa-plus"></i> Crear primer template
                 </button>
             </div>
         `;
-        return;
-    }
-    
-    container.innerHTML = templates.map(t => `
+            return;
+        }
+
+        container.innerHTML = templates.map(t => `
         <div class="template-card">
-            <h4>${t.name}</h4>
-            <span class="protocol-badge ${t.protocol}">${t.protocol}:${t.port}</span>
-            <p class="steps-count">${t.steps ? t.steps.length : 0} pasos</p>
-            <p style="color:var(--text-muted);font-size:0.85rem">${t.description || 'Sin descripción'}</p>
+            <h4>${escapeHtml(t.name)}</h4>
+            <div class="meta">
+                <span class="protocol-badge ${t.protocol}">${t.protocol}:${t.port}</span>
+                <span class="steps-badge">${t.steps ? t.steps.length : 0} pasos</span>
+            </div>
+            <p class="description">${escapeHtml(t.description) || 'Sin descripción'}</p>
             <div class="actions">
                 <button class="btn btn-secondary btn-sm" onclick="editTemplate(${t.id})">
                     <i class="fas fa-edit"></i> Editar
                 </button>
-                <button class="btn btn-danger-outline btn-sm" onclick="deleteTemplate(${t.id}, '${t.name}')">
+                <button class="btn btn-danger btn-sm" onclick="deleteTemplate(${t.id}, '${escapeHtml(t.name)}')">
                     <i class="fas fa-trash"></i>
                 </button>
             </div>
         </div>
     `).join('');
-}
-
-function showCreateModal() {
-    document.getElementById('modal-title').textContent = 'Nuevo Template';
-    document.getElementById('template-id').value = '';
-    document.getElementById('template-form').reset();
-    document.getElementById('steps-body').innerHTML = '';
-    stepCounter = 0;
-    
-    // Add default steps for a typical login
-    addStep('Username:', '{{ user }}', false, 10);
-    addStep('Password:', '{{ password }}', true, 10);
-    addStep('>', '', false, 10);
-    
-    document.getElementById('template-modal').style.display = 'flex';
-}
-
-function editTemplate(id) {
-    const template = currentTemplates.find(t => t.id === id);
-    if (!template) return;
-    
-    document.getElementById('modal-title').textContent = 'Editar Template: ' + template.name;
-    document.getElementById('template-id').value = template.id;
-    document.getElementById('template-name').value = template.name;
-    document.getElementById('template-description').value = template.description || '';
-    document.getElementById('template-protocol').value = template.protocol || 'telnet';
-    document.getElementById('template-port').value = template.port || 23;
-    document.getElementById('template-filename').value = template.result_filename || '{{ hostname }}.cfg';
-    document.getElementById('template-timeout').value = template.timeout || 60;
-    
-    // Radio for is_text
-    document.querySelector(`input[name="is_text"][value="${template.is_text ? '1' : '0'}"]`).checked = true;
-    
-    // Load steps
-    document.getElementById('steps-body').innerHTML = '';
-    stepCounter = 0;
-    if (template.steps && template.steps.length > 0) {
-        template.steps.forEach(step => {
-            addStep(step.expect || '', step.send || '', step.hide || false, step.timeout || 10);
-        });
     }
-    
-    document.getElementById('template-modal').style.display = 'flex';
-}
 
-function closeModal() {
-    document.getElementById('template-modal').style.display = 'none';
-}
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
 
-function addStep(expect = '', send = '', hide = false, timeout = 10) {
-    stepCounter++;
-    const row = document.createElement('tr');
-    row.id = 'step-row-' + stepCounter;
-    row.innerHTML = `
-        <td>${stepCounter}</td>
-        <td><input type="text" class="step-expect" value="${expect}" placeholder="ej: Username:"></td>
-        <td><input type="text" class="step-send" value="${send}" placeholder="ej: {{ user }}"></td>
-        <td style="text-align:center"><input type="checkbox" class="step-hide" ${hide ? 'checked' : ''}></td>
-        <td><input type="number" class="step-timeout" value="${timeout}" style="width:60px"></td>
-        <td>
-            <button type="button" class="btn btn-danger-outline btn-sm" onclick="removeStep(${stepCounter})">
+    function showCreateModal() {
+        document.getElementById('modal-title').textContent = 'Nuevo Template';
+        document.getElementById('template-id').value = '';
+        document.getElementById('template-form').reset();
+        document.getElementById('steps-body').innerHTML = '';
+        stepCounter = 0;
+
+        // Add default steps for typical login
+        addStep('Username:', 'user', '', false, 10);
+        addStep('Password:', 'password', '', true, 10);
+        addStep('>', 'text', '', false, 10);
+
+        document.getElementById('template-modal').style.display = 'flex';
+    }
+
+    function editTemplate(id) {
+        const template = currentTemplates.find(t => t.id === id);
+        if (!template) return;
+
+        document.getElementById('modal-title').textContent = 'Editar: ' + template.name;
+        document.getElementById('template-id').value = template.id;
+        document.getElementById('template-name').value = template.name;
+        document.getElementById('template-description').value = template.description || '';
+        document.getElementById('template-protocol').value = template.protocol || 'telnet';
+        document.getElementById('template-port').value = template.port || 23;
+        document.getElementById('template-timeout').value = template.timeout || 60;
+
+        // Set filename
+        const filenameSelect = document.getElementById('template-filename');
+        if (template.result_filename) {
+            // Try to find matching option
+            let found = false;
+            for (let opt of filenameSelect.options) {
+                if (opt.value === template.result_filename) {
+                    opt.selected = true;
+                    found = true;
+                    break;
+                }
+            }
+        }
+
+        // Radio for is_text
+        document.querySelector(`input[name="is_text"][value="${template.is_text ? '1' : '0'}"]`).checked = true;
+
+        // Load steps
+        document.getElementById('steps-body').innerHTML = '';
+        stepCounter = 0;
+        if (template.steps && template.steps.length > 0) {
+            template.steps.forEach(step => {
+                const sendValue = step.send || '';
+                const { type, value } = parseStepSend(sendValue);
+                addStep(step.expect || '', type, value, step.hide || false, step.timeout || 10);
+            });
+        }
+
+        document.getElementById('template-modal').style.display = 'flex';
+    }
+
+    function parseStepSend(sendValue) {
+        // Detect if it's a variable like {{ user }}
+        for (const vt of VALUE_TYPES) {
+            if (vt.variable && sendValue === vt.variable) {
+                return { type: vt.value, value: '' };
+            }
+        }
+        return { type: 'text', value: sendValue };
+    }
+
+    function closeModal() {
+        document.getElementById('template-modal').style.display = 'none';
+    }
+
+    function addStep(expect = '', sendType = 'text', sendValue = '', hide = false, timeout = 10) {
+        stepCounter++;
+        const row = document.createElement('tr');
+        row.id = 'step-row-' + stepCounter;
+
+        // Build send type options
+        const typeOptions = VALUE_TYPES.map(vt =>
+            `<option value="${vt.value}" ${sendType === vt.value ? 'selected' : ''}>${vt.label}</option>`
+        ).join('');
+
+        // Determine if value input should be disabled (for vault/system values)
+        const isTextType = sendType === 'text';
+
+        row.innerHTML = `
+        <td class="col-num">${stepCounter}</td>
+        <td class="col-expect">
+            <input type="text" class="step-expect" value="${escapeHtml(expect)}" placeholder="ej: Password:">
+        </td>
+        <td class="col-send">
+            <div class="send-cell">
+                <select class="send-type-select" onchange="onSendTypeChange(${stepCounter})">
+                    ${typeOptions}
+                </select>
+                <input type="text" class="send-value-input" value="${escapeHtml(sendValue)}" 
+                       placeholder="${isTextType ? 'Comando...' : ''}"
+                       ${!isTextType ? 'disabled' : ''}>
+            </div>
+        </td>
+        <td class="col-hide">
+            <input type="checkbox" class="step-hide" ${hide ? 'checked' : ''}>
+        </td>
+        <td class="col-timeout">
+            <input type="number" class="step-timeout" value="${timeout}">
+        </td>
+        <td class="col-actions">
+            <button type="button" class="btn-icon" onclick="removeStep(${stepCounter})" title="Eliminar">
                 <i class="fas fa-times"></i>
             </button>
         </td>
     `;
-    document.getElementById('steps-body').appendChild(row);
-}
-
-function removeStep(num) {
-    const row = document.getElementById('step-row-' + num);
-    if (row) row.remove();
-    renumberSteps();
-}
-
-function renumberSteps() {
-    const rows = document.querySelectorAll('#steps-body tr');
-    rows.forEach((row, idx) => {
-        row.cells[0].textContent = idx + 1;
-    });
-}
-
-function collectSteps() {
-    const rows = document.querySelectorAll('#steps-body tr');
-    const steps = [];
-    rows.forEach(row => {
-        const expect = row.querySelector('.step-expect').value.trim();
-        const send = row.querySelector('.step-send').value.trim();
-        const hide = row.querySelector('.step-hide').checked;
-        const timeout = parseInt(row.querySelector('.step-timeout').value) || 10;
-        
-        // Only add if there's something
-        if (expect || send) {
-            steps.push({ expect, send, hide, timeout });
-        }
-    });
-    return steps;
-}
-
-function saveTemplate() {
-    const id = document.getElementById('template-id').value;
-    const data = {
-        name: document.getElementById('template-name').value,
-        description: document.getElementById('template-description').value,
-        protocol: document.getElementById('template-protocol').value,
-        port: parseInt(document.getElementById('template-port').value) || 23,
-        steps: collectSteps(),
-        result_filename: document.getElementById('template-filename').value,
-        is_text: document.querySelector('input[name="is_text"]:checked').value === '1',
-        timeout: parseInt(document.getElementById('template-timeout').value) || 60
-    };
-    
-    if (!data.name) {
-        alert('El nombre es requerido');
-        return;
+        document.getElementById('steps-body').appendChild(row);
     }
-    
-    const method = id ? 'PUT' : 'POST';
-    const url = id ? `/api/vendor-templates/${id}` : '/api/vendor-templates';
-    
-    fetch(url, {
-        method: method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    })
-    .then(r => r.json())
-    .then(result => {
-        if (result.error) {
-            alert('Error: ' + result.error);
-        } else {
-            closeModal();
-            loadTemplates();
-        }
-    })
-    .catch(err => alert('Error guardando template'));
-}
 
-function deleteTemplate(id, name) {
-    if (!confirm(`¿Eliminar template "${name}"?`)) return;
-    
-    fetch(`/api/vendor-templates/${id}`, { method: 'DELETE' })
-        .then(r => r.json())
-        .then(result => {
-            if (result.error) {
-                alert('Error: ' + result.error);
+    function onSendTypeChange(stepNum) {
+        const row = document.getElementById('step-row-' + stepNum);
+        if (!row) return;
+
+        const select = row.querySelector('.send-type-select');
+        const input = row.querySelector('.send-value-input');
+        const hideCheckbox = row.querySelector('.step-hide');
+
+        const selectedType = select.value;
+        const isText = selectedType === 'text';
+
+        input.disabled = !isText;
+        input.placeholder = isText ? 'Comando...' : '';
+        if (!isText) {
+            input.value = '';
+        }
+
+        // Auto-check hide for password types
+        if (selectedType === 'password' || selectedType === 'extra_pass') {
+            hideCheckbox.checked = true;
+        }
+    }
+
+    function removeStep(num) {
+        const row = document.getElementById('step-row-' + num);
+        if (row) row.remove();
+        renumberSteps();
+    }
+
+    function renumberSteps() {
+        const rows = document.querySelectorAll('#steps-body tr');
+        rows.forEach((row, idx) => {
+            row.cells[0].textContent = idx + 1;
+        });
+    }
+
+    function collectSteps() {
+        const rows = document.querySelectorAll('#steps-body tr');
+        const steps = [];
+
+        rows.forEach(row => {
+            const expect = row.querySelector('.step-expect').value.trim();
+            const sendType = row.querySelector('.send-type-select').value;
+            const sendValue = row.querySelector('.send-value-input').value.trim();
+            const hide = row.querySelector('.step-hide').checked;
+            const timeout = parseInt(row.querySelector('.step-timeout').value) || 10;
+
+            // Convert type to actual send value
+            let send = '';
+            if (sendType === 'text') {
+                send = sendValue;
             } else {
-                loadTemplates();
+                // Find the variable for this type
+                const vt = VALUE_TYPES.find(v => v.value === sendType);
+                send = vt ? vt.variable : sendValue;
+            }
+
+            // Only add if there's something meaningful
+            if (expect || send) {
+                steps.push({ expect, send, hide, timeout });
             }
         });
-}
+
+        return steps;
+    }
+
+    function saveTemplate() {
+        const id = document.getElementById('template-id').value;
+        const data = {
+            name: document.getElementById('template-name').value.trim(),
+            description: document.getElementById('template-description').value.trim(),
+            protocol: document.getElementById('template-protocol').value,
+            port: parseInt(document.getElementById('template-port').value) || 23,
+            steps: collectSteps(),
+            result_filename: document.getElementById('template-filename').value,
+            is_text: document.querySelector('input[name="is_text"]:checked').value === '1',
+            timeout: parseInt(document.getElementById('template-timeout').value) || 60
+        };
+
+        if (!data.name) {
+            alert('El nombre es requerido');
+            return;
+        }
+
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `/api/vendor-templates/${id}` : '/api/vendor-templates';
+
+        fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        })
+            .then(r => r.json())
+            .then(result => {
+                if (result.error) {
+                    alert('Error: ' + result.error);
+                } else {
+                    closeModal();
+                    loadTemplates();
+                }
+            })
+            .catch(err => alert('Error guardando template'));
+    }
+
+    function deleteTemplate(id, name) {
+        if (!confirm(`¿Eliminar template "${name}"?`)) return;
+
+        fetch(`/api/vendor-templates/${id}`, { method: 'DELETE' })
+            .then(r => r.json())
+            .then(result => {
+                if (result.error) {
+                    alert('Error: ' + result.error);
+                } else {
+                    loadTemplates();
+                }
+            });
+    }
 </script>
 {% endblock %}
