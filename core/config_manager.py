@@ -86,6 +86,7 @@ class ConfigManager:
                     permissions TEXT DEFAULT '[]',
                     is_system INTEGER DEFAULT 0,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
             ''')
             
             # Migration: Add permissions column if it doesn't exist (for existing DBs)

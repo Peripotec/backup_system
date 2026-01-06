@@ -132,52 +132,26 @@ class Hp(BackupVendor):
                 passwords_to_try.append(self.extra_pass)
             passwords_to_try.extend(self.CMDLINE_PASSWORDS)
             
-            for idx_p, cmdpass in enumerate(passwords_to_try):
-                self._debug_log(f"Probando cmdline password {idx_p+1}/{len(passwords_to_try)}...")
+            for cmdpass in passwords_to_try:
+                self._debug_log(f"Probando cmdline password...")
                 self.send_command(tn, cmdpass, hide=True)
                 
-                # Wait for response - need to distinguish between success and failure
-                idx2, response2 = self.read_until(tn, [">", "Invalid", "Error", "word:"], timeout=10)
+                idx2, response2 = self.read_until(tn, [">", "]", "Invalid", "Error"], timeout=10)
                 
-                if idx2 == 0:  # Got ">" prompt = success
+                if idx2 in [0, 1] and "invalid" not in response2.lower() and "error" not in response2.lower():
                     self._debug_log("✓ Cmdline mode habilitado")
                     cmdline_success = True
                     break
-                elif idx2 == 3:  # Got "word:" = wrong password, try again
-                    self._debug_log("✗ Cmdline password falló, reintentando...")
-                    continue
                 else:
-                    # Error case
-                    self._debug_log(f"✗ Cmdline password falló: {response2[:50] if response2 else 'unknown'}")
-                    # Wait a bit and check for new prompt
-                    time.sleep(0.5)
+                    self._debug_log("✗ Cmdline password falló")
+                    # Some devices might prompt again for password
                     continue
             
             if not cmdline_success:
-                self._debug_log("⚠ No se pudo habilitar cmdline mode, continuando sin él...")
+                self._debug_log("⚠ No se pudo habilitar cmdline mode, continuando...")
                 # Some HP devices work without cmdline mode
         else:
             self._debug_log("Cmdline mode no requerido o ya activo")
-        
-        # =====================================================
-        # LIMPIEZA DE BUFFER - Crucial para evitar comandos residuales
-        # =====================================================
-        time.sleep(0.5)
-        
-        # Flush any remaining data in the buffer
-        try:
-            tn.read_very_eager()  # Non-blocking read to clear buffer
-        except Exception:
-            pass
-        
-        # Send empty line and wait for clean prompt
-        self._debug_log("Verificando prompt limpio...")
-        self.send_command(tn, "")
-        idx_clean, _ = self.read_until(tn, [">", "#", "]"], timeout=5)
-        if idx_clean >= 0:
-            self._debug_log("✓ Prompt limpio, continuando con TFTP")
-        else:
-            self._debug_log("⚠ No se detectó prompt limpio, continuando de todos modos")
         
         # =====================================================
         # FASE 3: TFTP backup
@@ -194,10 +168,8 @@ class Hp(BackupVendor):
         except Exception as e:
             self._debug_log(f"⚠ No se pudo crear archivo TFTP: {e}")
         
-        # Comando TFTP según bash original: tftp <server> put startup.cfg
-        # El archivo se renombra después en el servidor TFTP
         cmd = f"tftp {tftp_server} put startup.cfg {temp_filename}"
-        self._debug_log(f"Ejecutando: {cmd}")
+        self._debug_log(f"Ejecutando transferencia TFTP...")
         self.send_command(tn, cmd)
         
         # Wait for transfer to complete
