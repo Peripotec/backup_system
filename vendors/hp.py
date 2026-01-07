@@ -104,14 +104,13 @@ class Hp(BackupVendor):
             self._debug_log(f"📝 Credencial guardada como preferida para {self.hostname}")
         
         # =====================================================
-        # FASE 2: TFTP backup (¡EN MODO NORMAL, NO CMDLINE!)
+        # FASE 2: Asegurar que estamos en MODO NORMAL (no cmdline)
         # =====================================================
-        # El comando tftp solo funciona cuando el prompt es <hostname>
-        # NO funciona cuando está en cmdline-mode [hostname]
+        # El comando tftp solo funciona cuando el prompt es <hostname> (termina en >)
+        # NO funciona cuando está en cmdline-mode [hostname] (termina en ])
+        # Algunos switches entran automáticamente en cmdline mode después del login
         
-        # IMPORTANTE: Esperar a que el switch esté listo antes de enviar comandos
-        # Primero limpiar buffer y esperar el prompt limpio
-        self._debug_log("Esperando prompt del switch...")
+        self._debug_log("Verificando modo del switch...")
         time.sleep(1)  # Dar tiempo al switch para mostrar el prompt
         
         # Limpiar cualquier basura en el buffer
@@ -120,10 +119,18 @@ class Hp(BackupVendor):
         except Exception:
             pass
         
-        # Enviar un Enter para forzar el prompt
+        # Enviar un Enter para forzar el prompt y ver en qué modo estamos
         self.send_command(tn, "")
-        idx, response = self.read_until(tn, [">"], timeout=5)
-        self._debug_log(f"← Prompt recibido")
+        idx, response = self.read_until(tn, [">", "]"], timeout=5)
+        
+        # Si terminó en ] (cmdline mode), enviar quit para salir a modo normal
+        if idx == 1 or "]" in response:
+            self._debug_log("⚠ Switch en cmdline mode, saliendo...")
+            self.send_command(tn, "quit")
+            idx, response = self.read_until(tn, [">"], timeout=5)
+            self._debug_log("✓ Salido de cmdline mode")
+        else:
+            self._debug_log("✓ Switch en modo normal")
         
         tftp_incoming = os.path.join(TFTP_ROOT, "startup.cfg")
         final_filename = f"{self.hostname}.cfg"
