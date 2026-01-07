@@ -30,7 +30,7 @@ Environment="PYTHONUNBUFFERED=1"
 # =============================================================================
 ExecStart=/opt/backup_system/venv/bin/gunicorn \
     --bind unix:/opt/backup_system/backup_manager.sock \
-    --workers 2 \
+    --workers 1 \
     --threads 4 \
     --timeout 120 \
     --graceful-timeout 30 \
