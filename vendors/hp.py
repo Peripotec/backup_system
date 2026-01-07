@@ -179,19 +179,23 @@ class Hp(BackupVendor):
         # =====================================================
         # FASE 3: TFTP backup
         # =====================================================
-        temp_filename = f"{self.hostname}.cfg"
+        # HP TFTP no soporta nombre destino - el archivo llega como startup.cfg
+        # y debemos renombrarlo después (igual que el bash original)
+        tftp_incoming = os.path.join(TFTP_ROOT, "startup.cfg")
+        final_filename = f"{self.hostname}.cfg"
+        tftp_path = os.path.join(TFTP_ROOT, final_filename)
         
-        # Create empty file for TFTP to write to
-        tftp_path = os.path.join(TFTP_ROOT, temp_filename)
+        # Create/clear startup.cfg for TFTP to write to
         try:
-            # Touch file
-            with open(tftp_path, 'w') as f:
+            with open(tftp_incoming, 'w') as f:
                 pass
-            os.chmod(tftp_path, 0o666)
+            os.chmod(tftp_incoming, 0o666)
+            self._debug_log(f"✓ Archivo startup.cfg preparado para TFTP")
         except Exception as e:
             self._debug_log(f"⚠ No se pudo crear archivo TFTP: {e}")
         
-        cmd = f"tftp {tftp_server} put startup.cfg {temp_filename}"
+        # HP TFTP command - SIN nombre destino (llega como startup.cfg)
+        cmd = f"tftp {tftp_server} put startup.cfg"
         self._debug_log(f"Ejecutando transferencia TFTP...")
         self.send_command(tn, cmd)
         
@@ -204,13 +208,18 @@ class Hp(BackupVendor):
         tn.close()
         
         # =====================================================
-        # FASE 4: Verificar archivo y procesar
+        # FASE 4: Verificar archivo y renombrar
         # =====================================================
-        self._debug_log(f"Verificando archivo en {tftp_path}...")
+        self._debug_log(f"Verificando archivo en {tftp_incoming}...")
         
         for i in range(10):
-            if os.path.exists(tftp_path) and os.path.getsize(tftp_path) > 0:
-                self._debug_log(f"✓ Archivo encontrado ({os.path.getsize(tftp_path)} bytes)")
+            if os.path.exists(tftp_incoming) and os.path.getsize(tftp_incoming) > 0:
+                size = os.path.getsize(tftp_incoming)
+                self._debug_log(f"✓ Archivo encontrado ({size} bytes)")
+                # Rename to final filename
+                import shutil
+                shutil.move(tftp_incoming, tftp_path)
+                self._debug_log(f"✓ Renombrado a {final_filename}")
                 break
             self._debug_log(f"Esperando archivo... ({i+1}/10)")
             time.sleep(1)
