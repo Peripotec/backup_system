@@ -1352,7 +1352,8 @@ def api_get_diff(vendor, hostname):
         rel_path = os.path.relpath(repo_file, REPO_DIR)
         result = subprocess.run(
             [git_path, "log", "-p", "-5", "--pretty=format:=== Commit: %h (%ai) ===\n%s\n", "--", rel_path],
-            cwd=REPO_DIR, capture_output=True, text=True
+            cwd=REPO_DIR, capture_output=True, text=True,
+            encoding='utf-8', errors='replace'  # Handle files with invalid encoding
         )
         
         if result.returncode != 0:
