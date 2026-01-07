@@ -1326,19 +1326,24 @@ def api_get_diff(vendor, hostname):
             "diff": ""
         })
     
-    repo_file = os.path.join(REPO_DIR, vendor, f"{hostname}.cfg")
-    if not os.path.exists(repo_file):
-        # Try alternative extensions
-        for ext in ['.txt', '.dat', '']:
-            alt = os.path.join(REPO_DIR, vendor, f"{hostname}{ext}")
-            if os.path.exists(alt):
-                repo_file = alt
+    # Normalize vendor name: try both zte_olt and zteolt (class name is lowercase without underscores)
+    vendor_variants = [vendor, vendor.replace('_', '')]
+    
+    repo_file = None
+    for v in vendor_variants:
+        for ext in ['.cfg', '.txt', '.dat', '']:
+            candidate = os.path.join(REPO_DIR, v, f"{hostname}{ext}")
+            if os.path.exists(candidate):
+                repo_file = candidate
                 break
-        else:
-            return jsonify({
-                "error": f"No se encontró configuración para {hostname} en el repositorio. Ejecute un backup primero.",
-                "diff": ""
-            })
+        if repo_file:
+            break
+    
+    if not repo_file:
+        return jsonify({
+            "error": f"No se encontró configuración para {hostname} en el repositorio. Ejecute un backup primero.",
+            "diff": ""
+        })
     
     try:
         # Use full path to git to avoid PATH issues with systemd
@@ -2159,7 +2164,7 @@ def api_get_tags():
 # CATALOG: LOCALIDADES
 # ==========================
 
-ZONAS = ['Troncal Norte', 'Troncal Sur', 'Troncal Este', 'Troncal Oeste']
+ZONAS = ['Troncal Norte', 'Troncal Sur', 'Troncal Este', 'Troncal Oeste', 'Troncal Central']
 
 @app.route('/api/zonas')
 @requires_auth
