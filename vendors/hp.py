@@ -23,7 +23,8 @@ class Hp(BackupVendor):
     # Se prueban en orden hasta que uno funcione
     CMDLINE_PASSWORDS = [
         "512900",                  # Más común en equipos nuevos
-        "Jinhua1920unauthorized",  # Algunos modelos 1920
+        "Jinhua1920",              # HP 1920 series
+        "Jinhua1920unauthorized",  # Alternativo 1920
     ]
     
     def backup(self):
