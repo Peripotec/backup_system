@@ -134,17 +134,39 @@ class Hp(BackupVendor):
             
             for cmdpass in passwords_to_try:
                 self._debug_log(f"Probando cmdline password...")
+                
+                # Clear buffer before sending password
+                try:
+                    tn.read_very_eager()
+                except Exception:
+                    pass
+                
                 self.send_command(tn, cmdpass, hide=True)
                 
-                idx2, response2 = self.read_until(tn, [">", "]", "Invalid", "Error"], timeout=10)
+                # Wait a bit for full response to arrive
+                time.sleep(1)
                 
-                if idx2 in [0, 1] and "invalid" not in response2.lower() and "error" not in response2.lower():
+                # Read with longer timeout and collect full response
+                idx2, response2 = self.read_until(tn, [">", "]", "word:", "Password:"], timeout=10)
+                full_response = response2.lower()
+                
+                # Check for error indicators in full response
+                if "invalid" in full_response or "error" in full_response:
+                    self._debug_log("✗ Cmdline password falló (invalid/error)")
+                    # Device might prompt for password again, or kick us out
+                    if "word:" in full_response or "password:" in full_response:
+                        # Prompted again, continue to next password
+                        continue
+                    else:
+                        # No re-prompt, cmdline mode likely disabled
+                        break
+                elif idx2 in [0, 1]:  # Got > or ] prompt
+                    # Double-check we're really in cmdline mode by looking for clean prompt
                     self._debug_log("✓ Cmdline mode habilitado")
                     cmdline_success = True
                     break
                 else:
-                    self._debug_log("✗ Cmdline password falló")
-                    # Some devices might prompt again for password
+                    self._debug_log("✗ Cmdline password falló (prompt inesperado)")
                     continue
             
             if not cmdline_success:
