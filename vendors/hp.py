@@ -117,63 +117,72 @@ class Hp(BackupVendor):
         # =====================================================
         # FASE 2: Habilitar _cmdline-mode (REQUERIDO para tftp)
         # =====================================================
-        self._debug_log("Habilitando _cmdline-mode...")
+        # Cuando falla el password, el switch vuelve al prompt normal
+        # Por eso hay que re-ejecutar _cmdline-mode on para cada intento
         
-        # Limpiar buffer y esperar prompt estable
-        time.sleep(0.5)
-        try:
-            tn.read_very_eager()
-        except Exception:
-            pass
-        
-        self.send_command(tn, "_cmdline-mode on")
-        idx, response = self.read_until(tn, ["Y/N]", ">"], timeout=10)
+        # Build password list: credential extra_pass first, then known passwords
+        passwords_to_try = []
+        if working_extra_pass:
+            passwords_to_try.append(working_extra_pass)
+        passwords_to_try.extend(self.CMDLINE_PASSWORDS)
         
         cmdline_success = False
         
-        if idx == 0:  # Got Y/N prompt
+        for i, cmdpass in enumerate(passwords_to_try):
+            self._debug_log(f"Intento cmdline {i+1}/{len(passwords_to_try)}...")
+            
+            # Limpiar buffer
+            time.sleep(0.3)
+            try:
+                tn.read_very_eager()
+            except Exception:
+                pass
+            
+            # 1. Enviar _cmdline-mode on
+            self.send_command(tn, "_cmdline-mode on")
+            idx, response = self.read_until(tn, ["Y/N]", ">"], timeout=10)
+            
+            if idx != 0:  # No got Y/N prompt
+                self._debug_log("⚠ Cmdline mode no disponible")
+                break
+            
+            # 2. Responder Y
             self.send_command(tn, "Y")
             self.read_until(tn, ["word:", "Password:"], timeout=10)
             
-            # Build password list: credential extra_pass first, then known passwords
-            passwords_to_try = []
-            if working_extra_pass:
-                passwords_to_try.append(working_extra_pass)
-            passwords_to_try.extend(self.CMDLINE_PASSWORDS)
+            # 3. Enviar password
+            self.send_command(tn, cmdpass, hide=True)
+            time.sleep(1)
             
-            for cmdpass in passwords_to_try:
-                self._debug_log(f"Probando cmdline password...")
-                
-                try:
-                    tn.read_very_eager()
-                except Exception:
-                    pass
-                
-                self.send_command(tn, cmdpass, hide=True)
-                time.sleep(1)
-                
-                idx2, response2 = self.read_until(tn, [">", "word:", "Password:"], timeout=10)
-                
-                if "invalid" in response2.lower() or "error" in response2.lower():
-                    self._debug_log("✗ Cmdline password incorrecto")
-                    if idx2 in [1, 2]:  # Prompted again
-                        continue
-                    else:
-                        break
-                elif idx2 == 0:  # Got > prompt - success!
+            idx2, response2 = self.read_until(tn, [">", "word:", "Password:"], timeout=10)
+            response_lower = response2.lower()
+            
+            if "invalid" in response_lower or "error" in response_lower:
+                self._debug_log("✗ Password incorrecto")
+                # El switch vuelve al prompt normal, continuar al siguiente intento
+                # Esperar que vuelva al prompt
+                if ">" not in response2:
+                    self.read_until(tn, [">"], timeout=5)
+                continue
+            elif idx2 == 0:  # Got > prompt sin error
+                # Verificar que realmente entró en cmdline mode
+                if "warning" in response_lower or "developer" in response_lower:
                     self._debug_log("✓ Cmdline mode habilitado")
                     cmdline_success = True
                     break
                 else:
-                    self._debug_log("✗ Cmdline password falló")
-                    continue
-            
-            if not cmdline_success:
-                self._debug_log("⚠ No se pudo habilitar cmdline mode")
-                tn.close()
-                raise Exception("Could not enable cmdline mode - tftp requires it")
-        else:
-            self._debug_log("⚠ Cmdline mode no disponible")
+                    # Puede que haya funcionado, verificar
+                    self._debug_log("✓ Cmdline mode habilitado")
+                    cmdline_success = True
+                    break
+            else:
+                self._debug_log("✗ Respuesta inesperada")
+                continue
+        
+        if not cmdline_success:
+            self._debug_log("⚠ No se pudo habilitar cmdline mode con ningún password")
+            tn.close()
+            raise Exception("Could not enable cmdline mode - tftp requires it")
         
         # =====================================================
         # FASE 3: TFTP backup
