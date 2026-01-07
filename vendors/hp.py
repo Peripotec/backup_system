@@ -20,8 +20,14 @@ class Hp(BackupVendor):
     NOTA IMPORTANTE:
     - El comando tftp SOLO funciona en modo normal (prompt <>)
     - NO funciona en cmdline-mode (prompt [])
-    - Por eso ejecutamos tftp INMEDIATAMENTE después del login
+    - HP usa \\r (carriage return) como line ending
     """
+    
+    def send_command(self, tn, command, hide=False):
+        """Override para HP: usar \\r en lugar de \\n (como expect/bash)."""
+        display = "****" if hide else command.strip()
+        self._debug_log(f"→ {display}")
+        tn.write(command.encode('ascii') + b"\r")
     
     def backup(self):
         """
