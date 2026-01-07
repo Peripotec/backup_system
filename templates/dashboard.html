@@ -451,7 +451,9 @@
         document.getElementById('log-panel').innerHTML = '';
         document.getElementById('progress-bar').style.width = '0%';
 
-        var url = devices.length === 1 ? '/api/backup/trigger?device=' + encodeURIComponent(devices[0]) : '/api/backup/trigger';
+        // Build URL with all selected devices
+        var params = devices.map(d => 'device=' + encodeURIComponent(d)).join('&');
+        var url = '/api/backup/trigger' + (params ? '?' + params : '');
         addLog('info', 'Iniciando ' + devices.length + ' backup(s)...');
         fetch(url).then(r => r.json()).then(d => { d.error ? (addLog('error', d.error), finishBackup()) : pollStatus(); });
     }

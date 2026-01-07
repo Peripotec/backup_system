@@ -466,7 +466,7 @@ backup_status = {
     "logs": []  # Detailed step-by-step logs
 }
 
-def run_backup_async(group=None, device=None):
+def run_backup_async(group=None, devices=None):
     global backup_status
     backup_status = {
         "running": True, 
@@ -485,7 +485,7 @@ def run_backup_async(group=None, device=None):
         
         # Pass status object to engine for real-time updates
         engine.status_callback = update_backup_status
-        engine.run(target_group=group, target_device=device)
+        engine.run(target_group=group, target_devices=devices)
         
         if backup_status["cancelled"]:
             backup_status["message"] = "Cancelado por usuario"
@@ -551,12 +551,16 @@ def trigger_backup():
         return jsonify({"error": "Backup ya en ejecución", "running": True})
     
     group = request.args.get('group')
-    device = request.args.get('device')
+    # Support multiple device parameters: ?device=A&device=B&device=C
+    devices = request.args.getlist('device')
     
-    thread = threading.Thread(target=run_backup_async, args=(group, device), daemon=True)
+    thread = threading.Thread(target=run_backup_async, args=(group, devices), daemon=True)
     thread.start()
     
-    target = device or group or "Todos"
+    if devices:
+        target = f"{len(devices)} equipo(s)"
+    else:
+        target = group or "Todos"
     return jsonify({"status": "started", "message": f"Backup iniciado: {target}", "running": True})
 
 @app.route('/api/backup/status')

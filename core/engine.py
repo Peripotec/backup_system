@@ -198,14 +198,18 @@ class BackupEngine:
         
         log.info(f"Cleanup finished. Deleted {count} files.")
 
-    def run(self, target_group=None, target_device=None):
+    def run(self, target_group=None, target_devices=None):
         """
         Main runner. Spawns threads.
         target_group: filter by group name
-        target_device: filter by device hostname or sysname
+        target_devices: list of device hostnames or sysnames to process
         """
         log.info(f"Starting Backup Run (Dry Run={self.dry_run})")
         run_id = self.db.start_run()
+        
+        # Convert single device to list for backward compatibility
+        if target_devices and not isinstance(target_devices, list):
+            target_devices = [target_devices]
         
         tasks = []
         with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
@@ -223,11 +227,11 @@ class BackupEngine:
                     continue
 
                 for device in group['devices']:
-                    # Filter by specific device (sysname or hostname)
-                    if target_device:
+                    # Filter by specific devices list
+                    if target_devices:
                         sysname = device.get('sysname')
                         hostname = device.get('hostname')
-                        if target_device != sysname and target_device != hostname:
+                        if sysname not in target_devices and hostname not in target_devices:
                             continue
                     
                     # Device-specific credential_ids override group, but include group as fallback
