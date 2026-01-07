@@ -241,7 +241,34 @@ class Hp(BackupVendor):
             raise FileNotFoundError(f"Backup file not found or empty: {tftp_path}")
         
         # =====================================================
-        # FASE 6: Procesar para versionado
+        # FASE 6: Sanitizar archivo para Git (UTF-8 clean)
+        # =====================================================
+        self._debug_log("Sanitizando archivo para Git...")
+        try:
+            # Leer con latin-1 (acepta cualquier byte)
+            with open(tftp_path, 'r', encoding='latin-1') as f:
+                content = f.read()
+            
+            # Reemplazar caracteres no-ASCII problemáticos
+            # Mantener solo caracteres printables ASCII + newlines
+            clean_content = ''
+            for char in content:
+                if ord(char) < 128 or char in 'áéíóúÁÉÍÓÚñÑüÜ':
+                    clean_content += char
+                elif ord(char) >= 128:
+                    # Reemplazar caracteres problemáticos con ?
+                    clean_content += '?'
+            
+            # Escribir como UTF-8
+            with open(tftp_path, 'w', encoding='utf-8') as f:
+                f.write(clean_content)
+            
+            self._debug_log("✓ Archivo sanitizado para Git")
+        except Exception as e:
+            self._debug_log(f"⚠ Error sanitizando: {e}")
+        
+        # =====================================================
+        # FASE 7: Procesar para versionado
         # =====================================================
         self._debug_log("Procesando archivo para versionado...")
         return self.process_file(tftp_path, is_text=True)
