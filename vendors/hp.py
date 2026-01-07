@@ -108,7 +108,22 @@ class Hp(BackupVendor):
         # =====================================================
         # El comando tftp solo funciona cuando el prompt es <hostname>
         # NO funciona cuando está en cmdline-mode [hostname]
-        # Por eso lo ejecutamos INMEDIATAMENTE después del login
+        
+        # IMPORTANTE: Esperar a que el switch esté listo antes de enviar comandos
+        # Primero limpiar buffer y esperar el prompt limpio
+        self._debug_log("Esperando prompt del switch...")
+        time.sleep(1)  # Dar tiempo al switch para mostrar el prompt
+        
+        # Limpiar cualquier basura en el buffer
+        try:
+            tn.read_very_eager()
+        except Exception:
+            pass
+        
+        # Enviar un Enter para forzar el prompt
+        self.send_command(tn, "")
+        idx, response = self.read_until(tn, [">"], timeout=5)
+        self._debug_log(f"← Prompt recibido")
         
         tftp_incoming = os.path.join(TFTP_ROOT, "startup.cfg")
         final_filename = f"{self.hostname}.cfg"
