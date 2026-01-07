@@ -12,17 +12,26 @@ class Hp(BackupVendor):
     """
     HP/HPE/Aruba Switch backup via Telnet + TFTP.
     
-    Flujo SIMPLE (sin cmdline-mode):
-    1. Login (Username/Password) → queda en User View <hostname>
-    2. tftp <server> put startup.cfg
-    3. quit
+    Flujo CORRECTO (confirmado por debug manual):
+    1. Login (Username/Password) → prompt <hostname>
+    2. _cmdline-mode on → Y → password → sigue en <hostname>
+    3. tftp <server> put startup.cfg  ← REQUIERE cmdline-mode habilitado
+    4. Verificar archivo TFTP
     
-    IMPORTANTE: NO entrar NUNCA en _cmdline-mode ni system-view.
-    El comando tftp SOLO funciona en User View <hostname>.
+    IMPORTANTE:
+    - El comando tftp NO funciona sin habilitar _cmdline-mode primero
+    - HP usa \r (carriage return) como line ending
     """
     
+    # Cmdline passwords conocidos para equipos HP
+    CMDLINE_PASSWORDS = [
+        "512900",                  # Más común en equipos nuevos
+        "Jinhua1920",              # HP 1920 series
+        "Jinhua1920unauthorized",  # Alternativo 1920
+    ]
+    
     def send_command(self, tn, command, hide=False):
-        """Override para HP: usar \\r en lugar de \\n (como expect/bash)."""
+        """Override para HP: usar \r en lugar de \n (como expect/bash)."""
         display = "****" if hide else command.strip()
         self._debug_log(f"→ {display}")
         tn.write(command.encode('ascii') + b"\r")
@@ -44,17 +53,20 @@ class Hp(BackupVendor):
         tn = self.connect_telnet()
         
         # =====================================================
-        # FASE 1: Login
+        # FASE 1: Login con credential pool
         # =====================================================
         logged_in = False
         successful_cred_id = None
+        working_extra_pass = None
+        
         credentials_to_try = self.credentials_pool if self.credentials_pool else [
-            {"user": self.user, "pass": self.password, "id": None}
+            {"user": self.user, "pass": self.password, "extra_pass": self.extra_pass, "id": None}
         ]
         
         for i, cred in enumerate(credentials_to_try):
             user = cred.get('user', '')
             password = cred.get('pass', '')
+            extra_pass = cred.get('extra_pass', '')
             cred_id = cred.get('id')
             
             self._debug_log(f"Probando credencial {i+1}/{len(credentials_to_try)}...")
@@ -67,7 +79,7 @@ class Hp(BackupVendor):
                 self.read_until(tn, ["Username:"], timeout=10)
             
             time.sleep(0.3)
-            self.send_command(tn, user)
+            self.send_command(tn, user, hide=False)
             
             self._debug_log("Enviando contraseña...")
             self.read_until(tn, ["Password:"])
@@ -87,6 +99,7 @@ class Hp(BackupVendor):
                 self._debug_log(f"✓ Login exitoso con credencial {i+1}")
                 logged_in = True
                 successful_cred_id = cred_id
+                working_extra_pass = extra_pass
                 break
             else:
                 self._debug_log(f"✗ Credencial {i+1} falló")
@@ -102,38 +115,96 @@ class Hp(BackupVendor):
             self._debug_log(f"📝 Credencial guardada como preferida para {self.hostname}")
         
         # =====================================================
-        # FASE 2: TFTP backup (directo, sin verificar modo)
+        # FASE 2: Habilitar _cmdline-mode (REQUERIDO para tftp)
         # =====================================================
-        # Después del login estamos en User View <hostname>
-        # Ejecutar tftp INMEDIATAMENTE sin hacer nada más
+        self._debug_log("Habilitando _cmdline-mode...")
         
+        # Limpiar buffer y esperar prompt estable
+        time.sleep(0.5)
+        try:
+            tn.read_very_eager()
+        except Exception:
+            pass
+        
+        self.send_command(tn, "_cmdline-mode on")
+        idx, response = self.read_until(tn, ["Y/N]", ">"], timeout=10)
+        
+        cmdline_success = False
+        
+        if idx == 0:  # Got Y/N prompt
+            self.send_command(tn, "Y")
+            self.read_until(tn, ["word:", "Password:"], timeout=10)
+            
+            # Build password list: credential extra_pass first, then known passwords
+            passwords_to_try = []
+            if working_extra_pass:
+                passwords_to_try.append(working_extra_pass)
+            passwords_to_try.extend(self.CMDLINE_PASSWORDS)
+            
+            for cmdpass in passwords_to_try:
+                self._debug_log(f"Probando cmdline password...")
+                
+                try:
+                    tn.read_very_eager()
+                except Exception:
+                    pass
+                
+                self.send_command(tn, cmdpass, hide=True)
+                time.sleep(1)
+                
+                idx2, response2 = self.read_until(tn, [">", "word:", "Password:"], timeout=10)
+                
+                if "invalid" in response2.lower() or "error" in response2.lower():
+                    self._debug_log("✗ Cmdline password incorrecto")
+                    if idx2 in [1, 2]:  # Prompted again
+                        continue
+                    else:
+                        break
+                elif idx2 == 0:  # Got > prompt - success!
+                    self._debug_log("✓ Cmdline mode habilitado")
+                    cmdline_success = True
+                    break
+                else:
+                    self._debug_log("✗ Cmdline password falló")
+                    continue
+            
+            if not cmdline_success:
+                self._debug_log("⚠ No se pudo habilitar cmdline mode")
+                tn.close()
+                raise Exception("Could not enable cmdline mode - tftp requires it")
+        else:
+            self._debug_log("⚠ Cmdline mode no disponible")
+        
+        # =====================================================
+        # FASE 3: TFTP backup
+        # =====================================================
         tftp_incoming = os.path.join(TFTP_ROOT, "startup.cfg")
         final_filename = f"{self.hostname}.cfg"
         tftp_path = os.path.join(TFTP_ROOT, final_filename)
         
-        # Preparar archivo TFTP
+        # Prepare file for TFTP
         try:
             with open(tftp_incoming, 'w') as f:
                 pass
             os.chmod(tftp_incoming, 0o666)
-            self._debug_log(f"✓ Archivo startup.cfg preparado")
+            self._debug_log(f"✓ Archivo startup.cfg preparado para TFTP")
         except Exception as e:
             self._debug_log(f"⚠ No se pudo crear archivo TFTP: {e}")
         
-        # Ejecutar TFTP
+        # Execute TFTP command
         cmd = f"tftp {tftp_server} put startup.cfg"
-        self._debug_log(f"Ejecutando: {cmd}")
+        self._debug_log(f"Ejecutando transferencia TFTP...")
         self.send_command(tn, cmd)
         
-        # Esperar transferencia
+        # Wait for transfer
         self._debug_log("Esperando fin de transferencia (max 60s)...")
-        idx, response = self.read_until(tn, [">", "uploaded", "sent", "successfully"], timeout=60)
+        idx, response = self.read_until(tn, [">", "uploaded", "sent"], timeout=60)
         
-        if "uploaded" in response.lower() or "sent" in response.lower() or "successfully" in response.lower():
-            self._debug_log("✓ TFTP completado")
+        if "uploaded" in response.lower() or "sent" in response.lower():
+            self._debug_log("✓ TFTP transfer completado")
         
         # =====================================================
-        # FASE 3: Cerrar sesión
+        # FASE 4: Cerrar sesión
         # =====================================================
         self._debug_log("Cerrando sesión...")
         self.send_command(tn, "quit")
@@ -143,9 +214,9 @@ class Hp(BackupVendor):
             pass
         
         # =====================================================
-        # FASE 4: Verificar archivo
+        # FASE 5: Verificar archivo y renombrar
         # =====================================================
-        self._debug_log(f"Verificando archivo...")
+        self._debug_log(f"Verificando archivo en {tftp_incoming}...")
         
         for i in range(10):
             if os.path.exists(tftp_incoming) and os.path.getsize(tftp_incoming) > 0:
@@ -161,7 +232,7 @@ class Hp(BackupVendor):
             raise FileNotFoundError(f"Backup file not found or empty: {tftp_path}")
         
         # =====================================================
-        # FASE 5: Procesar para versionado
+        # FASE 6: Procesar para versionado
         # =====================================================
-        self._debug_log("Procesando para versionado...")
+        self._debug_log("Procesando archivo para versionado...")
         return self.process_file(tftp_path, is_text=True)
