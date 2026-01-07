@@ -1,11 +1,15 @@
 import time
 import os
+import threading
 from vendors.base_vendor import BackupVendor
 from settings import TFTP_ROOT
 from core.logger import log
 from core.vault import save_preferred_credential_for_device
 from core.config_manager import get_config_manager
 import shutil
+
+# Lock global para HP backups - todos usan startup.cfg, deben ejecutar en secuencia
+_hp_tftp_lock = threading.Lock()
 
 
 class Hp(BackupVendor):
@@ -185,57 +189,65 @@ class Hp(BackupVendor):
             raise Exception("Could not enable cmdline mode - tftp requires it")
         
         # =====================================================
-        # FASE 3: TFTP backup
+        # FASE 3: TFTP backup (con lock para evitar concurrencia)
         # =====================================================
-        tftp_incoming = os.path.join(TFTP_ROOT, "startup.cfg")
-        final_filename = f"{self.hostname}.cfg"
-        tftp_path = os.path.join(TFTP_ROOT, final_filename)
-        
-        # Prepare file for TFTP
-        try:
-            with open(tftp_incoming, 'w') as f:
+        # Todos los HP escriben a startup.cfg, deben ejecutar en secuencia
+        self._debug_log("Esperando lock TFTP...")
+        with _hp_tftp_lock:
+            self._debug_log("🔒 Lock TFTP adquirido")
+            
+            tftp_incoming = os.path.join(TFTP_ROOT, "startup.cfg")
+            final_filename = f"{self.hostname}.cfg"
+            tftp_path = os.path.join(TFTP_ROOT, final_filename)
+            
+            # Prepare file for TFTP
+            try:
+                with open(tftp_incoming, 'w') as f:
+                    pass
+                os.chmod(tftp_incoming, 0o666)
+                self._debug_log(f"✓ Archivo startup.cfg preparado para TFTP")
+            except Exception as e:
+                self._debug_log(f"⚠ No se pudo crear archivo TFTP: {e}")
+            
+            # Execute TFTP command
+            cmd = f"tftp {tftp_server} put startup.cfg"
+            self._debug_log(f"Ejecutando transferencia TFTP...")
+            self.send_command(tn, cmd)
+            
+            # Wait for transfer
+            self._debug_log("Esperando fin de transferencia (max 60s)...")
+            idx, response = self.read_until(tn, [">", "uploaded", "sent"], timeout=60)
+            
+            if "uploaded" in response.lower() or "sent" in response.lower():
+                self._debug_log("✓ TFTP transfer completado")
+            
+            # =====================================================
+            # FASE 4: Cerrar sesión
+            # =====================================================
+            self._debug_log("Cerrando sesión...")
+            self.send_command(tn, "quit")
+            try:
+                tn.close()
+            except Exception:
                 pass
-            os.chmod(tftp_incoming, 0o666)
-            self._debug_log(f"✓ Archivo startup.cfg preparado para TFTP")
-        except Exception as e:
-            self._debug_log(f"⚠ No se pudo crear archivo TFTP: {e}")
-        
-        # Execute TFTP command
-        cmd = f"tftp {tftp_server} put startup.cfg"
-        self._debug_log(f"Ejecutando transferencia TFTP...")
-        self.send_command(tn, cmd)
-        
-        # Wait for transfer
-        self._debug_log("Esperando fin de transferencia (max 60s)...")
-        idx, response = self.read_until(tn, [">", "uploaded", "sent"], timeout=60)
-        
-        if "uploaded" in response.lower() or "sent" in response.lower():
-            self._debug_log("✓ TFTP transfer completado")
-        
-        # =====================================================
-        # FASE 4: Cerrar sesión
-        # =====================================================
-        self._debug_log("Cerrando sesión...")
-        self.send_command(tn, "quit")
-        try:
-            tn.close()
-        except Exception:
-            pass
-        
-        # =====================================================
-        # FASE 5: Verificar archivo y renombrar
-        # =====================================================
-        self._debug_log(f"Verificando archivo en {tftp_incoming}...")
-        
-        for i in range(10):
-            if os.path.exists(tftp_incoming) and os.path.getsize(tftp_incoming) > 0:
-                size = os.path.getsize(tftp_incoming)
-                self._debug_log(f"✓ Archivo encontrado ({size} bytes)")
-                shutil.move(tftp_incoming, tftp_path)
-                self._debug_log(f"✓ Renombrado a {final_filename}")
-                break
-            self._debug_log(f"Esperando archivo... ({i+1}/10)")
-            time.sleep(1)
+            
+            # =====================================================
+            # FASE 5: Verificar archivo y renombrar
+            # =====================================================
+            self._debug_log(f"Verificando archivo en {tftp_incoming}...")
+            
+            for i in range(10):
+                if os.path.exists(tftp_incoming) and os.path.getsize(tftp_incoming) > 0:
+                    size = os.path.getsize(tftp_incoming)
+                    self._debug_log(f"✓ Archivo encontrado ({size} bytes)")
+                    shutil.move(tftp_incoming, tftp_path)
+                    self._debug_log(f"✓ Renombrado a {final_filename}")
+                    break
+                self._debug_log(f"Esperando archivo... ({i+1}/10)")
+                time.sleep(1)
+            
+            self._debug_log("🔓 Lock TFTP liberado")
+        # FIN del lock
         
         if not os.path.exists(tftp_path) or os.path.getsize(tftp_path) == 0:
             raise FileNotFoundError(f"Backup file not found or empty: {tftp_path}")
