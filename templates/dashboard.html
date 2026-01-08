@@ -510,9 +510,21 @@
             selTipo.innerHTML = '<option value="">🏷️ Tipo</option>';
             opts.tipos.forEach(v => selTipo.innerHTML += '<option value="' + v + '">' + v + '</option>');
 
+            // Vendor friendly names mapping
+            const vendorNames = {
+                'hp': 'HP',
+                'huawei': 'Huawei',
+                'zte_olt': 'OLT ZTE',
+                'cisco': 'Cisco',
+                'mikrotik': 'MikroTik',
+                'juniper': 'Juniper',
+                'fortinet': 'Fortinet'
+            };
+            const getVendorName = (v) => vendorNames[v.toLowerCase()] || v.charAt(0).toUpperCase() + v.slice(1);
+
             const selVendor = document.getElementById('jobs-filter-vendor');
             selVendor.innerHTML = '<option value="">🏭 Vendor</option>';
-            opts.vendors.forEach(v => selVendor.innerHTML += '<option value="' + v + '">' + v.charAt(0).toUpperCase() + v.slice(1) + '</option>');
+            opts.vendors.forEach(v => selVendor.innerHTML += '<option value="' + v + '">' + getVendorName(v) + '</option>');
 
             const selModelo = document.getElementById('jobs-filter-modelo');
             if (selModelo && opts.modelos) {
