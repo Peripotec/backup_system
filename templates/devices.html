@@ -432,7 +432,7 @@
     function renderVendorDropdown(vendors) {
         var sel = document.getElementById('device-vendor');
         if (!sel) return;
-        sel.innerHTML = '<option value=""'>Seleccionar vendor...</option>' +
+        sel.innerHTML = '<option value="">Seleccionar vendor...</option>' +
             vendors.map(v => '<option value="' + v + '">' + v.charAt(0).toUpperCase() + v.slice(1) + '</option>').join('');
     }
 
@@ -601,8 +601,9 @@
         var nombre = document.getElementById('device-nombre').value.trim();
         var ip = document.getElementById('device-ip').value.trim();
         var grp = document.getElementById('device-group').value;
+        var vendorContainer = document.getElementById('device-vendor-container');
         var vendorSel = document.getElementById('device-vendor');
-        var vendor = vendorSel && vendorSel.style.display !== 'none' ? vendorSel.value : '';
+        var vendor = vendorContainer && vendorContainer.style.display !== 'none' ? vendorSel.value : '';
         var localidad = document.getElementById('device-localidad').value;
         var tipo = document.getElementById('device-tipo').value;
         var modelo = document.getElementById('device-modelo').value;
@@ -644,6 +645,3 @@
     }
 </script>
 {% endblock %}
-
-
-
