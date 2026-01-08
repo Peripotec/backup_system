@@ -130,13 +130,20 @@
                 <input type="hidden" id="device-original-sysname" value="">
 
                 <div class="row">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <div class="mb-3">
                             <label class="form-label">Grupo *</label>
                             <select class="form-select" id="device-group" required onchange="onGroupChange()"></select>
                         </div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4" id="device-vendor-container" style="display:none;">
+                        <div class="mb-3">
+                            <label class="form-label">Vendor *</label>
+                            <select class="form-select" id="device-vendor" required></select>
+                            <div class="form-text">Requerido para grupos mixtos</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
                         <div class="mb-3">
                             <label class="form-label">Sysname * (ID)</label>
                             <input type="text" class="form-control" id="device-sysname" required>
@@ -412,9 +419,21 @@
         fetch('/api/device_models').then(r => r.json()).then(d => { deviceModels = d; });
         fetch('/api/localidades').then(r => r.json()).then(d => { localidades = d; renderLocalidadDropdown(); });
         fetch('/api/tags').then(r => r.json()).then(d => { existingTags = d; });
+        fetch('/api/vendors').then(r => r.json()).then(d => { renderVendorDropdown(d); });
 
         // Populate group dropdown from inventory
         renderGroupDropdown();
+
+        // Vendor change listener for mixed groups
+        var vendorSel = document.getElementById('device-vendor');
+        if (vendorSel) vendorSel.addEventListener('change', updateModelDropdown);
+    }
+
+    function renderVendorDropdown(vendors) {
+        var sel = document.getElementById('device-vendor');
+        if (!sel) return;
+        sel.innerHTML = '<option value=""'>Seleccionar vendor...</option>' +
+            vendors.map(v => '<option value="' + v + '">' + v.charAt(0).toUpperCase() + v.slice(1) + '</option>').join('');
     }
 
     function renderGroupDropdown() {
@@ -436,8 +455,34 @@
 
     function onGroupChange() {
         var grp = document.getElementById('device-group').value;
+        var vendorSel = document.getElementById('device-vendor');
+        var vendor = vendorSel && vendorSel.style.display !== 'none' ? vendorSel.value : '';
         var gObj = inventory.groups.find(g => g.name === grp);
-        var vendor = gObj ? gObj.vendor : null;
+        var groupVendor = gObj ? gObj.vendor : '';
+
+        // Show vendor selector if group is mixed (no vendor defined)
+        var vendorContainer = document.getElementById('device-vendor-container');
+        var vendorSelect = document.getElementById('device-vendor');
+        if (!groupVendor) {
+            vendorContainer.style.display = 'block';
+            vendorSelect.required = true;
+        } else {
+            vendorContainer.style.display = 'none';
+            vendorSelect.required = false;
+            vendorSelect.value = groupVendor;
+        }
+
+        // Update model dropdown based on vendor (from group or selected)
+        updateModelDropdown();
+    }
+
+    function updateModelDropdown() {
+        var grp = document.getElementById('device-group').value;
+        var vendorSel = document.getElementById('device-vendor');
+        var vendor = vendorSel && vendorSel.style.display !== 'none' ? vendorSel.value : '';
+        var gObj = inventory.groups.find(g => g.name === grp);
+        var vendor = gObj && gObj.vendor ? gObj.vendor : document.getElementById('device-vendor').value;
+
         var sel = document.getElementById('device-modelo');
         var filtered = vendor ? deviceModels.filter(m => m.vendor === vendor) : deviceModels;
         sel.innerHTML = '<option value="">Seleccionar...</option>' + filtered.map(m => '<option value="' + m.id + '">' + m.name + '</option>').join('');
@@ -556,6 +601,8 @@
         var nombre = document.getElementById('device-nombre').value.trim();
         var ip = document.getElementById('device-ip').value.trim();
         var grp = document.getElementById('device-group').value;
+        var vendorSel = document.getElementById('device-vendor');
+        var vendor = vendorSel && vendorSel.style.display !== 'none' ? vendorSel.value : '';
         var localidad = document.getElementById('device-localidad').value;
         var tipo = document.getElementById('device-tipo').value;
         var modelo = document.getElementById('device-modelo').value;
@@ -569,6 +616,7 @@
             group: grp,
             sysname: sysname,
             hostname: sysname, // Compatibility
+            vendor: vendor,
             nombre: nombre,
             ip: ip,
             localidad: localidad,
@@ -596,3 +644,6 @@
     }
 </script>
 {% endblock %}
+
+
+
