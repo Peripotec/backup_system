@@ -1456,15 +1456,16 @@ def api_jobs_paginated():
     if search:
         filters['search'] = search.lower()
     
-    # 3. Filter by localidad/troncal/tipo/grupo/criticidad requires inventory lookup
+    # 3. Filter by localidad/troncal/tipo/grupo/criticidad/modelo requires inventory lookup
     localidad = request.args.get('localidad')
     troncal = request.args.get('troncal')
     tipo = request.args.get('tipo')
     grupo = request.args.get('grupo')
     criticidad = request.args.get('criticidad')
+    modelo = request.args.get('modelo')
     
     # If any inventory-based filter, load inventory and catalogs
-    if localidad or troncal or tipo or grupo or criticidad:
+    if localidad or troncal or tipo or grupo or criticidad or modelo:
         inv = load_inventory()
         catalogs = load_catalogs()
         
@@ -1482,6 +1483,7 @@ def api_jobs_paginated():
                 d_loc = (device.get('localidad') or '').lower()
                 d_tipo = (device.get('tipo') or '').lower()
                 d_crit = (device.get('criticidad') or '').lower()
+                d_modelo = (device.get('modelo') or '').lower()
                 d_troncal = loc_zona_map.get(d_loc, '')
                 
                 match = True
@@ -1494,6 +1496,8 @@ def api_jobs_paginated():
                 if grupo and g_name.lower() != grupo.lower():
                     match = False
                 if criticidad and d_crit != criticidad.lower():
+                    match = False
+                if modelo and d_modelo != modelo.lower():
                     match = False
                     
                 if match:

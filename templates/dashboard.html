@@ -186,6 +186,13 @@
                 </select>
             </div>
             <div class="col-md-2">
+                <select class="form-select form-select-sm" id="jobs-filter-modelo" onchange="loadJobs(1)">
+                    <option value="">📦 Modelo</option>
+                </select>
+            </div>
+        </div>
+        <div class="row g-2 mb-2">
+            <div class="col-md-2">
                 <select class="form-select form-select-sm" id="jobs-filter-grupo" onchange="loadJobs(1)">
                     <option value="">📁 Grupo</option>
                 </select>
@@ -507,6 +514,12 @@
             selVendor.innerHTML = '<option value="">🏭 Vendor</option>';
             opts.vendors.forEach(v => selVendor.innerHTML += '<option value="' + v + '">' + v.charAt(0).toUpperCase() + v.slice(1) + '</option>');
 
+            const selModelo = document.getElementById('jobs-filter-modelo');
+            if (selModelo && opts.modelos) {
+                selModelo.innerHTML = '<option value="">📦 Modelo</option>';
+                opts.modelos.forEach(v => selModelo.innerHTML += '<option value="' + v + '">' + v + '</option>');
+            }
+
             const selGrupo = document.getElementById('jobs-filter-grupo');
             selGrupo.innerHTML = '<option value="">📁 Grupo</option>';
             opts.grupos.forEach(v => selGrupo.innerHTML += '<option value="' + v + '">' + v + '</option>');
@@ -544,6 +557,7 @@
         const troncal = document.getElementById('jobs-filter-troncal').value;
         const tipo = document.getElementById('jobs-filter-tipo').value;
         const vendor = document.getElementById('jobs-filter-vendor').value;
+        const modelo = document.getElementById('jobs-filter-modelo') ? document.getElementById('jobs-filter-modelo').value : '';
         const grupo = document.getElementById('jobs-filter-grupo').value;
         const criticidad = document.getElementById('jobs-filter-criticidad').value;
         const status = document.getElementById('jobs-filter-status').value;
@@ -553,6 +567,7 @@
         if (troncal) url += '&troncal=' + encodeURIComponent(troncal);
         if (tipo) url += '&tipo=' + encodeURIComponent(tipo);
         if (vendor) url += '&vendor=' + encodeURIComponent(vendor);
+        if (modelo) url += '&modelo=' + encodeURIComponent(modelo);
         if (grupo) url += '&grupo=' + encodeURIComponent(grupo);
         if (criticidad) url += '&criticidad=' + encodeURIComponent(criticidad);
         if (status) url += '&status=' + encodeURIComponent(status);
