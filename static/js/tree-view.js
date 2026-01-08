@@ -136,12 +136,13 @@ class TreeView {
      */
     _renderDevice(device) {
         const sysname = device.sysname || device.hostname || 'N/A';
+        const nombre = device.nombre || sysname; // Friendly name or fallback to sysname
         const ip = device.ip || device.hostname || '';
         const grupo = device.grupo || '';
 
         return `
-            <div class="tree-view__device" data-sysname="${this._escapeHtml(sysname)}" data-vendor="${this._escapeHtml(device.vendor || '')}">
-                <span class="tree-view__device-name">${this._escapeHtml(sysname)}</span>
+            <div class="tree-view__device" data-sysname="${this._escapeHtml(sysname)}" data-vendor="${this._escapeHtml(device.vendor || '')}" title="${this._escapeHtml(sysname)}">
+                <span class="tree-view__device-name">${this._escapeHtml(nombre)}</span>
                 <span class="tree-view__device-ip">${this._escapeHtml(ip)}</span>
                 <span class="tree-view__device-grupo">${this._escapeHtml(grupo)}</span>
                 <div class="tree-view__device-actions">

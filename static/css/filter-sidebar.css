@@ -1,0 +1,307 @@
+/**
+ * FilterSidebar Component - Enterprise UI
+ * 
+ * Collapsible filter panel for data filtering.
+ * Follows Jira/ServiceNow/Splunk patterns.
+ * 
+ * Usage: Pair with filter-sidebar.js FilterSidebar class
+ */
+
+/* ============================================
+   CSS Variables
+   ============================================ */
+:root {
+    --sidebar-width: 260px;
+    --sidebar-collapsed-width: 0px;
+    --sidebar-bg: #f8f9fa;
+    --sidebar-border: #dee2e6;
+    --sidebar-transition: 0.25s ease;
+    --filter-section-gap: 1rem;
+}
+
+/* ============================================
+   Layout Container
+   ============================================ */
+.filter-layout {
+    display: flex;
+    gap: 0;
+    min-height: 400px;
+}
+
+.filter-layout--collapsed .filter-sidebar {
+    width: var(--sidebar-collapsed-width);
+    min-width: 0;
+    padding: 0;
+    overflow: hidden;
+    border-right: none;
+}
+
+.filter-layout--collapsed .filter-layout__content {
+    flex: 1;
+}
+
+/* ============================================
+   Sidebar
+   ============================================ */
+.filter-sidebar {
+    width: var(--sidebar-width);
+    min-width: var(--sidebar-width);
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--sidebar-border);
+    transition: width var(--sidebar-transition),
+        min-width var(--sidebar-transition),
+        padding var(--sidebar-transition);
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.filter-sidebar__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: #e9ecef;
+    border-bottom: 1px solid var(--sidebar-border);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.filter-sidebar__title {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #495057;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.filter-sidebar__toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--sidebar-border);
+    border-radius: 4px;
+    background: #fff;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-size: 12px;
+}
+
+.filter-sidebar__toggle:hover {
+    background: #e9ecef;
+}
+
+.filter-sidebar__body {
+    padding: 1rem;
+}
+
+/* ============================================
+   Filter Sections
+   ============================================ */
+.filter-section {
+    margin-bottom: var(--filter-section-gap);
+}
+
+.filter-section__header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.filter-section__icon {
+    font-size: 1em;
+}
+
+/* ============================================
+   Filter Controls
+   ============================================ */
+.filter-select {
+    width: 100%;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.85rem;
+    border: 1px solid var(--sidebar-border);
+    border-radius: 4px;
+    background: #fff;
+    color: #212529;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.filter-select:focus {
+    outline: none;
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.15);
+}
+
+.filter-select--active {
+    border-color: #0d6efd;
+    background: #e7f1ff;
+}
+
+/* Multi-select checkboxes */
+.filter-checkbox-group {
+    max-height: 150px;
+    overflow-y: auto;
+    padding: 0.5rem;
+    background: #fff;
+    border: 1px solid var(--sidebar-border);
+    border-radius: 4px;
+}
+
+.filter-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.filter-checkbox:hover {
+    background: #f8f9fa;
+}
+
+.filter-checkbox input[type="checkbox"] {
+    accent-color: #0d6efd;
+}
+
+.filter-checkbox__label {
+    flex: 1;
+}
+
+.filter-checkbox__count {
+    font-size: 0.75rem;
+    color: #6c757d;
+}
+
+/* ============================================
+   Action Buttons
+   ============================================ */
+.filter-actions {
+    display: flex;
+    gap: 0.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--sidebar-border);
+    margin-top: 1rem;
+}
+
+.filter-btn {
+    flex: 1;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    border: 1px solid var(--sidebar-border);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.filter-btn--primary {
+    background: #0d6efd;
+    border-color: #0d6efd;
+    color: #fff;
+}
+
+.filter-btn--primary:hover {
+    background: #0b5ed7;
+}
+
+.filter-btn--secondary {
+    background: #fff;
+    color: #6c757d;
+}
+
+.filter-btn--secondary:hover {
+    background: #e9ecef;
+}
+
+/* ============================================
+   Active Filters Badge
+   ============================================ */
+.filter-active-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #fff;
+    background: #0d6efd;
+    border-radius: 9px;
+    margin-left: 0.25rem;
+}
+
+/* ============================================
+   Main Content Area
+   ============================================ */
+.filter-layout__content {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+/* Toggle button when sidebar collapsed */
+.filter-toggle-collapsed {
+    display: none;
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 100;
+    padding: 0.5rem;
+    background: var(--sidebar-bg);
+    border: 1px solid var(--sidebar-border);
+    border-left: none;
+    border-radius: 0 4px 4px 0;
+    cursor: pointer;
+}
+
+.filter-layout--collapsed .filter-toggle-collapsed {
+    display: block;
+}
+
+/* ============================================
+   Responsive
+   ============================================ */
+@media (max-width: 992px) {
+    :root {
+        --sidebar-width: 220px;
+    }
+}
+
+@media (max-width: 768px) {
+    .filter-sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        height: 100vh;
+        z-index: 1050;
+        transform: translateX(-100%);
+    }
+
+    .filter-layout--mobile-open .filter-sidebar {
+        transform: translateX(0);
+    }
+
+    .filter-sidebar__overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1040;
+    }
+
+    .filter-layout--mobile-open .filter-sidebar__overlay {
+        display: block;
+    }
+}
