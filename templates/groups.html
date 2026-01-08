@@ -283,9 +283,9 @@
     function loadAutoGroups() {
         // First load models catalog if not cached
         if (Object.keys(modelsCatalog).length === 0) {
-            fetch('/api/catalogs').then(r => r.json()).then(catalogs => {
-                // Build model lookup by ID
-                (catalogs.modelos || []).forEach(m => {
+            fetch('/api/device_models').then(r => r.json()).then(models => {
+                // Build model lookup by ID (models is an array directly)
+                (models || []).forEach(m => {
                     modelsCatalog[m.id] = m;
                 });
                 // Now render with catalog data
