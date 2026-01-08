@@ -275,7 +275,7 @@
         if (!modelId) return 'Sin Modelo';
         // Check catalog cache
         if (modelsCatalog[modelId]) {
-            return modelsCatalog[modelId].nombre || modelId;
+            return modelsCatalog[modelId].name || modelId;
         }
         return modelId;
     }
