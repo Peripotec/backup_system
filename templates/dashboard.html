@@ -107,14 +107,13 @@
     }
 
     .sidebar-body {
-        padding: 0.75rem;
+        padding: 0.5rem 0.75rem;
         overflow-y: auto;
-        max-height: calc(100vh - 400px);
     }
 
     .filter-group {
-        margin-bottom: 1rem;
-        padding-bottom: 0.75rem;
+        margin-bottom: 0.5rem;
+        padding-bottom: 0.5rem;
         border-bottom: 1px solid #e9ecef;
     }
 
@@ -124,12 +123,12 @@
 
     .filter-label {
         display: block;
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         font-weight: 600;
         color: #6c757d;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 0.5rem;
+        letter-spacing: 0.3px;
+        margin-bottom: 0.25rem;
     }
 
     .filter-actions {
@@ -404,7 +403,14 @@
                     <input type="text" class="form-control form-control-sm" id="jobs-filter-search"
                         placeholder="🔍 Buscar por nombre, IP, grupo..." onkeyup="loadJobs(1)">
                 </div>
-                <div class="toolbar-info">
+                <div class="toolbar-controls d-flex align-items-center gap-2">
+                    <select class="form-select form-select-sm" id="jobs-per-page" onchange="loadJobs(1)"
+                        style="width: auto;">
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50" selected>50</option>
+                        <option value="100">100</option>
+                    </select>
                     <small class="text-muted" id="jobs-total-count"></small>
                 </div>
             </div>
@@ -824,7 +830,8 @@
         // Update filters badge
         updateActiveFiltersCount();
 
-        let url = '/api/jobs?page=' + page + '&per_page=10';
+        const perPage = document.getElementById('jobs-per-page') ? document.getElementById('jobs-per-page').value : 50;
+        let url = '/api/jobs?page=' + page + '&per_page=' + perPage;
         const loc = document.getElementById('jobs-filter-localidad').value;
         const troncal = document.getElementById('jobs-filter-troncal').value;
         const tipo = document.getElementById('jobs-filter-tipo').value;
