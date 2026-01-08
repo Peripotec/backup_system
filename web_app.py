@@ -1511,13 +1511,34 @@ def api_jobs_paginated():
     total = db.get_jobs_count(filters)
     raw_jobs = db.get_jobs(page, per_page, filters)
     
+    # Build device name lookup from inventory for friendly display
+    inv = load_inventory()
+    device_names = {}
+    for group in inv.get('groups', []):
+        for device in group.get('devices', []):
+            sysname = device.get('sysname') or device.get('hostname')
+            if sysname:
+                device_names[sysname] = device.get('nombre') or sysname
+    
+    # Vendor friendly names
+    vendor_names = {
+        'hp': 'HP', 'huawei': 'Huawei', 'zte_olt': 'OLT ZTE',
+        'cisco': 'Cisco', 'mikrotik': 'MikroTik', 'juniper': 'Juniper', 'fortinet': 'Fortinet'
+    }
+    
     # Format for API
     jobs = []
     for row in raw_jobs:
+        hostname = row['hostname']
+        vendor_id = row['vendor'] or ''
+        vendor_display = vendor_names.get(vendor_id.lower(), vendor_id.capitalize() if vendor_id else '')
+        
         jobs.append({
             "id": row['id'], 
-            "hostname": row['hostname'], 
-            "vendor": row['vendor'], 
+            "hostname": hostname,
+            "nombre": device_names.get(hostname, hostname),  # Friendly name
+            "vendor": vendor_id,
+            "vendor_name": vendor_display,  # Friendly vendor name
             "group_name": row['group_name'],
             "status": row['status'], 
             "message": row['message'], 
