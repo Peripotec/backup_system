@@ -252,8 +252,54 @@
 
     var vendorTree = null;
     var modelTree = null;
+    var modelsCatalog = {}; // Cache for model names
+
+    // Vendor friendly names mapping
+    var vendorNames = {
+        'hp': 'HP',
+        'huawei': 'Huawei',
+        'zte_olt': 'OLT ZTE',
+        'cisco': 'Cisco',
+        'mikrotik': 'MikroTik',
+        'juniper': 'Juniper',
+        'fortinet': 'Fortinet'
+    };
+
+    function getVendorFriendlyName(vendorId) {
+        if (!vendorId) return 'Sin Vendor';
+        var id = vendorId.toLowerCase();
+        return vendorNames[id] || vendorId.charAt(0).toUpperCase() + vendorId.slice(1);
+    }
+
+    function getModelFriendlyName(modelId) {
+        if (!modelId) return 'Sin Modelo';
+        // Check catalog cache
+        if (modelsCatalog[modelId]) {
+            return modelsCatalog[modelId].nombre || modelId;
+        }
+        return modelId;
+    }
 
     function loadAutoGroups() {
+        // First load models catalog if not cached
+        if (Object.keys(modelsCatalog).length === 0) {
+            fetch('/api/catalogs').then(r => r.json()).then(catalogs => {
+                // Build model lookup by ID
+                (catalogs.modelos || []).forEach(m => {
+                    modelsCatalog[m.id] = m;
+                });
+                // Now render with catalog data
+                renderAutoGroups();
+            }).catch(() => {
+                // Fallback: render without catalog
+                renderAutoGroups();
+            });
+        } else {
+            renderAutoGroups();
+        }
+    }
+
+    function renderAutoGroups() {
         // Prepare data structures
         var byVendor = {};
         var byModel = {};
@@ -261,19 +307,29 @@
         inventory.groups.forEach(g => {
             var groupVendor = g.vendor || '';
             (g.devices || []).forEach(d => {
-                var vendor = d.vendor || groupVendor || 'Sin Vendor';
-                var model = d.modelo || 'Sin Modelo';
+                var vendorId = d.vendor || groupVendor || '';
+                var modelId = d.modelo || '';
 
-                // Enrich device with group info
-                var enrichedDevice = Object.assign({}, d, { grupo: g.name, vendor: vendor });
+                // Get friendly names
+                var vendorName = getVendorFriendlyName(vendorId);
+                var modelName = getModelFriendlyName(modelId);
 
-                // Group by vendor
-                if (!byVendor[vendor]) byVendor[vendor] = [];
-                byVendor[vendor].push(enrichedDevice);
+                // Enrich device with group info and friendly names
+                var enrichedDevice = Object.assign({}, d, {
+                    grupo: g.name,
+                    vendor: vendorId,
+                    vendorName: vendorName,
+                    modelName: modelName
+                });
 
-                // Group by model
-                if (!byModel[model]) byModel[model] = [];
-                byModel[model].push(enrichedDevice);
+                // Group by vendor (using friendly name as key for display)
+                if (!byVendor[vendorName]) byVendor[vendorName] = { id: vendorId, devices: [] };
+                byVendor[vendorName].devices.push(enrichedDevice);
+
+                // Group by model (using friendly name as key for display)
+                var modelKey = modelName || 'Sin Modelo';
+                if (!byModel[modelKey]) byModel[modelKey] = { id: modelId, devices: [] };
+                byModel[modelKey].devices.push(enrichedDevice);
             });
         });
 
@@ -281,13 +337,13 @@
         var vendorData = Object.keys(byVendor).sort().map(name => ({
             name: name,
             icon: '🏭',
-            children: byVendor[name]
+            children: byVendor[name].devices
         }));
 
         var modelData = Object.keys(byModel).sort().map(name => ({
             name: name,
             icon: '📦',
-            children: byModel[name]
+            children: byModel[name].devices
         }));
 
         // Initialize TreeViews if not already done
