@@ -529,7 +529,7 @@
             const selModelo = document.getElementById('jobs-filter-modelo');
             if (selModelo && opts.modelos) {
                 selModelo.innerHTML = '<option value="">📦 Modelo</option>';
-                opts.modelos.forEach(v => selModelo.innerHTML += '<option value="' + v + '">' + v + '</option>');
+                opts.modelos.forEach(m => selModelo.innerHTML += '<option value="' + m.id + '">' + m.name + '</option>');
             }
 
             const selGrupo = document.getElementById('jobs-filter-grupo');

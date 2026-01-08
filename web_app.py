@@ -755,6 +755,7 @@ def api_get_devices():
 def api_filter_options():
     """Get unique values for filter dropdowns."""
     inv = load_inventory()
+    db = get_db()
     
     # Load localidades catalog for troncales (zonas)
     try:
@@ -763,12 +764,20 @@ def api_filter_options():
     except Exception:
         troncales = set()
     
+    # Load device models catalog for name lookup
+    model_catalog = {}
+    try:
+        for m in db.get_device_models():
+            model_catalog[m['id']] = m['name']
+    except Exception:
+        pass
+    
     localidades = set()
     tipos = set()
     vendors = set()
     grupos = set()
     tags = set()
-    modelos = set()
+    modelos_ids = set()
     
     for group in inv.get('groups', []):
         grupos.add(group.get('name', ''))
@@ -780,9 +789,17 @@ def api_filter_options():
             if device.get('tipo'):
                 tipos.add(device['tipo'])
             if device.get('modelo'):
-                modelos.add(device['modelo'])
+                modelos_ids.add(device['modelo'])
             for tag in device.get('tags', []):
                 tags.add(tag)
+    
+    # Build modelos list with id and display name
+    modelos = []
+    for model_id in sorted(modelos_ids):
+        modelos.append({
+            'id': model_id,
+            'name': model_catalog.get(model_id, model_id)
+        })
     
     return jsonify({
         'localidades': sorted(list(localidades)),
@@ -790,7 +807,7 @@ def api_filter_options():
         'vendors': sorted(list(vendors)),
         'grupos': sorted(list(grupos)),
         'troncales': sorted(list(troncales)),  # From localidades zonas
-        'modelos': sorted(list(modelos)),
+        'modelos': modelos,  # Now objects with id and name
         'tags': sorted(list(tags)),
         'criticidades': ['alta', 'media', 'baja']
     })
