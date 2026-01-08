@@ -2,6 +2,7 @@
 {% block title %}Grupos{% endblock %}
 
 {% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tree-view.css') }}">
 <style>
     .btn-action {
         cursor: pointer;
@@ -57,21 +58,22 @@
         <!-- Tab 2: Grupos Automáticos -->
         <div class="tab-pane fade" id="auto-groups" role="tabpanel">
             <div class="p-3">
-                <div class="alert alert-info mb-3">
-                    <i class="bi bi-info-circle"></i> Grupos generados automáticamente basados en el inventario.
-                    Solo lectura - para organización use Grupos Personalizados.
+                <div class="alert alert-info mb-3 d-flex align-items-center">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <span>Vista de dispositivos agrupados automáticamente por vendor y modelo.
+                        Click en cualquier grupo para expandir y ver dispositivos.</span>
                 </div>
 
-                <!-- Por Vendor -->
-                <h6 class="mb-2">🏭 Por Vendor</h6>
-                <div id="auto-groups-vendor" class="mb-4">
-                    <div class="text-muted">Cargando...</div>
-                </div>
+                <div class="row">
+                    <!-- Por Vendor -->
+                    <div class="col-md-6">
+                        <div id="auto-groups-vendor"></div>
+                    </div>
 
-                <!-- Por Modelo -->
-                <h6 class="mb-2">📦 Por Modelo</h6>
-                <div id="auto-groups-model">
-                    <div class="text-muted">Cargando...</div>
+                    <!-- Por Modelo -->
+                    <div class="col-md-6">
+                        <div id="auto-groups-model"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -245,11 +247,14 @@
     }
 
     // ============================================
-    // GRUPOS AUTOMÁTICOS
+    // GRUPOS AUTOMÁTICOS - Enterprise TreeView
     // ============================================
 
+    var vendorTree = null;
+    var modelTree = null;
+
     function loadAutoGroups() {
-        // Agrupar dispositivos por vendor
+        // Prepare data structures
         var byVendor = {};
         var byModel = {};
 
@@ -259,93 +264,90 @@
                 var vendor = d.vendor || groupVendor || 'Sin Vendor';
                 var model = d.modelo || 'Sin Modelo';
 
-                // Por vendor
+                // Enrich device with group info
+                var enrichedDevice = Object.assign({}, d, { grupo: g.name, vendor: vendor });
+
+                // Group by vendor
                 if (!byVendor[vendor]) byVendor[vendor] = [];
-                byVendor[vendor].push(d);
+                byVendor[vendor].push(enrichedDevice);
 
-                // Por modelo
-                if (!byModel[model]) byModel[model] = { devices: [], vendor: vendor };
-                byModel[model].devices.push(d);
+                // Group by model
+                if (!byModel[model]) byModel[model] = [];
+                byModel[model].push(enrichedDevice);
             });
         });
 
-        renderAutoGroupsVendor(byVendor);
-        renderAutoGroupsModel(byModel);
-    }
+        // Transform to TreeView data format
+        var vendorData = Object.keys(byVendor).sort().map(name => ({
+            name: name,
+            icon: '🏭',
+            children: byVendor[name]
+        }));
 
-    function renderAutoGroupsVendor(byVendor) {
-        var container = document.getElementById('auto-groups-vendor');
-        if (!container) return;
+        var modelData = Object.keys(byModel).sort().map(name => ({
+            name: name,
+            icon: '📦',
+            children: byModel[name]
+        }));
 
-        var vendorNames = Object.keys(byVendor).sort();
-        if (vendorNames.length === 0) {
-            container.innerHTML = '<div class="text-muted">No hay dispositivos en el inventario.</div>';
-            return;
+        // Initialize TreeViews if not already done
+        if (!vendorTree) {
+            vendorTree = new TreeView({
+                container: '#auto-groups-vendor',
+                sectionTitle: 'Por Vendor',
+                sectionIcon: '🏭',
+                emptyText: 'No hay dispositivos en el inventario',
+                onAction: handleTreeAction
+            });
         }
 
-        var html = '<div class="d-flex flex-wrap gap-2">';
-        vendorNames.forEach(vendor => {
-            var count = byVendor[vendor].length;
-            var color = getVendorColor(vendor);
-            html += '<span class="badge bg-' + color + ' p-2" style="font-size: 0.9em; cursor:pointer;" ' +
-                'onclick="showAutoGroupDevices(\'' + vendor + '\', \'vendor\')" title="Click para ver dispositivos">' +
-                '🏭 ' + vendor + ' <span class="badge bg-light text-dark">' + count + '</span></span>';
-        });
-        html += '</div>';
-        container.innerHTML = html;
-    }
-
-    function renderAutoGroupsModel(byModel) {
-        var container = document.getElementById('auto-groups-model');
-        if (!container) return;
-
-        var modelNames = Object.keys(byModel).sort();
-        if (modelNames.length === 0) {
-            container.innerHTML = '<div class="text-muted">No hay modelos definidos.</div>';
-            return;
+        if (!modelTree) {
+            modelTree = new TreeView({
+                container: '#auto-groups-model',
+                sectionTitle: 'Por Modelo',
+                sectionIcon: '📦',
+                emptyText: 'No hay modelos definidos',
+                onAction: handleTreeAction
+            });
         }
 
-        var html = '<div class="d-flex flex-wrap gap-2">';
-        modelNames.forEach(model => {
-            var count = byModel[model].devices.length;
-            html += '<span class="badge bg-secondary p-2" style="font-size: 0.85em; cursor:pointer;" ' +
-                'onclick="showAutoGroupDevices(\'' + model.replace(/'/g, "\\'") + '\', \'model\')" title="Click para ver dispositivos">' +
-                '📦 ' + model + ' <span class="badge bg-light text-dark">' + count + '</span></span>';
-        });
-        html += '</div>';
-        container.innerHTML = html;
+        // Render with data
+        vendorTree.setData(vendorData);
+        modelTree.setData(modelData);
     }
 
-    function getVendorColor(vendor) {
-        var v = vendor.toLowerCase();
-        if (v.includes('hp') || v.includes('comware')) return 'primary';
-        if (v.includes('huawei')) return 'danger';
-        if (v.includes('zte')) return 'warning text-dark';
-        if (v.includes('cisco')) return 'info';
-        if (v.includes('mikrotik')) return 'dark';
-        return 'secondary';
-    }
+    /**
+     * Handle TreeView device action
+     * @param {string} action - Action type: files, backup, diff
+     * @param {Object} device - Device info with sysname and vendor
+     */
+    function handleTreeAction(action, device) {
+        var sysname = device.sysname;
+        var vendor = device.vendor || 'unknown';
 
-    function showAutoGroupDevices(groupName, type) {
-        var devices = [];
-        inventory.groups.forEach(g => {
-            var groupVendor = g.vendor || '';
-            (g.devices || []).forEach(d => {
-                if (type === 'vendor') {
-                    var vendor = d.vendor || groupVendor || 'Sin Vendor';
-                    if (vendor === groupName) devices.push(d);
-                } else {
-                    var model = d.modelo || 'Sin Modelo';
-                    if (model === groupName) devices.push(d);
+        switch (action) {
+            case 'files':
+                window.location.href = '/files/' + encodeURIComponent(sysname);
+                break;
+            case 'backup':
+                if (confirm('¿Ejecutar backup de ' + sysname + '?')) {
+                    // Use existing backup function if available
+                    fetch('/api/backup/single', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ hostname: sysname })
+                    }).then(r => r.json()).then(d => {
+                        alert(d.success ? '✅ Backup iniciado' : '❌ Error: ' + d.error);
+                    });
                 }
-            });
-        });
-
-        var list = devices.map(d => '• ' + d.sysname + ' (' + (d.ip || d.hostname) + ')').join('\n');
-        alert('Dispositivos en ' + (type === 'vendor' ? 'vendor' : 'modelo') + ' "' + groupName + '":\n\n' + list);
+                break;
+            case 'diff':
+                window.location.href = '/diff/' + encodeURIComponent(vendor) + '/' + encodeURIComponent(sysname);
+                break;
+        }
     }
 
-    // Cargar grupos automáticos cuando se activa la pestaña
+    // Load TreeViews when tab is activated
     document.addEventListener('DOMContentLoaded', function () {
         var autoTab = document.getElementById('auto-tab');
         if (autoTab) {
@@ -353,4 +355,5 @@
         }
     });
 </script>
+<script src="{{ url_for('static', filename='js/tree-view.js') }}"></script>
 {% endblock %}

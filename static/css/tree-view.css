@@ -1,0 +1,270 @@
+/**
+ * TreeView Component - Enterprise UI
+ * 
+ * Collapsible tree structure for hierarchical data display.
+ * Follows CMDB/NetBox patterns.
+ * 
+ * Usage: Pair with tree-view.js TreeView class
+ */
+
+/* ============================================
+   CSS Variables
+   ============================================ */
+:root {
+    --tree-indent: 24px;
+    --tree-line-color: #dee2e6;
+    --tree-node-hover: #f8f9fa;
+    --tree-node-radius: 4px;
+    --tree-icon-size: 16px;
+    --tree-transition: 0.15s ease;
+}
+
+/* ============================================
+   Tree Container
+   ============================================ */
+.tree-view {
+    font-family: inherit;
+    font-size: 0.9rem;
+}
+
+.tree-view__section {
+    margin-bottom: 1.5rem;
+}
+
+.tree-view__section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+    font-weight: 600;
+    color: #495057;
+    border-bottom: 1px solid var(--tree-line-color);
+    margin-bottom: 0.5rem;
+}
+
+.tree-view__section-icon {
+    font-size: 1.1em;
+}
+
+/* ============================================
+   Tree Nodes
+   ============================================ */
+.tree-view__node {
+    position: relative;
+}
+
+.tree-view__node-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    border-radius: var(--tree-node-radius);
+    transition: background-color var(--tree-transition);
+    user-select: none;
+}
+
+.tree-view__node-header:hover {
+    background-color: var(--tree-node-hover);
+}
+
+.tree-view__node-header:focus {
+    outline: 2px solid #0d6efd;
+    outline-offset: 1px;
+}
+
+/* Expand/Collapse Toggle */
+.tree-view__toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    font-size: 10px;
+    color: #6c757d;
+    transition: transform var(--tree-transition);
+}
+
+.tree-view__node--expanded > .tree-view__node-header .tree-view__toggle {
+    transform: rotate(90deg);
+}
+
+/* Node Icon (vendor/model) */
+.tree-view__node-icon {
+    font-size: var(--tree-icon-size);
+}
+
+/* Vendor-specific colors */
+.tree-view__node-icon--hp { color: #0d6efd; }
+.tree-view__node-icon--huawei { color: #dc3545; }
+.tree-view__node-icon--zte { color: #ffc107; }
+.tree-view__node-icon--cisco { color: #17a2b8; }
+.tree-view__node-icon--mikrotik { color: #343a40; }
+.tree-view__node-icon--default { color: #6c757d; }
+
+/* Node Label */
+.tree-view__node-label {
+    flex: 1;
+    font-weight: 500;
+}
+
+/* Count Badge */
+.tree-view__node-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 20px;
+    padding: 0 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #fff;
+    background-color: #6c757d;
+    border-radius: 10px;
+}
+
+.tree-view__node--hp .tree-view__node-count { background-color: #0d6efd; }
+.tree-view__node--huawei .tree-view__node-count { background-color: #dc3545; }
+.tree-view__node--zte .tree-view__node-count { background-color: #ffc107; color: #212529; }
+.tree-view__node--cisco .tree-view__node-count { background-color: #17a2b8; }
+.tree-view__node--mikrotik .tree-view__node-count { background-color: #343a40; }
+
+/* ============================================
+   Children Container
+   ============================================ */
+.tree-view__children {
+    display: none;
+    padding-left: var(--tree-indent);
+    border-left: 1px dashed var(--tree-line-color);
+    margin-left: 10px;
+}
+
+.tree-view__node--expanded > .tree-view__children {
+    display: block;
+}
+
+/* ============================================
+   Device Items (Leaves)
+   ============================================ */
+.tree-view__device {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.4rem 0.75rem;
+    border-radius: var(--tree-node-radius);
+    transition: background-color var(--tree-transition);
+}
+
+.tree-view__device:hover {
+    background-color: var(--tree-node-hover);
+}
+
+.tree-view__device-name {
+    flex: 1;
+    font-weight: 500;
+    color: #212529;
+}
+
+.tree-view__device-ip {
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.85em;
+    color: #6c757d;
+    min-width: 120px;
+}
+
+.tree-view__device-grupo {
+    font-size: 0.8em;
+    color: #adb5bd;
+    min-width: 100px;
+}
+
+/* Device Actions */
+.tree-view__device-actions {
+    display: flex;
+    gap: 0.25rem;
+    opacity: 0;
+    transition: opacity var(--tree-transition);
+}
+
+.tree-view__device:hover .tree-view__device-actions {
+    opacity: 1;
+}
+
+.tree-view__action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    background: #fff;
+    color: #495057;
+    cursor: pointer;
+    transition: all var(--tree-transition);
+    font-size: 14px;
+}
+
+.tree-view__action-btn:hover {
+    background: #e9ecef;
+    border-color: #adb5bd;
+}
+
+.tree-view__action-btn--primary:hover {
+    background: #0d6efd;
+    border-color: #0d6efd;
+    color: #fff;
+}
+
+.tree-view__action-btn--success:hover {
+    background: #198754;
+    border-color: #198754;
+    color: #fff;
+}
+
+/* ============================================
+   Loading State
+   ============================================ */
+.tree-view__loading {
+    padding: 1rem;
+    text-align: center;
+    color: #6c757d;
+}
+
+.tree-view__loading-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #dee2e6;
+    border-top-color: #0d6efd;
+    border-radius: 50%;
+    animation: tree-spin 0.6s linear infinite;
+    margin-right: 0.5rem;
+}
+
+@keyframes tree-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ============================================
+   Empty State
+   ============================================ */
+.tree-view__empty {
+    padding: 1rem;
+    text-align: center;
+    color: #6c757d;
+    font-style: italic;
+}
+
+/* ============================================
+   Responsive
+   ============================================ */
+@media (max-width: 768px) {
+    .tree-view__device-grupo {
+        display: none;
+    }
+    
+    .tree-view__device-actions {
+        opacity: 1;
+    }
+}
