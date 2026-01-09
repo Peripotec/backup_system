@@ -396,6 +396,7 @@ def index():
 # ==========================
 
 @app.route('/diff')
+@app.route('/history')
 @requires_auth
 @requires_permission('view_diff')
 def diff_index():
@@ -1024,6 +1025,7 @@ def api_delete_vault_credential(cred_id):
 # ==========================
 
 @app.route('/admin/vault')
+@app.route('/inventory/vault')
 @requires_auth
 @requires_permission('view_vault')
 def admin_vault():
@@ -1625,6 +1627,8 @@ def inventory():
 
 @app.route('/files')
 @app.route('/files/<path:subpath>')
+@app.route('/backups')
+@app.route('/backups/<path:subpath>')
 @requires_auth
 def files_browser(subpath=""):
     return render_template('files.html', current_path=subpath)
@@ -2153,11 +2157,13 @@ def api_delete_device_type(type_id):
 # ==========================
 
 @app.route('/admin/modelos')
+@app.route('/admin/tipos')
+@app.route('/inventory/vendors')
 @requires_auth
 @requires_permission('view_inventory')
-def modelos_page():
-    """Show device models management page."""
-    return render_template('modelos.html')
+def vendors_page():
+    """Show vendors and models management page (unified)."""
+    return render_template('vendors.html')
 
 @app.route('/api/device_models')
 @requires_auth
@@ -2239,6 +2245,7 @@ def api_get_zonas():
     return jsonify(ZONAS)
 
 @app.route('/admin/localidades')
+@app.route('/inventory/localidades')
 @requires_auth
 @requires_permission('view_inventory')
 def localidades_page():

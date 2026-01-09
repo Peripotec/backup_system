@@ -1,0 +1,473 @@
+{% extends "base.html" %}
+{% block title %}Vendors y Modelos{% endblock %}
+
+{% block head %}
+<style>
+    .vendor-card {
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        margin-bottom: 1rem;
+        background: var(--bg-card);
+    }
+
+    .vendor-header {
+        padding: 1rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-radius: 12px;
+        transition: background 0.2s;
+    }
+
+    .vendor-header:hover {
+        background: rgba(59, 130, 246, 0.05);
+    }
+
+    .vendor-header.collapsed .vendor-chevron {
+        transform: rotate(-90deg);
+    }
+
+    .vendor-chevron {
+        transition: transform 0.2s;
+    }
+
+    .vendor-name {
+        font-weight: 600;
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .vendor-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+    }
+
+    .vendor-badge {
+        background: #e2e8f0;
+        color: #475569;
+        padding: 0.25rem 0.5rem;
+        border-radius: 6px;
+        font-size: 0.75rem;
+    }
+
+    .models-list {
+        border-top: 1px solid var(--border-color);
+        padding: 0;
+    }
+
+    .model-item {
+        padding: 0.75rem 1rem 0.75rem 4rem;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .model-item:last-child {
+        border-bottom: none;
+    }
+
+    .model-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .model-name {
+        font-weight: 500;
+    }
+
+    .model-type {
+        font-size: 0.8rem;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .model-desc {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+    }
+
+    .model-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .empty-models {
+        padding: 1rem 1rem 1rem 4rem;
+        color: var(--text-muted);
+        font-style: italic;
+    }
+
+    .add-model-btn {
+        padding: 0.5rem 1rem 0.5rem 4rem;
+        border-top: 1px dashed var(--border-color);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header text-white d-flex justify-content-between align-items-center" style="background: #0d6efd;">
+        <span><i class="bi bi-building"></i> Vendors y Modelos</span>
+        <button class="btn btn-light btn-sm" onclick="openAddVendorModal()">
+            <i class="bi bi-plus-lg"></i> Agregar Vendor
+        </button>
+    </div>
+    <div class="card-body">
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <input type="text" class="form-control" id="search-input" placeholder="🔍 Buscar vendor o modelo..."
+                    onkeyup="filterVendors()">
+            </div>
+        </div>
+
+        <div id="vendors-container">
+            <!-- Vendors will be rendered here -->
+        </div>
+    </div>
+</div>
+
+<div class="alert alert-info mt-3">
+    <strong>💡 Tip:</strong> Los vendors agrupan los modelos de dispositivo. Cada modelo tiene un tipo asociado (Switch,
+    OLT, Router, etc.).
+</div>
+
+<!-- Add/Edit Vendor Modal -->
+<div class="modal fade" id="vendorModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header text-white" style="background: #0d6efd;">
+                <h5 class="modal-title" id="vendor-modal-title">➕ Agregar Vendor</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="vendor-edit-mode" value="add">
+                <input type="hidden" id="vendor-original-id" value="">
+                <div class="mb-3">
+                    <label class="form-label">ID del Vendor</label>
+                    <input type="text" class="form-control" id="vendor-id" placeholder="hp, huawei, cisco...">
+                    <small class="text-muted">Identificador único (minúsculas, sin espacios)</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Nombre para Mostrar</label>
+                    <input type="text" class="form-control" id="vendor-name" placeholder="HP, Huawei, Cisco...">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="saveVendor()">💾 Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Model Modal -->
+<div class="modal fade" id="modelModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header text-white" style="background: #6f42c1;">
+                <h5 class="modal-title" id="model-modal-title">➕ Agregar Modelo</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="model-edit-mode" value="add">
+                <input type="hidden" id="model-original-id" value="">
+                <div class="mb-3">
+                    <label class="form-label">Vendor</label>
+                    <select class="form-select" id="model-vendor"></select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">ID del Modelo</label>
+                    <input type="text" class="form-control" id="model-id" placeholder="hpe-1920-8g">
+                    <small class="text-muted">Identificador único</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Nombre para Mostrar</label>
+                    <input type="text" class="form-control" id="model-name" placeholder="HP1920">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Tipo de Dispositivo</label>
+                    <select class="form-select" id="model-type"></select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Descripción</label>
+                    <textarea class="form-control" id="model-desc" rows="2"
+                        placeholder="Switch 8 puertos GE"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn text-white" style="background: #6f42c1;" onclick="saveModel()">💾
+                    Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    var vendors = [], models = [], types = [];
+    var vendorModal, modelModal;
+
+    // Vendor display names mapping
+    const vendorDisplayNames = {
+        'hp': 'HP',
+        'huawei': 'Huawei',
+        'zte_olt': 'OLT ZTE',
+        'cisco': 'Cisco',
+        'mikrotik': 'MikroTik',
+        'juniper': 'Juniper',
+        'fortinet': 'Fortinet'
+    };
+
+    document.addEventListener('DOMContentLoaded', function () {
+        vendorModal = new bootstrap.Modal(document.getElementById('vendorModal'));
+        modelModal = new bootstrap.Modal(document.getElementById('modelModal'));
+        loadData();
+    });
+
+    function loadData() {
+        // Load types first
+        fetch('/api/device_types').then(r => r.json()).then(data => {
+            types = data;
+            populateTypeSelect();
+        });
+
+        // Load models
+        fetch('/api/device_models').then(r => r.json()).then(data => {
+            models = data;
+
+            // Extract unique vendors from models
+            var vendorSet = new Set();
+            models.forEach(m => {
+                if (m.vendor) vendorSet.add(m.vendor);
+            });
+            vendors = Array.from(vendorSet).sort();
+
+            renderVendors();
+            populateVendorSelect();
+        });
+    }
+
+    function populateTypeSelect() {
+        var sel = document.getElementById('model-type');
+        sel.innerHTML = '<option value="">Seleccione tipo...</option>';
+        types.forEach(t => {
+            sel.innerHTML += '<option value="' + t.id + '">' + t.name + '</option>';
+        });
+    }
+
+    function populateVendorSelect() {
+        var sel = document.getElementById('model-vendor');
+        sel.innerHTML = '<option value="">Seleccione vendor...</option>';
+        vendors.forEach(v => {
+            var name = vendorDisplayNames[v.toLowerCase()] || v.charAt(0).toUpperCase() + v.slice(1);
+            sel.innerHTML += '<option value="' + v + '">' + name + '</option>';
+        });
+    }
+
+    function getVendorDisplayName(vendorId) {
+        return vendorDisplayNames[vendorId.toLowerCase()] || vendorId.charAt(0).toUpperCase() + vendorId.slice(1);
+    }
+
+    function getTypeName(typeId) {
+        var t = types.find(x => x.id === typeId);
+        return t ? t.name : typeId || '-';
+    }
+
+    function renderVendors() {
+        var container = document.getElementById('vendors-container');
+        container.innerHTML = '';
+
+        if (vendors.length === 0) {
+            container.innerHTML = '<div class="text-muted text-center py-5">No hay vendors registrados</div>';
+            return;
+        }
+
+        vendors.forEach(vendorId => {
+            var vendorModels = models.filter(m => m.vendor === vendorId);
+            var displayName = getVendorDisplayName(vendorId);
+
+            var card = document.createElement('div');
+            card.className = 'vendor-card';
+            card.id = 'vendor-' + vendorId;
+
+            var html = `
+                <div class="vendor-header" onclick="toggleVendor('${vendorId}')">
+                    <div class="vendor-name">
+                        <div class="vendor-icon">${displayName.charAt(0)}</div>
+                        <span>${displayName}</span>
+                        <span class="vendor-badge">${vendorModels.length} modelos</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); openAddModelModal('${vendorId}')" title="Agregar modelo">
+                            <i class="bi bi-plus"></i>
+                        </button>
+                        <i class="bi bi-chevron-down vendor-chevron"></i>
+                    </div>
+                </div>
+                <div class="models-list" id="models-${vendorId}">
+            `;
+
+            if (vendorModels.length === 0) {
+                html += '<div class="empty-models">Sin modelos registrados</div>';
+            } else {
+                vendorModels.forEach(m => {
+                    html += `
+                        <div class="model-item">
+                            <div class="model-info">
+                                <span class="model-name">${m.name || m.id}</span>
+                                <span class="model-type">${getTypeName(m.type)}</span>
+                                <span class="model-desc">${m.description || ''}</span>
+                            </div>
+                            <div class="model-actions">
+                                <button class="btn btn-sm btn-outline-warning" onclick="openEditModelModal('${m.id}')" title="Editar">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteModel('${m.id}')" title="Eliminar">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            html += '</div>';
+            card.innerHTML = html;
+            container.appendChild(card);
+        });
+    }
+
+    function toggleVendor(vendorId) {
+        var header = document.querySelector('#vendor-' + vendorId + ' .vendor-header');
+        var models = document.getElementById('models-' + vendorId);
+
+        header.classList.toggle('collapsed');
+        models.style.display = header.classList.contains('collapsed') ? 'none' : 'block';
+    }
+
+    function filterVendors() {
+        var q = document.getElementById('search-input').value.toLowerCase();
+        document.querySelectorAll('.vendor-card').forEach(card => {
+            var text = card.textContent.toLowerCase();
+            card.style.display = text.includes(q) ? 'block' : 'none';
+        });
+    }
+
+    // Vendor CRUD
+    function openAddVendorModal() {
+        document.getElementById('vendor-edit-mode').value = 'add';
+        document.getElementById('vendor-original-id').value = '';
+        document.getElementById('vendor-id').value = '';
+        document.getElementById('vendor-name').value = '';
+        document.getElementById('vendor-modal-title').textContent = '➕ Agregar Vendor';
+        vendorModal.show();
+    }
+
+    function saveVendor() {
+        var id = document.getElementById('vendor-id').value.trim().toLowerCase();
+        var name = document.getElementById('vendor-name').value.trim();
+
+        if (!id || !name) {
+            alert('Complete todos los campos');
+            return;
+        }
+
+        // Add to local mapping (vendors are derived from models)
+        vendorDisplayNames[id] = name;
+        if (!vendors.includes(id)) {
+            vendors.push(id);
+            vendors.sort();
+        }
+
+        renderVendors();
+        populateVendorSelect();
+        vendorModal.hide();
+    }
+
+    // Model CRUD
+    function openAddModelModal(vendorId) {
+        document.getElementById('model-edit-mode').value = 'add';
+        document.getElementById('model-original-id').value = '';
+        document.getElementById('model-id').value = '';
+        document.getElementById('model-name').value = '';
+        document.getElementById('model-type').value = '';
+        document.getElementById('model-desc').value = '';
+        document.getElementById('model-vendor').value = vendorId || '';
+        document.getElementById('model-modal-title').textContent = '➕ Agregar Modelo';
+        modelModal.show();
+    }
+
+    function openEditModelModal(modelId) {
+        var m = models.find(x => x.id === modelId);
+        if (!m) return;
+
+        document.getElementById('model-edit-mode').value = 'edit';
+        document.getElementById('model-original-id').value = m.id;
+        document.getElementById('model-id').value = m.id;
+        document.getElementById('model-name').value = m.name || '';
+        document.getElementById('model-type').value = m.type || '';
+        document.getElementById('model-desc').value = m.description || '';
+        document.getElementById('model-vendor').value = m.vendor || '';
+        document.getElementById('model-modal-title').textContent = '✏️ Editar Modelo';
+        modelModal.show();
+    }
+
+    function saveModel() {
+        var mode = document.getElementById('model-edit-mode').value;
+        var originalId = document.getElementById('model-original-id').value;
+        var id = document.getElementById('model-id').value.trim();
+        var name = document.getElementById('model-name').value.trim();
+        var type = document.getElementById('model-type').value;
+        var vendor = document.getElementById('model-vendor').value;
+        var desc = document.getElementById('model-desc').value.trim();
+
+        if (!id || !name || !vendor) {
+            alert('Complete ID, nombre y vendor');
+            return;
+        }
+
+        var url = mode === 'edit' ? '/api/device_models/' + originalId : '/api/device_models';
+        var method = mode === 'edit' ? 'PUT' : 'POST';
+
+        fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: id, name: name, type: type, vendor: vendor, description: desc })
+        }).then(r => r.json()).then(data => {
+            if (data.error) {
+                alert(data.error);
+            } else {
+                modelModal.hide();
+                loadData();
+            }
+        });
+    }
+
+    function deleteModel(modelId) {
+        if (!confirm('¿Eliminar modelo ' + modelId + '?')) return;
+
+        fetch('/api/device_models/' + modelId, { method: 'DELETE' })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) alert(data.error);
+                else loadData();
+            });
+    }
+</script>
+{% endblock %}
