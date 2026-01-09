@@ -694,16 +694,16 @@
         fetch('/api/filter-options').then(r => r.json()).then(opts => {
             // Filtros de Jobs (Últimas Ejecuciones) - FULL
             const selLoc = document.getElementById('jobs-filter-localidad');
-            selLoc.innerHTML = '<option value="">📍 Localidad</option>';
-            opts.localidades.forEach(v => selLoc.innerHTML += '<option value="' + v + '">' + v + '</option>');
+            selLoc.innerHTML = '<option value="">Todas las localidades</option>';
+            opts.localidades.forEach(l => selLoc.innerHTML += '<option value="' + l.id + '">' + l.name + '</option>');
 
             const selTroncal = document.getElementById('jobs-filter-troncal');
             selTroncal.innerHTML = '<option value="">🔗 Troncal</option>';
             opts.troncales.forEach(v => selTroncal.innerHTML += '<option value="' + v + '">' + v + '</option>');
 
             const selTipo = document.getElementById('jobs-filter-tipo');
-            selTipo.innerHTML = '<option value="">🏷️ Tipo</option>';
-            opts.tipos.forEach(v => selTipo.innerHTML += '<option value="' + v + '">' + v + '</option>');
+            selTipo.innerHTML = '<option value="">Todos los tipos</option>';
+            opts.tipos.forEach(t => selTipo.innerHTML += '<option value="' + t.id + '">' + t.name + '</option>');
 
             // Vendor friendly names mapping
             const vendorNames = {
@@ -735,13 +735,13 @@
             const filterLoc = document.getElementById('filter-localidad');
             if (filterLoc) {
                 filterLoc.innerHTML = '<option value="">📍 Localidad</option>';
-                opts.localidades.forEach(v => filterLoc.innerHTML += '<option value="' + v + '">' + v + '</option>');
+                opts.localidades.forEach(l => filterLoc.innerHTML += '<option value="' + l.id + '">' + l.name + '</option>');
             }
 
             const filterTipo = document.getElementById('filter-tipo');
             if (filterTipo) {
                 filterTipo.innerHTML = '<option value="">🏷️ Tipo</option>';
-                opts.tipos.forEach(v => filterTipo.innerHTML += '<option value="' + v + '">' + v + '</option>');
+                opts.tipos.forEach(t => filterTipo.innerHTML += '<option value="' + t.id + '">' + t.name + '</option>');
             }
 
             const filterVendor = document.getElementById('filter-vendor');

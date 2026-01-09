@@ -757,23 +757,33 @@ def api_filter_options():
     inv = load_inventory()
     db = get_db()
     
-    # Load localidades catalog for troncales (zonas)
+    # Load catalogs for name lookups
+    localidades_catalog = {}
+    tipos_catalog = {}
+    model_catalog = {}
+    troncales = set()
+    
     try:
         catalogs = load_catalogs()
-        troncales = set(loc.get('zona', '') for loc in catalogs.get('localidades', []) if loc.get('zona'))
-    except Exception:
-        troncales = set()
-    
-    # Load device models catalog for name lookup
-    model_catalog = {}
-    try:
-        for m in db.get_device_models():
-            model_catalog[m['id']] = m['name']
+        # Localidades: id -> name lookup, and also collect troncales (zonas)
+        for loc in catalogs.get('localidades', []):
+            loc_id = loc.get('id', '')
+            localidades_catalog[loc_id] = loc.get('name', loc_id)
+            if loc.get('zona'):
+                troncales.add(loc['zona'])
+        
+        # Tipos: id -> name lookup
+        for t in catalogs.get('tipos', []):
+            tipos_catalog[t.get('id', '')] = t.get('name', t.get('id', ''))
+        
+        # Models: id -> name lookup
+        for m in catalogs.get('modelos', []):
+            model_catalog[m.get('id', '')] = m.get('name', m.get('id', ''))
     except Exception:
         pass
     
-    localidades = set()
-    tipos = set()
+    localidades_ids = set()
+    tipos_ids = set()
     vendors = set()
     grupos = set()
     tags = set()
@@ -785,15 +795,29 @@ def api_filter_options():
         
         for device in group.get('devices', []):
             if device.get('localidad'):
-                localidades.add(device['localidad'])
+                localidades_ids.add(device['localidad'])
             if device.get('tipo'):
-                tipos.add(device['tipo'])
+                tipos_ids.add(device['tipo'])
             if device.get('modelo'):
                 modelos_ids.add(device['modelo'])
             for tag in device.get('tags', []):
                 tags.add(tag)
     
-    # Build modelos list with id and display name
+    # Build lists with id and display name
+    localidades = []
+    for loc_id in sorted(localidades_ids):
+        localidades.append({
+            'id': loc_id,
+            'name': localidades_catalog.get(loc_id, loc_id.capitalize())
+        })
+    
+    tipos = []
+    for tipo_id in sorted(tipos_ids):
+        tipos.append({
+            'id': tipo_id,
+            'name': tipos_catalog.get(tipo_id, tipo_id.upper())
+        })
+    
     modelos = []
     for model_id in sorted(modelos_ids):
         modelos.append({
@@ -802,12 +826,12 @@ def api_filter_options():
         })
     
     return jsonify({
-        'localidades': sorted(list(localidades)),
-        'tipos': sorted(list(tipos)),
+        'localidades': localidades,  # Now objects with id and name
+        'tipos': tipos,  # Now objects with id and name
         'vendors': sorted(list(vendors)),
         'grupos': sorted(list(grupos)),
-        'troncales': sorted(list(troncales)),  # From localidades zonas
-        'modelos': modelos,  # Now objects with id and name
+        'troncales': sorted(list(troncales)),
+        'modelos': modelos,
         'tags': sorted(list(tags)),
         'criticidades': ['alta', 'media', 'baja']
     })

@@ -159,6 +159,15 @@
         });
     }
 
+    // Vendor friendly names mapping
+    const vendorNames = {
+        'hp': 'HP', 'huawei': 'Huawei', 'zte_olt': 'OLT ZTE', 'zteolt': 'OLT ZTE',
+        'cisco': 'Cisco', 'mikrotik': 'MikroTik', 'juniper': 'Juniper', 'fortinet': 'Fortinet'
+    };
+    function getVendorDisplayName(name) {
+        return vendorNames[name.toLowerCase()] || name.charAt(0).toUpperCase() + name.slice(1);
+    }
+
     function renderFiles(items) {
         var list = document.getElementById('file-list');
         list.innerHTML = '';
@@ -167,9 +176,13 @@
             list.innerHTML += '<li class="list-group-item file-item" onclick="loadFiles(\'' + parent + '\')"><span class="text-primary">📁 ..</span></li>';
         }
         if (items.length === 0) { list.innerHTML += '<li class="list-group-item text-muted">Carpeta vacía</li>'; return; }
+
+        var isVendorView = getViewType() === 'vendor' && !currentPath;
+
         items.filter(i => i.is_dir).forEach(item => {
             var fp = currentPath ? currentPath + '/' + item.name : item.name;
-            list.innerHTML += '<li class="list-group-item file-item d-flex justify-content-between" onclick="loadFiles(\'' + fp + '\')"><span>📁 <strong>' + item.name + '</strong></span><button class="btn btn-sm btn-outline-danger delete-btn py-0" onclick="event.stopPropagation(); prepareDelete(\'' + fp + '\', true)">🗑️</button></li>';
+            var displayName = isVendorView ? getVendorDisplayName(item.name) : item.name;
+            list.innerHTML += '<li class="list-group-item file-item d-flex justify-content-between" onclick="loadFiles(\'' + fp + '\')"><span>📁 <strong>' + displayName + '</strong></span><button class="btn btn-sm btn-outline-danger delete-btn py-0" onclick="event.stopPropagation(); prepareDelete(\'' + fp + '\', true)">🗑️</button></li>';
         });
         items.filter(i => !i.is_dir).forEach(item => {
             var fp = currentPath ? currentPath + '/' + item.name : item.name;
