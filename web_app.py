@@ -1238,8 +1238,8 @@ def api_list_files(subpath=""):
             items.append(item)
         return jsonify({"path": relative_to, "items": sorted(items, key=lambda x: (not x["is_dir"], x["name"]))})
 
-    if view == 'physical':
-        # Default physical browsing (Group/Device/Files)
+    if view in ('physical', 'direct'):
+        # Direct physical browsing (vendor/device/files or device files directly)
         return list_dir_safe(subpath, subpath)
 
     # Virtual Views Logic

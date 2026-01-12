@@ -225,6 +225,20 @@
         });
     }
 
-    loadFiles('');
+    // Check for initial path from URL (when clicking 📁 button)
+    var initialPath = '{{ current_path | safe }}';
+    if (initialPath) {
+        // Use direct physical view for initial navigation
+        currentPath = initialPath;
+        updateBreadcrumb(initialPath);
+        var url = '/api/files/list/' + initialPath + '?view=direct';
+        fetch(url).then(r => r.json()).then(data => {
+            if (data.error) { document.getElementById('file-list').innerHTML = '<li class="list-group-item text-danger">' + data.error + '</li>'; return; }
+            allItems = data.items || [];
+            renderFiles(allItems);
+        });
+    } else {
+        loadFiles('');
+    }
 </script>
 {% endblock %}
