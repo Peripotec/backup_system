@@ -266,18 +266,29 @@
             <div class="col-md-5 border-end">
                 <div class="row text-center">
                     <div class="col-6">
-                        <a href="/devices" class="text-decoration-none" title="Ver todos los dispositivos">
+                        <a href="/devices" class="text-decoration-none"
+                            title="Backups exitosos en las últimas 24 horas">
+                            {% if stats.get('SUCCESS', 0) > 0 %}
                             <div class="stat-number text-success" style="cursor:pointer;">{{ stats.get('SUCCESS', 0) }}
                             </div>
                             <small class="text-muted">✓ Exitosos (24h)</small>
+                            {% else %}
+                            <div class="stat-number text-muted" style="cursor:pointer;">-</div>
+                            <small class="text-muted">Sin actividad (24h)</small>
+                            {% endif %}
                         </a>
                     </div>
                     <div class="col-6">
                         <a href="/devices?criticidad=alta" class="text-decoration-none"
-                            title="Ver dispositivos críticos">
+                            title="Backups fallidos en las últimas 24 horas">
+                            {% if stats.get('ERROR', 0) > 0 %}
                             <div class="stat-number text-danger" style="cursor:pointer;">{{ stats.get('ERROR', 0) }}
                             </div>
                             <small class="text-muted">✗ Fallidos (24h)</small>
+                            {% else %}
+                            <div class="stat-number text-muted" style="cursor:pointer;">-</div>
+                            <small class="text-success">✓ Sin errores (24h)</small>
+                            {% endif %}
                         </a>
                     </div>
                 </div>
@@ -845,7 +856,10 @@
                 var ts = j.timestamp ? j.timestamp.split('.')[0] : '';
                 var st = j.status === 'SUCCESS' ? '<span class="badge bg-success">OK</span>' : '<span class="badge bg-danger">ERR</span>';
                 var displayName = j.nombre || j.hostname;
-                tb.innerHTML += '<tr><td><small>' + ts + '</small></td><td><strong title="' + j.hostname + '">' + displayName + '</strong></td><td><small>' + (j.group_name || '-') + '</small></td><td>' + st + '</td><td><small class="text-muted">' + (j.message || '').substring(0, 40) + '</small></td><td><a href="/files/' + j.vendor + '/' + j.hostname + '" class="btn btn-sm btn-outline-primary py-0">📁</a> <a href="/diff/' + j.vendor + '/' + j.hostname + '" class="btn btn-sm btn-outline-secondary py-0">📝</a> <button class="btn btn-sm btn-outline-success py-0" onclick="backupSingle(\'' + j.hostname + '\')">🔄</button></td></tr>';
+                var msgFull = (j.message || '').replace(/"/g, '&quot;');
+                var msgShort = (j.message || '').substring(0, 40);
+                if (j.message && j.message.length > 40) msgShort += '...';
+                tb.innerHTML += '<tr><td><small>' + ts + '</small></td><td><strong title="' + j.hostname + '">' + displayName + '</strong></td><td><small>' + (j.group_name || '-') + '</small></td><td>' + st + '</td><td><small class="text-muted" title="' + msgFull + '" style="cursor:help;">' + msgShort + '</small></td><td><a href="/files/' + j.vendor + '/' + j.hostname + '" class="btn btn-sm btn-outline-primary py-0">📁</a> <a href="/diff/' + j.vendor + '/' + j.hostname + '" class="btn btn-sm btn-outline-secondary py-0">📝</a> <button class="btn btn-sm btn-outline-success py-0" onclick="backupSingle(\'' + j.hostname + '\')">🔄</button></td></tr>';
             });
             document.getElementById('jobs-info').textContent = 'Pág ' + data.page + '/' + data.pages + ' (' + data.total + ')';
 
