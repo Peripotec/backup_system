@@ -640,17 +640,29 @@
     }
 
     function deleteDevice(grp, sysname) {
-        confirmAction({
-            title: '🗑️ Eliminar Dispositivo',
-            message: '<p>¿Eliminar el dispositivo <strong>"' + sysname + '"</strong> del grupo <code>' + grp + '</code>?</p>',
-            warning: '⚠️ Se eliminarán todos los backups y configuraciones asociadas. Esta acción no se puede deshacer.',
-            buttonText: '🗑️ Eliminar',
-            buttonClass: 'btn-danger',
-            onConfirm: function () {
-                fetch('/api/inventory/device/' + grp + '/' + sysname, { method: 'DELETE' })
-                    .then(r => r.json())
-                    .then(d => { d.error ? alert(d.error) : location.reload(); });
+        // Fetch backup count first
+        fetch('/api/dependencies/dispositivo/' + grp + '/' + sysname).then(r => r.json()).then(deps => {
+            var backupHtml = '';
+            if (deps.count > 0) {
+                backupHtml = '<div class="alert alert-warning py-2 mb-2">' +
+                    '<strong>📁 ' + deps.count + ' archivo(s) de backup:</strong>' +
+                    '<ul class="mb-1 small">' + deps.dependencies.map(f => '<li>' + f + '</li>').join('') + '</ul>' +
+                    '<a href="' + deps.download_url + '" target="_blank" class="btn btn-sm btn-outline-primary">📥 Ver/Descargar Backups</a>' +
+                    '</div>';
             }
+
+            confirmAction({
+                title: '🗑️ Eliminar Dispositivo',
+                message: '<p>¿Eliminar el dispositivo <strong>"' + sysname + '"</strong> del grupo <code>' + grp + '</code>?</p>' + backupHtml,
+                warning: deps.count > 0 ? '⚠️ Se perderán todos los backups mostrados. IRREVERSIBLE.' : '✓ No hay backups para este dispositivo.',
+                buttonText: '🗑️ Eliminar Definitivamente',
+                buttonClass: 'btn-danger',
+                onConfirm: function () {
+                    fetch('/api/inventory/device/' + grp + '/' + sysname, { method: 'DELETE' })
+                        .then(r => r.json())
+                        .then(d => { d.error ? alert(d.error) : location.reload(); });
+                }
+            });
         });
     }
 </script>

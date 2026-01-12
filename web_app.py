@@ -2449,6 +2449,37 @@ def api_get_dependencies(entity, entity_id):
                 result["dependencies"] = [{"sysname": d.get('sysname', d.get('hostname')), "ip": d.get('ip')} for d in devices[:10]]
                 result["warning"] = f"{len(devices)} dispositivo(s) en este grupo"
                 break
+                
+    elif entity == "dispositivo":
+        # entity_id format: "group/sysname"
+        parts = entity_id.split('/', 1)
+        if len(parts) == 2:
+            group_name, sysname = parts
+            # Find vendor for this device
+            vendor = None
+            for group in inv.get('groups', []):
+                if group.get('name') == group_name:
+                    vendor = group.get('vendor')
+                    break
+            
+            # Count backup files
+            if vendor:
+                import os
+                device_path = os.path.join(BACKUP_ROOT_DIR, vendor, sysname)
+                backup_count = 0
+                backup_files = []
+                if os.path.exists(device_path):
+                    for f in os.listdir(device_path):
+                        if os.path.isfile(os.path.join(device_path, f)):
+                            backup_count += 1
+                            if len(backup_files) < 5:
+                                backup_files.append(f)
+                
+                result["count"] = backup_count
+                result["dependencies"] = backup_files
+                result["vendor"] = vendor
+                result["download_url"] = f"/files/{vendor}/{sysname}" if backup_count > 0 else None
+                result["warning"] = f"{backup_count} archivo(s) de backup serán eliminados"
     
     return jsonify(result)
 
