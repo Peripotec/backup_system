@@ -383,7 +383,7 @@
 
         switch (action) {
             case 'files':
-                window.location.href = '/files/' + encodeURIComponent(sysname);
+                window.location.href = '/files/' + encodeURIComponent(vendor) + '/' + encodeURIComponent(sysname);
                 break;
             case 'backup':
                 if (confirm('¿Ejecutar backup de ' + sysname + '?')) {

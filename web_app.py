@@ -1208,6 +1208,15 @@ def api_list_files(subpath=""):
     view = request.args.get('view', 'physical')
     base = ARCHIVE_DIR
     
+    # Build device name lookup from inventory
+    inv = load_inventory()
+    device_names = {}
+    for g in inv.get('groups', []):
+        for d in g.get('devices', []):
+            sysname = d.get('sysname', d.get('hostname', ''))
+            nombre = d.get('nombre', d.get('name', sysname))
+            device_names[sysname] = nombre
+    
     # Helper to safe list directory
     def list_dir_safe(path, relative_to):
         target = os.path.abspath(os.path.join(base, path))
@@ -1217,12 +1226,16 @@ def api_list_files(subpath=""):
             return jsonify({"error": "Path not found"}), 404
         items = []
         for entry in os.scandir(target):
-            items.append({
+            item = {
                 "name": entry.name,
                 "is_dir": entry.is_dir(),
                 "size": entry.stat().st_size if entry.is_file() else 0,
                 "mtime": datetime.fromtimestamp(entry.stat().st_mtime).isoformat()
-            })
+            }
+            # Add display_name if this directory matches a device
+            if entry.is_dir() and entry.name in device_names:
+                item["display_name"] = device_names[entry.name]
+            items.append(item)
         return jsonify({"path": relative_to, "items": sorted(items, key=lambda x: (not x["is_dir"], x["name"]))})
 
     if view == 'physical':

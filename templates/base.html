@@ -285,8 +285,8 @@
                 {% if has_permission('view_backups') or not has_permission %}
                 <li class="nav-item">
                     <a class="nav-link {% if '/backups' in request.path or '/files' in request.path %}active{% endif %}"
-                        href="/backups">
-                        <i class="bi bi-archive"></i> Backups
+                        href="/files">
+                        <i class="bi bi-folder2-open"></i> Archivos
                     </a>
                 </li>
                 {% endif %}

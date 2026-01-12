@@ -181,8 +181,9 @@
 
         items.filter(i => i.is_dir).forEach(item => {
             var fp = currentPath ? currentPath + '/' + item.name : item.name;
-            var displayName = isVendorView ? getVendorDisplayName(item.name) : item.name;
-            list.innerHTML += '<li class="list-group-item file-item d-flex justify-content-between" onclick="loadFiles(\'' + fp + '\')"><span>📁 <strong>' + displayName + '</strong></span><button class="btn btn-sm btn-outline-danger delete-btn py-0" onclick="event.stopPropagation(); prepareDelete(\'' + fp + '\', true)">🗑️</button></li>';
+            var displayName = item.display_name || (isVendorView ? getVendorDisplayName(item.name) : item.name);
+            var tooltip = item.display_name ? ' title="' + item.name + '"' : '';
+            list.innerHTML += '<li class="list-group-item file-item d-flex justify-content-between" onclick="loadFiles(\'' + fp + '\')"' + tooltip + '><span>📁 <strong>' + displayName + '</strong></span><button class="btn btn-sm btn-outline-danger delete-btn py-0" onclick="event.stopPropagation(); prepareDelete(\'' + fp + '\', true)">🗑️</button></li>';
         });
         items.filter(i => !i.is_dir).forEach(item => {
             var fp = currentPath ? currentPath + '/' + item.name : item.name;
