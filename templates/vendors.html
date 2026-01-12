@@ -460,14 +460,20 @@
     }
 
     function deleteModel(modelId) {
-        if (!confirm('¿Eliminar modelo ' + modelId + '?')) return;
-
-        fetch('/api/device_models/' + modelId, { method: 'DELETE' })
-            .then(r => r.json())
-            .then(data => {
-                if (data.error) alert(data.error);
-                else loadData();
-            });
+        var m = models.find(x => x.id === modelId);
+        var nombre = m ? (m.name || m.id) : modelId;
+        confirmAction({
+            title: '🗑️ Eliminar Modelo',
+            message: '<p>¿Eliminar el modelo <strong>"' + nombre + '"</strong>?</p><p class="mb-0"><code>' + modelId + '</code></p>',
+            warning: '⚠️ Los dispositivos con este modelo quedarán sin clasificación. Esta acción no se puede deshacer.',
+            buttonText: '🗑️ Eliminar',
+            buttonClass: 'btn-danger',
+            onConfirm: function () {
+                fetch('/api/device_models/' + modelId, { method: 'DELETE' })
+                    .then(r => r.json())
+                    .then(data => { if (data.error) alert(data.error); else loadData(); });
+            }
+        });
     }
 </script>
 {% endblock %}

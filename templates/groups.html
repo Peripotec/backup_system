@@ -241,9 +241,19 @@
 
     function deleteGroup(name) {
         var g = inventory.groups.find(gr => gr.name === name), dc = g && g.devices ? g.devices.length : 0;
-        var msg = '¿Eliminar grupo "' + name + '"?' + (dc > 0 ? '\n\n⚠️ Eliminará ' + dc + ' dispositivo(s)!' : '');
-        if (!confirm(msg)) return;
-        fetch('/api/inventory/group/' + name, { method: 'DELETE' }).then(r => r.json()).then(d => { d.error ? alert(d.error) : location.reload(); });
+        var deviceWarning = dc > 0 ? '<p class="text-danger fw-bold mb-0">⚠️ ¡Incluye ' + dc + ' dispositivo(s)!</p>' : '';
+        confirmAction({
+            title: '🗑️ Eliminar Grupo',
+            message: '<p>¿Eliminar el grupo <strong>"' + name + '"</strong>?</p>' + deviceWarning,
+            warning: '⚠️ Se eliminarán todos los dispositivos del grupo y sus backups. Esta acción no se puede deshacer.',
+            buttonText: '🗑️ Eliminar Grupo',
+            buttonClass: 'btn-danger',
+            onConfirm: function () {
+                fetch('/api/inventory/group/' + name, { method: 'DELETE' })
+                    .then(r => r.json())
+                    .then(d => { d.error ? alert(d.error) : location.reload(); });
+            }
+        });
     }
 
     // ============================================
