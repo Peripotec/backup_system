@@ -245,7 +245,7 @@
                     <div class="flex-grow-1">
                         <div class="d-flex justify-content-between">
                             <small class="text-muted">Disco</small>
-                            <small class="text-muted">{{ disk.free_gb }} GB libres</small>
+                            <small class="text-muted">{{ disk.free_gb }} GB libres / {{ disk.total_gb }} GB</small>
                         </div>
                         <div class="progress" style="height: 18px;">
                             <div class="progress-bar"
@@ -412,7 +412,7 @@
     </div>
 
     <div class="card-footer py-1 d-flex justify-content-between align-items-center">
-        <div class="d-flex align-items-center gap-2" style="padding-left: 250px;">
+        <div class="d-flex align-items-center gap-2" style="padding-left: 240px;">
             <small class="text-muted" id="jobs-info">Cargando...</small>
             <input type="number" class="form-control form-control-sm" id="jobs-per-page" value="25" min="5" max="200"
                 step="5" onchange="loadJobs(1)" style="width: 55px;" title="Registros por página">
