@@ -90,9 +90,9 @@
                 <p>¿Estás seguro de eliminar esta credencial?</p>
                 <p class="mb-0"><strong>ID:</strong> <code id="delete-cred-id" class="fs-5"></code></p>
                 <p><strong>Nombre:</strong> <span id="delete-cred-name"></span></p>
-                <div class="alert alert-warning mb-0">
-                    <small>⚠️ Esta acción no se puede deshacer. Los grupos que usen esta credencial quedarán sin
-                        acceso.</small>
+                <div id="delete-deps-container"></div>
+                <div class="alert alert-warning mb-0" id="delete-warning">
+                    <small>⚠️ Esta acción no se puede deshacer.</small>
                 </div>
             </div>
             <div class="modal-footer">
@@ -183,7 +183,27 @@
         document.getElementById('delete-cred-id').textContent = id;
         document.getElementById('delete-cred-name').textContent = c ? c.name : '';
         pendingDeleteId = id;
-        deleteModal.show();
+
+        // Fetch dependencies
+        fetch('/api/dependencies/credencial/' + id).then(r => r.json()).then(deps => {
+            var container = document.getElementById('delete-deps-container');
+            var warning = document.getElementById('delete-warning');
+
+            if (deps.count > 0) {
+                var html = '<div class="alert alert-danger py-2 mb-2"><strong>⚠️ ' + deps.count + ' grupo(s) afectados:</strong><ul class="mb-0 small">';
+                deps.dependencies.forEach(g => {
+                    html += '<li><code>' + g.name + '</code> (' + g.device_count + ' dispositivos)</li>';
+                });
+                html += '</ul></div>';
+                container.innerHTML = html;
+                warning.innerHTML = '<small>⚠️ Los grupos listados perderán acceso a sus dispositivos.</small>';
+            } else {
+                container.innerHTML = '';
+                warning.innerHTML = '<small>✓ Ningún grupo usa esta credencial.</small>';
+            }
+
+            deleteModal.show();
+        });
     }
 </script>
 {% endblock %}

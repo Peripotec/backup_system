@@ -250,17 +250,31 @@
     function deleteRole(roleId) {
         var role = roles.find(function (r) { return r.id === roleId; });
         var nombre = role ? role.name : 'Rol #' + roleId;
-        confirmAction({
-            title: '🗑️ Eliminar Rol',
-            message: '<p>¿Eliminar el rol <strong>"' + nombre + '"</strong>?</p>',
-            warning: '⚠️ Los usuarios con este rol quedarán sin permisos. Esta acción no se puede deshacer.',
-            buttonText: '🗑️ Eliminar',
-            buttonClass: 'btn-danger',
-            onConfirm: function () {
-                fetch('/api/roles/' + roleId, { method: 'DELETE' })
-                    .then(function (r) { return r.json(); })
-                    .then(function (resp) { if (resp.error) alert(resp.error); else location.reload(); });
+
+        // Fetch dependencies first
+        fetch('/api/dependencies/rol/' + nombre).then(function (r) { return r.json(); }).then(function (deps) {
+            var depHtml = '';
+            if (deps.count > 0) {
+                depHtml = '<div class="alert alert-danger py-2 mb-2"><strong>⚠️ ' + deps.count + ' usuario(s) afectados:</strong><ul class="mb-0 small">';
+                deps.dependencies.forEach(function (u) {
+                    depHtml += '<li><code>' + u.username + '</code></li>';
+                });
+                if (deps.count > 10) depHtml += '<li>... y ' + (deps.count - 10) + ' más</li>';
+                depHtml += '</ul></div>';
             }
+
+            confirmAction({
+                title: '🗑️ Eliminar Rol',
+                message: '<p>¿Eliminar el rol <strong>"' + nombre + '"</strong>?</p>' + depHtml,
+                warning: deps.count > 0 ? '⚠️ Los usuarios listados quedarán sin rol asignado.' : '✓ Ningún usuario tiene este rol.',
+                buttonText: '🗑️ Eliminar',
+                buttonClass: 'btn-danger',
+                onConfirm: function () {
+                    fetch('/api/roles/' + roleId, { method: 'DELETE' })
+                        .then(function (r) { return r.json(); })
+                        .then(function (resp) { if (resp.error) alert(resp.error); else location.reload(); });
+                }
+            });
         });
     }
 </script>

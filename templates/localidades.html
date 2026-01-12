@@ -192,18 +192,31 @@
     function deleteLoc(id) {
         var loc = localidades.find(l => l.id === id);
         var nombre = loc ? loc.name : id;
-        confirmAction({
-            title: '🗑️ Eliminar Localidad',
-            message: '<p>¿Eliminar la localidad <strong>"' + nombre + '"</strong>?</p>' +
-                '<p class="mb-0"><code>' + id + '</code></p>',
-            warning: '⚠️ Los dispositivos asociados a esta localidad quedarán sin ubicación. Esta acción no se puede deshacer.',
-            buttonText: '🗑️ Eliminar',
-            buttonClass: 'btn-danger',
-            onConfirm: function () {
-                fetch('/api/localidades/' + id, { method: 'DELETE' })
-                    .then(r => r.json())
-                    .then(resp => { resp.error ? alert(resp.error) : loadLocs(); });
+
+        // Fetch dependencies first
+        fetch('/api/dependencies/localidad/' + id).then(r => r.json()).then(deps => {
+            var depHtml = '';
+            if (deps.count > 0) {
+                depHtml = '<div class="alert alert-danger py-2 mb-2"><strong>⚠️ ' + deps.count + ' dispositivo(s) afectados:</strong><ul class="mb-0 small">';
+                deps.dependencies.forEach(d => {
+                    depHtml += '<li><code>' + d.sysname + '</code> (' + d.group + ')</li>';
+                });
+                if (deps.count > 10) depHtml += '<li>... y ' + (deps.count - 10) + ' más</li>';
+                depHtml += '</ul></div>';
             }
+
+            confirmAction({
+                title: '🗑️ Eliminar Localidad',
+                message: '<p>¿Eliminar la localidad <strong>"' + nombre + '"</strong>?</p><p class="mb-0"><code>' + id + '</code></p>' + depHtml,
+                warning: deps.count > 0 ? '⚠️ Los dispositivos listados quedarán sin ubicación.' : '✓ No hay dispositivos usando esta localidad.',
+                buttonText: '🗑️ Eliminar',
+                buttonClass: 'btn-danger',
+                onConfirm: function () {
+                    fetch('/api/localidades/' + id, { method: 'DELETE' })
+                        .then(r => r.json())
+                        .then(resp => { resp.error ? alert(resp.error) : loadLocs(); });
+                }
+            });
         });
     }
 </script>

@@ -2380,6 +2380,78 @@ def api_delete_localidad(loc_id):
         return jsonify({"status": "ok"})
     return jsonify({"error": "Localidad no encontrada"}), 404
 
+# ==========================
+# API: DEPENDENCIES (for delete confirmation)
+# ==========================
+
+@app.route('/api/dependencies/<entity>/<entity_id>')
+@requires_auth
+def api_get_dependencies(entity, entity_id):
+    """Get dependencies for an entity before deletion."""
+    inv = load_inventory()
+    db = get_db()
+    result = {"entity": entity, "id": entity_id, "dependencies": [], "count": 0}
+    
+    if entity == "localidad":
+        # Count devices using this localidad
+        devices = []
+        for group in inv.get('groups', []):
+            for device in group.get('devices', []):
+                if device.get('localidad') == entity_id:
+                    devices.append({"sysname": device.get('sysname', device.get('hostname')), "group": group.get('name')})
+        result["count"] = len(devices)
+        result["dependencies"] = devices[:10]  # Limit to 10
+        result["warning"] = f"{len(devices)} dispositivo(s) usan esta localidad"
+        
+    elif entity == "credencial":
+        # Count groups using this credential
+        groups = []
+        for group in inv.get('groups', []):
+            if entity_id in group.get('credential_ids', []):
+                groups.append({"name": group.get('name'), "device_count": len(group.get('devices', []))})
+        result["count"] = len(groups)
+        result["dependencies"] = groups
+        result["warning"] = f"{len(groups)} grupo(s) usan esta credencial"
+        
+    elif entity == "rol":
+        # Count users with this role
+        users = db.get_all_users()
+        role_users = [u for u in users if u.get('role') == entity_id]
+        result["count"] = len(role_users)
+        result["dependencies"] = [{"username": u.get('username')} for u in role_users[:10]]
+        result["warning"] = f"{len(role_users)} usuario(s) tienen este rol"
+        
+    elif entity == "modelo":
+        # Count devices using this model
+        devices = []
+        for group in inv.get('groups', []):
+            for device in group.get('devices', []):
+                if device.get('modelo') == entity_id:
+                    devices.append({"sysname": device.get('sysname', device.get('hostname')), "group": group.get('name')})
+        result["count"] = len(devices)
+        result["dependencies"] = devices[:10]
+        result["warning"] = f"{len(devices)} dispositivo(s) usan este modelo"
+        
+    elif entity == "tipo":
+        # Count models using this type
+        models = db.get_device_models()
+        type_models = [m for m in models if m.get('type') == entity_id]
+        result["count"] = len(type_models)
+        result["dependencies"] = [{"id": m.get('id'), "name": m.get('name')} for m in type_models[:10]]
+        result["warning"] = f"{len(type_models)} modelo(s) usan este tipo"
+        
+    elif entity == "grupo":
+        # Get device count for the group
+        for group in inv.get('groups', []):
+            if group.get('name') == entity_id:
+                devices = group.get('devices', [])
+                result["count"] = len(devices)
+                result["dependencies"] = [{"sysname": d.get('sysname', d.get('hostname')), "ip": d.get('ip')} for d in devices[:10]]
+                result["warning"] = f"{len(devices)} dispositivo(s) en este grupo"
+                break
+    
+    return jsonify(result)
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
 

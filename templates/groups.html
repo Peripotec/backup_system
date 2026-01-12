@@ -240,19 +240,30 @@
     }
 
     function deleteGroup(name) {
-        var g = inventory.groups.find(gr => gr.name === name), dc = g && g.devices ? g.devices.length : 0;
-        var deviceWarning = dc > 0 ? '<p class="text-danger fw-bold mb-0">⚠️ ¡Incluye ' + dc + ' dispositivo(s)!</p>' : '';
-        confirmAction({
-            title: '🗑️ Eliminar Grupo',
-            message: '<p>¿Eliminar el grupo <strong>"' + name + '"</strong>?</p>' + deviceWarning,
-            warning: '⚠️ Se eliminarán todos los dispositivos del grupo y sus backups. Esta acción no se puede deshacer.',
-            buttonText: '🗑️ Eliminar Grupo',
-            buttonClass: 'btn-danger',
-            onConfirm: function () {
-                fetch('/api/inventory/group/' + name, { method: 'DELETE' })
-                    .then(r => r.json())
-                    .then(d => { d.error ? alert(d.error) : location.reload(); });
+        // Fetch dependencies first
+        fetch('/api/dependencies/grupo/' + name).then(r => r.json()).then(deps => {
+            var depHtml = '';
+            if (deps.count > 0) {
+                depHtml = '<div class="alert alert-danger py-2 mb-2"><strong>⚠️ ' + deps.count + ' dispositivo(s) serán eliminados:</strong><ul class="mb-0 small">';
+                deps.dependencies.forEach(d => {
+                    depHtml += '<li><code>' + d.sysname + '</code> - ' + d.ip + '</li>';
+                });
+                if (deps.count > 10) depHtml += '<li>... y ' + (deps.count - 10) + ' más</li>';
+                depHtml += '</ul></div>';
             }
+
+            confirmAction({
+                title: '🗑️ Eliminar Grupo',
+                message: '<p>¿Eliminar el grupo <strong>"' + name + '"</strong>?</p>' + depHtml,
+                warning: deps.count > 0 ? '⚠️ Se eliminarán todos los dispositivos y sus backups. IRREVERSIBLE.' : '✓ Este grupo está vacío.',
+                buttonText: '🗑️ Eliminar Grupo',
+                buttonClass: 'btn-danger',
+                onConfirm: function () {
+                    fetch('/api/inventory/group/' + name, { method: 'DELETE' })
+                        .then(r => r.json())
+                        .then(d => { d.error ? alert(d.error) : location.reload(); });
+                }
+            });
         });
     }
 
