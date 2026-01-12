@@ -2471,7 +2471,7 @@ def api_get_dependencies(entity, entity_id):
                     vendor = group.get('vendor')
                     break
             
-            # Count backup files
+            # Count backup files - use ARCHIVE_DIR where backups are actually stored
             import os
             backup_count = 0
             backup_files = []
@@ -2479,16 +2479,17 @@ def api_get_dependencies(entity, entity_id):
             
             # Try with vendor from group
             if vendor:
-                device_path = os.path.join(BACKUP_ROOT_DIR, vendor, sysname)
+                device_path = os.path.join(ARCHIVE_DIR, vendor, sysname)
             
             # If not found with vendor, search in all vendor directories
             if not device_path or not os.path.exists(device_path):
-                for v in os.listdir(BACKUP_ROOT_DIR):
-                    test_path = os.path.join(BACKUP_ROOT_DIR, v, sysname)
-                    if os.path.exists(test_path) and os.path.isdir(test_path):
-                        device_path = test_path
-                        vendor = v
-                        break
+                if os.path.exists(ARCHIVE_DIR):
+                    for v in os.listdir(ARCHIVE_DIR):
+                        test_path = os.path.join(ARCHIVE_DIR, v, sysname)
+                        if os.path.exists(test_path) and os.path.isdir(test_path):
+                            device_path = test_path
+                            vendor = v
+                            break
             
             if device_path and os.path.exists(device_path):
                 for f in os.listdir(device_path):
