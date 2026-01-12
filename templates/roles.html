@@ -248,10 +248,20 @@
     }
 
     function deleteRole(roleId) {
-        if (!confirm('¿Eliminar este rol?')) return;
-        fetch('/api/roles/' + roleId, { method: 'DELETE' })
-            .then(function (r) { return r.json(); })
-            .then(function (resp) { if (resp.error) alert(resp.error); else location.reload(); });
+        var role = roles.find(function (r) { return r.id === roleId; });
+        var nombre = role ? role.name : 'Rol #' + roleId;
+        confirmAction({
+            title: '🗑️ Eliminar Rol',
+            message: '<p>¿Eliminar el rol <strong>"' + nombre + '"</strong>?</p>',
+            warning: '⚠️ Los usuarios con este rol quedarán sin permisos. Esta acción no se puede deshacer.',
+            buttonText: '🗑️ Eliminar',
+            buttonClass: 'btn-danger',
+            onConfirm: function () {
+                fetch('/api/roles/' + roleId, { method: 'DELETE' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (resp) { if (resp.error) alert(resp.error); else location.reload(); });
+            }
+        });
     }
 </script>
 {% endblock %}

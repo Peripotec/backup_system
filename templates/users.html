@@ -252,10 +252,20 @@
     }
 
     function deleteUser(userId) {
-        if (!confirm('¿Eliminar este usuario?')) return;
-        fetch('/api/users/' + userId, { method: 'DELETE' })
-            .then(function (r) { return r.json(); })
-            .then(function (resp) { if (resp.error) alert(resp.error); else location.reload(); });
+        var user = users.find(function (u) { return u.id === userId; });
+        var nombre = user ? user.username : 'Usuario #' + userId;
+        confirmAction({
+            title: '🗑️ Eliminar Usuario',
+            message: '<p>¿Eliminar el usuario <strong>"' + nombre + '"</strong>?</p>',
+            warning: '⚠️ Este usuario perderá acceso al sistema. Esta acción no se puede deshacer.',
+            buttonText: '🗑️ Eliminar',
+            buttonClass: 'btn-danger',
+            onConfirm: function () {
+                fetch('/api/users/' + userId, { method: 'DELETE' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (resp) { if (resp.error) alert(resp.error); else location.reload(); });
+            }
+        });
     }
 
     // Tokens
@@ -315,10 +325,18 @@
     }
 
     function deleteToken(tokenId) {
-        if (!confirm('¿Revocar este token?')) return;
-        fetch('/api/tokens/' + tokenId, { method: 'DELETE' })
-            .then(function (r) { return r.json(); })
-            .then(function (resp) { if (resp.error) alert(resp.error); else loadTokens(); });
+        confirmAction({
+            title: '🔑 Revocar Token',
+            message: '<p>¿Revocar este token de API?</p>',
+            warning: '⚠️ Las aplicaciones que usen este token dejarán de funcionar.',
+            buttonText: '🔒 Revocar',
+            buttonClass: 'btn-warning',
+            onConfirm: function () {
+                fetch('/api/tokens/' + tokenId, { method: 'DELETE' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (resp) { if (resp.error) alert(resp.error); else loadTokens(); });
+            }
+        });
     }
 </script>
 {% endblock %}

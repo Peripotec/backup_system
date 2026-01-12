@@ -190,8 +190,21 @@
     }
 
     function deleteLoc(id) {
-        if (!confirm('¿Eliminar localidad "' + id + '"?')) return;
-        fetch('/api/localidades/' + id, { method: 'DELETE' }).then(r => r.json()).then(resp => { resp.error ? alert(resp.error) : loadLocs(); });
+        var loc = localidades.find(l => l.id === id);
+        var nombre = loc ? loc.name : id;
+        confirmAction({
+            title: '🗑️ Eliminar Localidad',
+            message: '<p>¿Eliminar la localidad <strong>"' + nombre + '"</strong>?</p>' +
+                '<p class="mb-0"><code>' + id + '</code></p>',
+            warning: '⚠️ Los dispositivos asociados a esta localidad quedarán sin ubicación. Esta acción no se puede deshacer.',
+            buttonText: '🗑️ Eliminar',
+            buttonClass: 'btn-danger',
+            onConfirm: function () {
+                fetch('/api/localidades/' + id, { method: 'DELETE' })
+                    .then(r => r.json())
+                    .then(resp => { resp.error ? alert(resp.error) : loadLocs(); });
+            }
+        });
     }
 </script>
 {% endblock %}

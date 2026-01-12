@@ -640,8 +640,18 @@
     }
 
     function deleteDevice(grp, sysname) {
-        if (!confirm('¿Eliminar ' + sysname + '?')) return;
-        fetch('/api/inventory/device/' + grp + '/' + sysname, { method: 'DELETE' }).then(r => r.json()).then(d => { d.error ? alert(d.error) : location.reload(); });
+        confirmAction({
+            title: '🗑️ Eliminar Dispositivo',
+            message: '<p>¿Eliminar el dispositivo <strong>"' + sysname + '"</strong> del grupo <code>' + grp + '</code>?</p>',
+            warning: '⚠️ Se eliminarán todos los backups y configuraciones asociadas. Esta acción no se puede deshacer.',
+            buttonText: '🗑️ Eliminar',
+            buttonClass: 'btn-danger',
+            onConfirm: function () {
+                fetch('/api/inventory/device/' + grp + '/' + sysname, { method: 'DELETE' })
+                    .then(r => r.json())
+                    .then(d => { d.error ? alert(d.error) : location.reload(); });
+            }
+        });
     }
 </script>
 {% endblock %}
