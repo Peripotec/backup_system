@@ -140,8 +140,7 @@
     .sidebar-expand-btn {
         position: absolute;
         left: 0;
-        top: 50%;
-        transform: translateY(-50%);
+        top: 10px;
         background: #e9ecef;
         border: 1px solid #dee2e6;
         border-left: none;
@@ -404,13 +403,8 @@
                         placeholder="🔍 Buscar por nombre, IP, grupo..." onkeyup="loadJobs(1)">
                 </div>
                 <div class="toolbar-controls d-flex align-items-center gap-2">
-                    <select class="form-select form-select-sm" id="jobs-per-page" onchange="loadJobs(1)"
-                        style="width: auto;">
-                        <option value="10">10</option>
-                        <option value="25">25</option>
-                        <option value="50" selected>50</option>
-                        <option value="100">100</option>
-                    </select>
+                    <input type="number" class="form-control form-control-sm" id="jobs-per-page" value="25" min="5"
+                        max="200" step="5" onchange="loadJobs(1)" style="width: 70px;" title="Registros por página">
                     <small class="text-muted" id="jobs-total-count"></small>
                 </div>
             </div>
@@ -830,7 +824,7 @@
         // Update filters badge
         updateActiveFiltersCount();
 
-        const perPage = document.getElementById('jobs-per-page') ? document.getElementById('jobs-per-page').value : 50;
+        const perPage = document.getElementById('jobs-per-page') ? document.getElementById('jobs-per-page').value : 25;
         let url = '/api/jobs?page=' + page + '&per_page=' + perPage;
         const loc = document.getElementById('jobs-filter-localidad').value;
         const troncal = document.getElementById('jobs-filter-troncal').value;
