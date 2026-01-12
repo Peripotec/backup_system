@@ -2463,7 +2463,8 @@ def api_get_dependencies(entity, entity_id):
         parts = entity_id.split('/', 1)
         if len(parts) == 2:
             group_name, sysname = parts
-            # Find vendor for this device
+            
+            # Find vendor for this group
             vendor = None
             for group in inv.get('groups', []):
                 if group.get('name') == group_name:
@@ -2471,23 +2472,36 @@ def api_get_dependencies(entity, entity_id):
                     break
             
             # Count backup files
+            import os
+            backup_count = 0
+            backup_files = []
+            device_path = None
+            
+            # Try with vendor from group
             if vendor:
-                import os
                 device_path = os.path.join(BACKUP_ROOT_DIR, vendor, sysname)
-                backup_count = 0
-                backup_files = []
-                if os.path.exists(device_path):
-                    for f in os.listdir(device_path):
-                        if os.path.isfile(os.path.join(device_path, f)):
-                            backup_count += 1
-                            if len(backup_files) < 5:
-                                backup_files.append(f)
-                
-                result["count"] = backup_count
-                result["dependencies"] = backup_files
-                result["vendor"] = vendor
-                result["download_url"] = f"/files/{vendor}/{sysname}" if backup_count > 0 else None
-                result["warning"] = f"{backup_count} archivo(s) de backup serán eliminados"
+            
+            # If not found with vendor, search in all vendor directories
+            if not device_path or not os.path.exists(device_path):
+                for v in os.listdir(BACKUP_ROOT_DIR):
+                    test_path = os.path.join(BACKUP_ROOT_DIR, v, sysname)
+                    if os.path.exists(test_path) and os.path.isdir(test_path):
+                        device_path = test_path
+                        vendor = v
+                        break
+            
+            if device_path and os.path.exists(device_path):
+                for f in os.listdir(device_path):
+                    if os.path.isfile(os.path.join(device_path, f)):
+                        backup_count += 1
+                        if len(backup_files) < 5:
+                            backup_files.append(f)
+            
+            result["count"] = backup_count
+            result["dependencies"] = backup_files
+            result["vendor"] = vendor
+            result["download_url"] = f"/files/{vendor}/{sysname}" if backup_count > 0 and vendor else None
+            result["warning"] = f"{backup_count} archivo(s) de backup serán eliminados"
     
     return jsonify(result)
 
