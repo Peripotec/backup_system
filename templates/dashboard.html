@@ -863,25 +863,27 @@
 
             if (current > 1) addBtn(current - 1, '«');
 
-            if (pages <= 7) {
+            if (pages <= 9) {
                 // Show all pages
                 for (var i = 1; i <= pages; i++) addBtn(i, i, i === current);
             } else {
-                // Always show first 2
+                // Always show first 3
                 addBtn(1, 1, 1 === current);
-                if (pages > 1) addBtn(2, 2, 2 === current);
+                addBtn(2, 2, 2 === current);
+                addBtn(3, 3, 3 === current);
 
-                if (current > 4) addEllipsis();
+                if (current > 5) addEllipsis();
 
                 // Middle pages around current
-                var start = Math.max(3, current - 1);
-                var end = Math.min(pages - 2, current + 1);
+                var start = Math.max(4, current - 1);
+                var end = Math.min(pages - 3, current + 1);
                 for (var i = start; i <= end; i++) addBtn(i, i, i === current);
 
-                if (current < pages - 3) addEllipsis();
+                if (current < pages - 4) addEllipsis();
 
-                // Always show last 2
-                if (pages > 2) addBtn(pages - 1, pages - 1, pages - 1 === current);
+                // Always show last 3
+                addBtn(pages - 2, pages - 2, pages - 2 === current);
+                addBtn(pages - 1, pages - 1, pages - 1 === current);
                 addBtn(pages, pages, pages === current);
             }
 

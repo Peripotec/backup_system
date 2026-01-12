@@ -1245,8 +1245,13 @@ def api_list_files(subpath=""):
     # Virtual Views Logic
     parts = subpath.split('/') if subpath else []
     
-    # helper to get categories from inventory
+    # helper to get categories from inventory with display names
     def get_categories(key):
+        # Vendor friendly names
+        vendor_names = {
+            'hp': 'HP', 'huawei': 'Huawei', 'zte_olt': 'OLT ZTE', 'zteolt': 'OLT ZTE',
+            'cisco': 'Cisco', 'mikrotik': 'MikroTik', 'juniper': 'Juniper', 'fortinet': 'Fortinet'
+        }
         inv = load_inventory()
         cats = set()
         for g in inv.get('groups', []):
@@ -1256,9 +1261,17 @@ def api_list_files(subpath=""):
                 for d in g.get('devices', []):
                     val = d.get(key)
                     if val: cats.add(val)
-        return sorted(list(cats))
+        # Convert to list of dicts with display names
+        result = []
+        for c in sorted(list(cats)):
+            if key == 'vendor':
+                display = vendor_names.get(c.lower(), c.capitalize())
+            else:
+                display = c.capitalize() if c else c
+            result.append({'name': c, 'display_name': display})
+        return result
         
-    # helper to get devices in category
+    # helper to get devices in category with display names
     def get_devices(cat_key, cat_val):
         inv = load_inventory()
         devices = []
@@ -1270,8 +1283,17 @@ def api_list_files(subpath=""):
                 else: match = (d.get(cat_key) or '').lower() == cat_val.lower()
                 
                 if match:
-                    devices.append(d.get('sysname') or d.get('hostname'))
-        return sorted(list(set(devices)))
+                    sysname = d.get('sysname') or d.get('hostname')
+                    nombre = d.get('nombre', d.get('name', sysname))
+                    devices.append({'name': sysname, 'display_name': nombre})
+        # Remove duplicates and sort
+        seen = set()
+        unique = []
+        for dev in devices:
+            if dev['name'] not in seen:
+                seen.add(dev['name'])
+                unique.append(dev)
+        return sorted(unique, key=lambda x: x['display_name'])
 
     # ROOT: List categories (virtual folders)
     if not parts:
@@ -1282,7 +1304,7 @@ def api_list_files(subpath=""):
         
         return jsonify({
             "path": "",
-            "items": [{"name": c, "is_dir": True, "size": 0, "mtime": datetime.now().isoformat()} for c in cats]
+            "items": [{"name": c['name'], "display_name": c['display_name'], "is_dir": True, "size": 0, "mtime": datetime.now().isoformat()} for c in cats]
         })
 
     # LEVEL 1: Category selected -> List devices (virtual folders)
@@ -1291,7 +1313,7 @@ def api_list_files(subpath=""):
         devices = get_devices(view, category)
         return jsonify({
             "path": category,
-            "items": [{"name": d, "is_dir": True, "size": 0, "mtime": datetime.now().isoformat()} for d in devices]
+            "items": [{"name": d['name'], "display_name": d['display_name'], "is_dir": True, "size": 0, "mtime": datetime.now().isoformat()} for d in devices]
         })
 
     # LEVEL 2+: Device selected -> List actual files from physical path
