@@ -252,7 +252,8 @@
                     <div class="flex-grow-1">
                         <div class="d-flex justify-content-between">
                             <small class="text-muted">Disco</small>
-                            <small class="text-muted">{{ disk.free_gb }} GB libres / {{ disk.total_gb }} GB</small>
+                            <small class="text-muted" id="disk-info">{{ disk.free_gb }} GB libres / {{ disk.total_gb }}
+                                GB</small>
                         </div>
                         <div class="progress" style="height: 18px;">
                             <div class="progress-bar"
@@ -266,7 +267,7 @@
             <div class="col-md-5 border-end">
                 <div class="row text-center">
                     <div class="col-6">
-                        <a href="/devices" class="text-decoration-none"
+                        <a href="/devices" class="text-decoration-none" id="stat-success"
                             title="Backups exitosos en las últimas 24 horas">
                             {% if stats.get('SUCCESS', 0) > 0 %}
                             <div class="stat-number text-success" style="cursor:pointer;">{{ stats.get('SUCCESS', 0) }}
@@ -279,7 +280,7 @@
                         </a>
                     </div>
                     <div class="col-6">
-                        <a href="/devices?criticidad=alta" class="text-decoration-none"
+                        <a href="/devices?criticidad=alta" class="text-decoration-none" id="stat-error"
                             title="Backups fallidos en las últimas 24 horas">
                             {% if stats.get('ERROR', 0) > 0 %}
                             <div class="stat-number text-danger" style="cursor:pointer;">{{ stats.get('ERROR', 0) }}
@@ -685,6 +686,36 @@
         document.getElementById('btn-cancel').style.display = 'none';
         addLog('info', '✓ Proceso finalizado');
         setTimeout(() => loadJobs(1), 1500);
+        setTimeout(() => refreshStats(), 2000); // Refresh stats after backup
+    }
+
+    function refreshStats() {
+        fetch('/api/stats/24h').then(r => r.json()).then(data => {
+            var s = data.stats;
+            // Update success counter
+            var successDiv = document.getElementById('stat-success');
+            if (successDiv) {
+                if (s.SUCCESS > 0) {
+                    successDiv.innerHTML = '<div class="stat-number text-success" style="cursor:pointer;">' + s.SUCCESS + '</div><small class="text-muted">✓ Exitosos (24h)</small>';
+                } else {
+                    successDiv.innerHTML = '<div class="stat-number text-muted" style="cursor:pointer;">-</div><small class="text-muted">Sin actividad (24h)</small>';
+                }
+            }
+            // Update error counter
+            var errorDiv = document.getElementById('stat-error');
+            if (errorDiv) {
+                if (s.ERROR > 0) {
+                    errorDiv.innerHTML = '<div class="stat-number text-danger" style="cursor:pointer;">' + s.ERROR + '</div><small class="text-muted">✗ Fallidos (24h)</small>';
+                } else {
+                    errorDiv.innerHTML = '<div class="stat-number text-muted" style="cursor:pointer;">-</div><small class="text-success">✓ Sin errores (24h)</small>';
+                }
+            }
+            // Update disk info
+            var diskDiv = document.getElementById('disk-info');
+            if (diskDiv && data.disk) {
+                diskDiv.textContent = data.disk.free_gb + ' GB libres / ' + data.disk.total_gb + ' GB';
+            }
+        });
     }
 
     function addLog(t, m) { var p = document.getElementById('log-panel'); p.innerHTML += '<div class="log-' + t + '">' + m + '</div>'; p.scrollTop = p.scrollHeight; }

@@ -1484,6 +1484,26 @@ def api_get_diff(vendor, hostname):
         return jsonify({"error": str(e), "diff": ""})
 
 # ==========================
+# API: STATS 24H (for dynamic refresh)
+# ==========================
+
+@app.route('/api/stats/24h')
+def api_stats_24h():
+    """Get 24h stats for dynamic dashboard refresh."""
+    db = get_db()
+    stats = db.get_stats_24h()
+    try:
+        total, used, free = shutil.disk_usage(BACKUP_ROOT_DIR)
+        disk_info = {
+            "percent": round((used / total) * 100, 1),
+            "free_gb": round(free / (1024**3), 2),
+            "total_gb": round(total / (1024**3), 2)
+        }
+    except Exception:
+        disk_info = {"percent": 0, "free_gb": 0, "total_gb": 0}
+    return jsonify({"stats": stats, "disk": disk_info})
+
+# ==========================
 # API: STATS HISTORY
 # ==========================
 
