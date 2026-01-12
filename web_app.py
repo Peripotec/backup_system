@@ -898,22 +898,30 @@ def api_edit_group(group_name):
 @requires_auth
 @requires_permission('edit_inventory')
 def api_delete_group(group_name):
-    """Delete a group and all its devices."""
+    """Delete a group (only if empty)."""
     inv = load_inventory()
-    original_len = len(inv.get("groups", []))
+    
+    # Find the group and check if it has devices
+    group = next((g for g in inv.get("groups", []) if g["name"] == group_name), None)
+    if not group:
+        return jsonify({"error": "Grupo no encontrado"}), 404
+    
+    device_count = len(group.get("devices", []))
+    if device_count > 0:
+        return jsonify({
+            "error": f"No se puede eliminar el grupo '{group_name}' porque tiene {device_count} dispositivo(s). Muévelos a otro grupo primero."
+        }), 400
+    
+    # Remove empty group
     inv["groups"] = [g for g in inv.get("groups", []) if g["name"] != group_name]
     
     # Audit log
     current_user = get_current_user()
     username = current_user.get('username', 'unknown') if current_user else 'unknown'
     
-    if len(inv["groups"]) < original_len:
-        save_inventory(inv)
-        log.info(f"AUDIT: inventory_group_delete user={username} ip={request.remote_addr} group={group_name} result=OK")
-        return jsonify({"status": "ok", "message": "Grupo eliminado"})
-    
-    log.info(f"AUDIT: inventory_group_delete user={username} ip={request.remote_addr} group={group_name} result=NOT_FOUND")
-    return jsonify({"error": "Grupo no encontrado"}), 404
+    save_inventory(inv)
+    log.info(f"AUDIT: inventory_group_delete user={username} ip={request.remote_addr} group={group_name} result=OK")
+    return jsonify({"status": "ok", "message": "Grupo eliminado"})
 
 @app.route('/api/vendors')
 def api_get_vendors():

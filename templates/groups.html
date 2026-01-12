@@ -243,26 +243,30 @@
         // Fetch dependencies first
         fetch('/api/dependencies/grupo/' + name).then(r => r.json()).then(deps => {
             var depHtml = '';
+            var canDelete = deps.count === 0;
+
             if (deps.count > 0) {
-                depHtml = '<div class="alert alert-danger py-2 mb-2"><strong>⚠️ ' + deps.count + ' dispositivo(s) serán eliminados:</strong><ul class="mb-0 small">';
+                depHtml = '<div class="alert alert-danger py-2 mb-2"><strong>🚫 No se puede eliminar:</strong>' +
+                    '<p class="mb-1">Este grupo tiene ' + deps.count + ' dispositivo(s):</p>' +
+                    '<ul class="mb-1 small">';
                 deps.dependencies.forEach(d => {
                     depHtml += '<li><code>' + d.sysname + '</code> - ' + d.ip + '</li>';
                 });
                 if (deps.count > 10) depHtml += '<li>... y ' + (deps.count - 10) + ' más</li>';
-                depHtml += '</ul></div>';
+                depHtml += '</ul><p class="mb-0 fw-bold">Muévelos a otro grupo desde la sección Dispositivos.</p></div>';
             }
 
             confirmAction({
-                title: '🗑️ Eliminar Grupo',
-                message: '<p>¿Eliminar el grupo <strong>"' + name + '"</strong>?</p>' + depHtml,
-                warning: deps.count > 0 ? '⚠️ Se eliminarán todos los dispositivos y sus backups. IRREVERSIBLE.' : '✓ Este grupo está vacío.',
-                buttonText: '🗑️ Eliminar Grupo',
-                buttonClass: 'btn-danger',
-                onConfirm: function () {
+                title: canDelete ? '🗑️ Eliminar Grupo' : '🚫 Grupo No Vacío',
+                message: '<p>Grupo: <strong>"' + name + '"</strong></p>' + depHtml,
+                warning: canDelete ? '✓ Este grupo está vacío y puede eliminarse.' : '⚠️ Debes mover los dispositivos a otro grupo primero.',
+                buttonText: canDelete ? '🗑️ Eliminar Grupo' : '❌ No se puede eliminar',
+                buttonClass: canDelete ? 'btn-danger' : 'btn-secondary disabled',
+                onConfirm: canDelete ? function () {
                     fetch('/api/inventory/group/' + name, { method: 'DELETE' })
                         .then(r => r.json())
                         .then(d => { d.error ? alert(d.error) : location.reload(); });
-                }
+                } : function () { }
             });
         });
     }
