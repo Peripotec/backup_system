@@ -307,14 +307,16 @@
 <!-- Jobs Section with Enterprise Filter Sidebar -->
 <div class="card" id="jobs-section">
     <div class="card-header py-2 d-flex justify-content-between align-items-center">
-        <span>📋 Últimas Ejecuciones</span>
-        <div class="d-flex gap-2 align-items-center">
-            <span class="badge bg-secondary" id="active-filters-count" style="display: none;">0 filtros</span>
-            <button class="btn btn-sm btn-outline-secondary" onclick="loadJobs(1)" title="Recargar">🔄</button>
+        <div class="d-flex align-items-center gap-2">
             <button class="sidebar-expand-btn" id="sidebar-toggle-btn" onclick="toggleJobsSidebar()"
                 title="Mostrar/Ocultar filtros">
                 ≡
             </button>
+            <span>📋 Últimas Ejecuciones</span>
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+            <span class="badge bg-secondary" id="active-filters-count" style="display: none;">0 filtros</span>
+            <button class="btn btn-sm btn-outline-secondary" onclick="loadJobs(1)" title="Recargar">🔄</button>
         </div>
     </div>
 
@@ -410,13 +412,13 @@
     </div>
 
     <div class="card-footer py-1 d-flex justify-content-between align-items-center">
-        <div id="jobs-pagination"></div>
-        <div class="d-flex align-items-center gap-2">
+        <div class="d-flex align-items-center gap-2" style="padding-left: 250px;">
             <small class="text-muted" id="jobs-info">Cargando...</small>
             <input type="number" class="form-control form-control-sm" id="jobs-per-page" value="25" min="5" max="200"
-                step="5" onchange="loadJobs(1)" style="width: 60px;" title="Registros por página">
+                step="5" onchange="loadJobs(1)" style="width: 55px;" title="Registros por página">
             <small class="text-muted">registros</small>
         </div>
+        <div id="jobs-pagination"></div>
     </div>
 </div>
 
