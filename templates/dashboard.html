@@ -77,6 +77,10 @@
         opacity: 0;
     }
 
+    #jobs-section.sidebar-collapsed #footer-info {
+        padding-left: 0 !important;
+    }
+
     .sidebar-header {
         display: flex;
         justify-content: space-between;
@@ -412,7 +416,8 @@
     </div>
 
     <div class="card-footer py-1 d-flex justify-content-between align-items-center">
-        <div class="d-flex align-items-center gap-2" style="padding-left: 240px;">
+        <div id="footer-info" class="d-flex align-items-center gap-2"
+            style="padding-left: 240px; transition: padding 0.25s ease;">
             <small class="text-muted" id="jobs-info">Cargando...</small>
             <input type="number" class="form-control form-control-sm" id="jobs-per-page" value="25" min="5" max="200"
                 step="5" onchange="loadJobs(1)" style="width: 55px;" title="Registros por página">
@@ -743,7 +748,9 @@
 
     function toggleJobsSidebar() {
         const layout = document.getElementById('jobs-layout');
+        const section = document.getElementById('jobs-section');
         const isCollapsed = layout.classList.toggle('collapsed');
+        section.classList.toggle('sidebar-collapsed', isCollapsed);
 
         // Persist state
         sessionStorage.setItem('jobsSidebarCollapsed', isCollapsed);
@@ -794,7 +801,9 @@
         const collapsed = sessionStorage.getItem('jobsSidebarCollapsed') === 'true';
         if (collapsed) {
             const layout = document.getElementById('jobs-layout');
+            const section = document.getElementById('jobs-section');
             if (layout) layout.classList.add('collapsed');
+            if (section) section.classList.add('sidebar-collapsed');
         }
     }
 
