@@ -850,9 +850,42 @@
             document.getElementById('jobs-info').textContent = 'Pág ' + data.page + '/' + data.pages + ' (' + data.total + ')';
 
             var pg = document.getElementById('jobs-pagination'); pg.innerHTML = '';
-            if (data.page > 1) pg.innerHTML += '<a class="btn btn-sm btn-outline-secondary me-1" href="#" onclick="loadJobs(' + (data.page - 1) + ')">«</a>';
-            for (var i = Math.max(1, data.page - 2); i <= Math.min(data.pages, data.page + 2); i++) pg.innerHTML += '<a class="btn btn-sm ' + (i === data.page ? 'btn-primary' : 'btn-outline-secondary') + ' me-1" href="#" onclick="loadJobs(' + i + ')">' + i + '</a>';
-            if (data.page < data.pages) pg.innerHTML += '<a class="btn btn-sm btn-outline-secondary" href="#" onclick="loadJobs(' + (data.page + 1) + ')">»</a>';
+            var pages = data.pages, current = data.page;
+
+            // Build pagination with ellipsis pattern: « 1 2 ... 5 6 7 ... 39 40 »
+            function addBtn(page, label, active) {
+                var cls = active ? 'btn-primary' : 'btn-outline-secondary';
+                pg.innerHTML += '<a class="btn btn-sm ' + cls + ' me-1" href="#" onclick="loadJobs(' + page + ')">' + (label || page) + '</a>';
+            }
+            function addEllipsis() {
+                pg.innerHTML += '<span class="px-2 text-muted">...</span>';
+            }
+
+            if (current > 1) addBtn(current - 1, '«');
+
+            if (pages <= 7) {
+                // Show all pages
+                for (var i = 1; i <= pages; i++) addBtn(i, i, i === current);
+            } else {
+                // Always show first 2
+                addBtn(1, 1, 1 === current);
+                if (pages > 1) addBtn(2, 2, 2 === current);
+
+                if (current > 4) addEllipsis();
+
+                // Middle pages around current
+                var start = Math.max(3, current - 1);
+                var end = Math.min(pages - 2, current + 1);
+                for (var i = start; i <= end; i++) addBtn(i, i, i === current);
+
+                if (current < pages - 3) addEllipsis();
+
+                // Always show last 2
+                if (pages > 2) addBtn(pages - 1, pages - 1, pages - 1 === current);
+                addBtn(pages, pages, pages === current);
+            }
+
+            if (current < pages) addBtn(current + 1, '»');
         });
     }
 
