@@ -2384,7 +2384,7 @@ def api_delete_localidad(loc_id):
 # API: DEPENDENCIES (for delete confirmation)
 # ==========================
 
-@app.route('/api/dependencies/<entity>/<entity_id>')
+@app.route('/api/dependencies/<entity>/<path:entity_id>')
 @requires_auth
 def api_get_dependencies(entity, entity_id):
     """Get dependencies for an entity before deletion."""
