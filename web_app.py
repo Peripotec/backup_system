@@ -1301,6 +1301,13 @@ def api_list_files(subpath=""):
         if view == 'localidad': cats = get_categories('localidad')
         elif view == 'tipo': cats = get_categories('tipo')
         elif view == 'vendor': cats = get_categories('vendor')
+        elif view in ('grupo', 'physical'):
+            # List custom groups from inventory
+            inv = load_inventory()
+            for g in inv.get('groups', []):
+                g_name = g.get('name', g.get('vendor', 'Unknown'))
+                cats.append({'name': g_name, 'display_name': g_name})
+            cats = sorted(cats, key=lambda x: x['display_name'])
         
         return jsonify({
             "path": "",
@@ -1310,11 +1317,28 @@ def api_list_files(subpath=""):
     # LEVEL 1: Category selected -> List devices (virtual folders)
     category = parts[0]
     if len(parts) == 1:
-        devices = get_devices(view, category)
-        return jsonify({
-            "path": category,
-            "items": [{"name": d['name'], "display_name": d['display_name'], "is_dir": True, "size": 0, "mtime": datetime.now().isoformat()} for d in devices]
-        })
+        if view in ('grupo', 'physical'):
+            # List devices in the selected group
+            inv = load_inventory()
+            devices = []
+            for g in inv.get('groups', []):
+                g_name = g.get('name', g.get('vendor', ''))
+                if g_name.lower() == category.lower():
+                    for d in g.get('devices', []):
+                        sysname = d.get('sysname') or d.get('hostname')
+                        nombre = d.get('nombre', d.get('name', sysname))
+                        devices.append({'name': sysname, 'display_name': nombre})
+            devices = sorted(devices, key=lambda x: x['display_name'])
+            return jsonify({
+                "path": category,
+                "items": [{"name": d['name'], "display_name": d['display_name'], "is_dir": True, "size": 0, "mtime": datetime.now().isoformat()} for d in devices]
+            })
+        else:
+            devices = get_devices(view, category)
+            return jsonify({
+                "path": category,
+                "items": [{"name": d['name'], "display_name": d['display_name'], "is_dir": True, "size": 0, "mtime": datetime.now().isoformat()} for d in devices]
+            })
 
     # LEVEL 2+: Device selected -> List actual files from physical path
     device_name = parts[1]
