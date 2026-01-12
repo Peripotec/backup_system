@@ -282,7 +282,7 @@
                         <i class="bi bi-speedometer2"></i> Dashboard
                     </a>
                 </li>
-                {% if has_permission('view_backups') or not has_permission %}
+                {% if not has_permission or has_permission('view_files') or has_permission('view_backups') %}
                 <li class="nav-item">
                     <a class="nav-link {% if '/backups' in request.path or '/files' in request.path %}active{% endif %}"
                         href="/files">
