@@ -77,6 +77,31 @@
         </div>
     </div>
 </div>
+
+<!-- Modal Confirmar Eliminación -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">⚠️ Confirmar Eliminación</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Estás seguro de eliminar esta credencial?</p>
+                <p class="mb-0"><strong>ID:</strong> <code id="delete-cred-id" class="fs-5"></code></p>
+                <p><strong>Nombre:</strong> <span id="delete-cred-name"></span></p>
+                <div class="alert alert-warning mb-0">
+                    <small>⚠️ Esta acción no se puede deshacer. Los grupos que usen esta credencial quedarán sin
+                        acceso.</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirm-delete-btn">🗑️ Eliminar</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -136,9 +161,29 @@
         }
     }
 
+    var pendingDeleteId = null;
+    var deleteModal;
+
+    document.addEventListener('DOMContentLoaded', function () {
+        deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+        document.getElementById('confirm-delete-btn').onclick = function () {
+            if (pendingDeleteId) {
+                fetch('/api/vault/' + pendingDeleteId, { method: 'DELETE' })
+                    .then(r => r.json())
+                    .then(resp => {
+                        deleteModal.hide();
+                        resp.error ? alert(resp.error) : location.reload();
+                    });
+            }
+        };
+    });
+
     function deleteCredential(id) {
-        if (!confirm('¿Eliminar "' + id + '"?')) return;
-        fetch('/api/vault/' + id, { method: 'DELETE' }).then(r => r.json()).then(resp => { resp.error ? alert(resp.error) : location.reload(); });
+        var c = credentials.find(cr => cr.id === id);
+        document.getElementById('delete-cred-id').textContent = id;
+        document.getElementById('delete-cred-name').textContent = c ? c.name : '';
+        pendingDeleteId = id;
+        deleteModal.show();
     }
 </script>
 {% endblock %}
