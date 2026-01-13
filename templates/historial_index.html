@@ -3,13 +3,107 @@
 
 {% block head %}
 <style>
-    .status-dot {
-        display: inline-block;
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
+    /* Sticky header and filter bar */
+    .card-header.sticky-top {
+        position: sticky;
+        top: 0;
+        z-index: 10;
     }
 
+    #filter-bar-container {
+        position: sticky;
+        top: 52px;
+        /* altura del card-header */
+        z-index: 9;
+        background: #fff;
+    }
+
+    .table thead th {
+        position: sticky;
+        top: 104px;
+        /* header + filter bar */
+        background: #212529;
+        z-index: 5;
+    }
+
+    /* Status indicator */
+    .status-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.8rem;
+        white-space: nowrap;
+    }
+
+    .status-dot {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    /* Vendor text instead of badge */
+    .vendor-text {
+        font-weight: 500;
+        text-transform: capitalize;
+    }
+
+    /* Criticidad pills */
+    .crit-pill {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .crit-alta {
+        background: #f8d7da;
+        color: #842029;
+    }
+
+    .crit-media {
+        background: #fff3cd;
+        color: #664d03;
+    }
+
+    .crit-baja {
+        background: #d1e7dd;
+        color: #0f5132;
+    }
+
+    /* Active filters chips */
+    .active-filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding: 8px 12px;
+        background: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    .filter-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 8px;
+        background: #e9ecef;
+        border-radius: 12px;
+        font-size: 0.8rem;
+    }
+
+    .filter-chip .remove {
+        cursor: pointer;
+        font-weight: bold;
+        opacity: 0.6;
+    }
+
+    .filter-chip .remove:hover {
+        opacity: 1;
+    }
+
+    /* Clickables */
     .clickable-badge {
         cursor: pointer;
         transition: opacity 0.15s;
@@ -31,7 +125,7 @@
 
 {% block content %}
 <div class="card">
-    <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+    <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center sticky-top">
         <span><i class="bi bi-file-diff"></i> Historial de Cambios</span>
         <select class="form-select form-select-sm" id="group-by" style="width: auto;">
             <option value="vendor">Agrupar por: Vendor</option>
@@ -44,6 +138,8 @@
     </div>
     <!-- Filter Bar Container -->
     <div id="filter-bar-container"></div>
+    <!-- Active Filters Chips -->
+    <div id="active-filters-container" class="active-filters" style="display:none;"></div>
     <div class="card-body p-0">
         <table class="table table-hover table-striped mb-0">
             <thead class="table-dark">
@@ -54,7 +150,7 @@
                     <th>🔗 Troncal</th>
                     <th>Equipo</th>
                     <th>Criticidad</th>
-                    <th>Acciones</th>
+                    <th>Estado / Acción</th>
                 </tr>
             </thead>
             <tbody id="devices-table"></tbody>
@@ -105,17 +201,25 @@
             searchPlaceholder: '🔍 Buscar en todo...',
             onFilter: function (filters) {
                 currentPage = 1;
+                updateActiveFilters(filters);
                 loadDevices();
             }
         });
 
+        // Sanitize filter options - remove undefined/null/empty
+        function safeOptions(arr) {
+            return (arr || [])
+                .filter(v => v !== undefined && v !== null && String(v).trim() !== '' && v !== 'undefined')
+                .map(v => String(v).trim());
+        }
+
         // Load filter options
         fetch('/api/filter-options').then(r => r.json()).then(opts => {
-            filterBar.populateFilter('localidad', opts.localidades);
-            filterBar.populateFilter('troncal', opts.troncales);
-            filterBar.populateFilter('tipo', opts.tipos);
-            filterBar.populateFilter('vendor', opts.vendors);
-            filterBar.populateFilter('grupo', opts.grupos);
+            filterBar.populateFilter('localidad', safeOptions(opts.localidades));
+            filterBar.populateFilter('troncal', safeOptions(opts.troncales));
+            filterBar.populateFilter('tipo', safeOptions(opts.tipos));
+            filterBar.populateFilter('vendor', safeOptions(opts.vendors));
+            filterBar.populateFilter('grupo', safeOptions(opts.grupos));
             loadDevices();
         });
 
@@ -124,6 +228,45 @@
             currentPage = 1;
             loadDevices();
         });
+    }
+
+    // Update active filters chips
+    function updateActiveFilters(filters) {
+        var container = document.getElementById('active-filters-container');
+        var chips = [];
+        var labels = {
+            localidad: '📍 Localidad',
+            troncal: '🔗 Troncal',
+            tipo: '🏷️ Tipo',
+            vendor: '🏭 Vendor',
+            grupo: '📁 Grupo',
+            criticidad: '⚠️ Criticidad',
+            search: '🔍 Búsqueda'
+        };
+
+        for (var key in filters) {
+            if (filters[key] && filters[key] !== '') {
+                var label = labels[key] || key;
+                chips.push('<span class="filter-chip">' + label + ': <strong>' + filters[key] + '</strong> <span class="remove" onclick="clearFilter(\'' + key + '\')">✕</span></span>');
+            }
+        }
+
+        if (chips.length > 0) {
+            container.innerHTML = chips.join('') + ' <span class="filter-chip" style="background:#dc3545;color:#fff;cursor:pointer;" onclick="clearAllFilters()">Limpiar todo ✕</span>';
+            container.style.display = 'flex';
+        } else {
+            container.style.display = 'none';
+        }
+    }
+
+    function clearFilter(key) {
+        filterBar.setFilter(key, '');
+        loadDevices();
+    }
+
+    function clearAllFilters() {
+        filterBar.reset();
+        loadDevices();
     }
 
     function loadDevices(page) {
@@ -144,17 +287,17 @@
 
     function renderTable(data) {
         var tbody = document.getElementById('devices-table');
-        tbody.innerHTML = '';
+        var html = '';
 
         if (data.total === 0) {
             tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No se encontraron dispositivos.</td></tr>';
             return;
         }
 
-        // Render grouped
+        // Build HTML as a single string for performance
         Object.keys(data.grouped).sort().forEach(key => {
             var devices = data.grouped[key];
-            tbody.innerHTML += '<tr class="table-secondary"><td colspan="7"><strong>' +
+            html += '<tr class="table-secondary"><td colspan="7"><strong>' +
                 key.charAt(0).toUpperCase() + key.slice(1) + '</strong> ' +
                 '<span class="badge bg-secondary">' + devices.length + '</span></td></tr>';
 
@@ -163,29 +306,29 @@
                 var nombre = d.nombre || sysname;
                 var sysnameSecondary = d.nombre ? '<br><small class="text-muted">' + sysname + '</small>' : '';
 
-                // Status indicator - circle next to action button
-                var statusDot = '';
+                // Status indicator with icon + text
+                var statusIndicator = '';
                 switch (d.backup_status) {
                     case 'ok':
-                        statusDot = '<span class="status-dot bg-success me-2" title="Backup exitoso con cambios"></span>';
+                        statusIndicator = '<span class="status-indicator"><span class="status-dot bg-success"></span> OK</span>';
                         break;
                     case 'unchanged':
-                        statusDot = '<span class="status-dot bg-warning me-2" title="Sin cambios detectados"></span>';
+                        statusIndicator = '<span class="status-indicator"><span class="status-dot bg-warning"></span> Sin cambios</span>';
                         break;
                     case 'error':
-                        statusDot = '<span class="status-dot bg-danger me-2" title="Último backup falló"></span>';
+                        statusIndicator = '<span class="status-indicator text-danger"><span class="status-dot bg-danger"></span> Error</span>';
                         break;
                     default:
-                        statusDot = '<span class="status-dot bg-secondary opacity-50 me-2" title="Sin backup aún"></span>';
+                        statusIndicator = '<span class="status-indicator text-muted"><span class="status-dot bg-secondary opacity-50"></span> Pendiente</span>';
                 }
 
-                // Criticidad - simple text colored
-                var critText = '-';
-                if (d.criticidad === 'alta') critText = '<span class="text-danger fw-semibold">Alta</span>';
-                else if (d.criticidad === 'media') critText = '<span class="text-warning">Media</span>';
-                else if (d.criticidad === 'baja') critText = '<span class="text-success">Baja</span>';
+                // Criticidad as soft pill
+                var critPill = '-';
+                if (d.criticidad === 'alta') critPill = '<span class="crit-pill crit-alta">Alta</span>';
+                else if (d.criticidad === 'media') critPill = '<span class="crit-pill crit-media">Media</span>';
+                else if (d.criticidad === 'baja') critPill = '<span class="crit-pill crit-baja">Baja</span>';
 
-                // Location badges WITH emojis (original style)
+                // Location badges WITH emojis
                 var locBadge = d.localidad ?
                     '<span class="badge bg-info clickable-badge" onclick="quickFilter(\'localidad\', \'' + d.localidad + '\')" title="Filtrar">📍 ' + d.localidad + '</span>' :
                     '<span class="text-muted">-</span>';
@@ -194,21 +337,23 @@
                     '<span class="badge bg-primary clickable-badge" onclick="quickFilter(\'troncal\', \'' + d.troncal + '\')" title="Filtrar">🔗 ' + d.troncal + '</span>' :
                     '<span class="text-muted">-</span>';
 
-                // Equipo - vendor + tipo WITH emoji
-                var vendorBadge = '<span class="badge bg-secondary clickable-badge" onclick="quickFilter(\'vendor\', \'' + d.vendor + '\')" title="Filtrar">🏭 ' + d.vendor + '</span>';
-                var tipoBadge = d.tipo ? '<br><span class="badge bg-light text-dark">' + d.tipo + '</span>' : '';
+                // Equipo - vendor as text, tipo as neutral pill
+                var vendorText = '<span class="vendor-text clickable-badge" onclick="quickFilter(\'vendor\', \'' + d.vendor + '\')" title="Filtrar por vendor">🏭 ' + d.vendor + '</span>';
+                var tipoPill = d.tipo ? '<br><span class="badge bg-light text-dark">' + d.tipo + '</span>' : '';
 
-                tbody.innerHTML += '<tr>' +
+                html += '<tr>' +
                     '<td><a href="/diff/' + d.vendor + '/' + sysname + '" class="text-decoration-none"><strong>' + nombre + '</strong></a>' + sysnameSecondary + '</td>' +
-                    '<td><code class="clickable-ip" onclick="copyToClipboard(\'' + d.ip + '\')" title="Click para copiar">' + d.ip + '</code></td>' +
+                    '<td><code class="clickable-ip" onclick="copyToClipboard(\'' + d.ip + '\', this)" title="Click para copiar">' + d.ip + '</code></td>' +
                     '<td>' + locBadge + '</td>' +
                     '<td>' + tronBadge + '</td>' +
-                    '<td>' + vendorBadge + tipoBadge + '</td>' +
-                    '<td class="text-center">' + critText + '</td>' +
-                    '<td class="text-nowrap">' + statusDot + '<a href="/diff/' + d.vendor + '/' + sysname + '" class="btn btn-sm btn-outline-primary" title="Ver historial de cambios"><i class="bi bi-file-diff"></i> Ver Diferencias</a></td>' +
+                    '<td>' + vendorText + tipoPill + '</td>' +
+                    '<td>' + critPill + '</td>' +
+                    '<td class="text-nowrap">' + statusIndicator + ' <a href="/diff/' + d.vendor + '/' + sysname + '" class="btn btn-sm btn-outline-primary ms-2" title="Ver historial"><i class="bi bi-file-diff"></i> Ver</a></td>' +
                     '</tr>';
             });
         });
+
+        tbody.innerHTML = html;
     }
 
     function quickFilter(field, value) {
@@ -216,9 +361,8 @@
         loadDevices();
     }
 
-    function copyToClipboard(text) {
+    function copyToClipboard(text, el) {
         navigator.clipboard.writeText(text).then(() => {
-            var el = event.target;
             var original = el.textContent;
             el.textContent = '✓ Copiado';
             el.classList.add('text-success');
