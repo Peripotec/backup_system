@@ -14,7 +14,7 @@
     --nb-warning: #fff176;
     --nb-danger: #e57373;
     --nb-info: #4dd0e1;
-    
+
     /* Override base */
     --bg-body: var(--nb-bg-darker);
     --bg-card: var(--nb-bg-card);
@@ -68,11 +68,11 @@
     border-color: var(--nb-border);
 }
 
-[data-theme="dark"] .table-striped > tbody > tr:nth-of-type(odd) {
+[data-theme="dark"] .table-striped>tbody>tr:nth-of-type(odd) {
     background-color: rgba(255, 255, 255, 0.02);
 }
 
-[data-theme="dark"] .table-hover > tbody > tr:hover {
+[data-theme="dark"] .table-hover>tbody>tr:hover {
     background-color: rgba(255, 255, 255, 0.05);
 }
 
@@ -447,11 +447,25 @@
 }
 
 /* Icons */
-[data-theme="dark"] .bi.text-primary { color: var(--nb-primary) !important; }
-[data-theme="dark"] .bi.text-success { color: var(--nb-success) !important; }
-[data-theme="dark"] .bi.text-danger { color: var(--nb-danger) !important; }
-[data-theme="dark"] .bi.text-warning { color: var(--nb-warning) !important; }
-[data-theme="dark"] .bi.text-info { color: var(--nb-info) !important; }
+[data-theme="dark"] .bi.text-primary {
+    color: var(--nb-primary) !important;
+}
+
+[data-theme="dark"] .bi.text-success {
+    color: var(--nb-success) !important;
+}
+
+[data-theme="dark"] .bi.text-danger {
+    color: var(--nb-danger) !important;
+}
+
+[data-theme="dark"] .bi.text-warning {
+    color: var(--nb-warning) !important;
+}
+
+[data-theme="dark"] .bi.text-info {
+    color: var(--nb-info) !important;
+}
 
 /* Clickable IP */
 [data-theme="dark"] .clickable-ip {
@@ -466,5 +480,250 @@
 
 /* Vendor text */
 [data-theme="dark"] .vendor-text {
+    color: var(--nb-text);
+}
+
+/* ===== FIXES ADICIONALES ===== */
+
+/* Nav Pills - tabs de explorador */
+[data-theme="dark"] .nav-pills .nav-link {
+    color: var(--nb-text-muted);
+    background-color: transparent;
+}
+
+[data-theme="dark"] .nav-pills .nav-link:hover {
+    background-color: var(--nb-bg-input);
+    color: var(--nb-text);
+}
+
+[data-theme="dark"] .nav-pills .nav-link.active {
+    background-color: var(--nb-bg-input) !important;
+    color: var(--nb-primary) !important;
+}
+
+/* Backgrounds generales con alta especificidad */
+[data-theme="dark"] .bg-light {
+    background-color: var(--nb-bg-dark) !important;
+    color: var(--nb-text) !important;
+}
+
+[data-theme="dark"] .bg-secondary {
+    background-color: var(--nb-bg-input) !important;
+    color: var(--nb-text) !important;
+}
+
+[data-theme="dark"] .bg-white {
+    background-color: var(--nb-bg-card) !important;
+}
+
+[data-theme="dark"] .bg-body {
+    background-color: var(--nb-bg-darker) !important;
+}
+
+/* Filas de tabla con background claro */
+[data-theme="dark"] tr.bg-light,
+[data-theme="dark"] tr.table-light,
+[data-theme="dark"] tr.bg-secondary,
+[data-theme="dark"] .table tr.bg-light,
+[data-theme="dark"] .table tr.table-light,
+[data-theme="dark"] .table-light {
+    background-color: var(--nb-bg-dark) !important;
+    color: var(--nb-text) !important;
+}
+
+[data-theme="dark"] tr.bg-light td,
+[data-theme="dark"] tr.table-light td,
+[data-theme="dark"] tr.table-secondary td {
+    background-color: inherit !important;
+    color: inherit !important;
+}
+
+/* Input groups */
+[data-theme="dark"] .input-group-text {
+    background-color: var(--nb-bg-dark);
+    border-color: var(--nb-border);
+    color: var(--nb-text);
+}
+
+[data-theme="dark"] .input-group .form-control,
+[data-theme="dark"] .input-group .form-select {
+    background-color: var(--nb-bg-input) !important;
+    border-color: var(--nb-border) !important;
+    color: var(--nb-text) !important;
+}
+
+/* Text colors con alta especificidad */
+[data-theme="dark"] .text-dark {
+    color: var(--nb-text) !important;
+}
+
+[data-theme="dark"] .text-body {
+    color: var(--nb-text) !important;
+}
+
+[data-theme="dark"] .text-secondary {
+    color: var(--nb-text-muted) !important;
+}
+
+/* Links */
+[data-theme="dark"] a:not(.btn):not(.nav-link):not(.dropdown-item) {
+    color: var(--nb-primary);
+}
+
+[data-theme="dark"] a:not(.btn):not(.nav-link):not(.dropdown-item):hover {
+    color: #90caf9;
+}
+
+/* Botón close */
+[data-theme="dark"] .btn-close {
+    filter: invert(1);
+}
+
+/* Offcanvas */
+[data-theme="dark"] .offcanvas {
+    background-color: var(--nb-bg-card);
+    color: var(--nb-text);
+}
+
+[data-theme="dark"] .offcanvas-header {
+    border-color: var(--nb-border);
+}
+
+/* Pagination */
+[data-theme="dark"] .page-link {
+    background-color: var(--nb-bg-card);
+    border-color: var(--nb-border);
+    color: var(--nb-text);
+}
+
+[data-theme="dark"] .page-link:hover {
+    background-color: var(--nb-bg-input);
+    color: var(--nb-primary);
+}
+
+[data-theme="dark"] .page-item.active .page-link {
+    background-color: var(--nb-primary);
+    border-color: var(--nb-primary);
+    color: #1a1a2e;
+}
+
+[data-theme="dark"] .page-item.disabled .page-link {
+    background-color: var(--nb-bg-dark);
+    color: var(--nb-text-muted);
+}
+
+/* Spinners */
+[data-theme="dark"] .spinner-border {
+    color: var(--nb-primary);
+}
+
+/* Hr */
+[data-theme="dark"] hr {
+    border-color: var(--nb-border);
+    opacity: 0.5;
+}
+
+/* Figure captions */
+[data-theme="dark"] .figure-caption {
+    color: var(--nb-text-muted);
+}
+
+/* Small y caption */
+[data-theme="dark"] small,
+[data-theme="dark"] .small {
+    color: var(--nb-text-muted);
+}
+
+/* Lead text */
+[data-theme="dark"] .lead {
+    color: var(--nb-text);
+}
+
+/* Blockquote */
+[data-theme="dark"] .blockquote-footer {
+    color: var(--nb-text-muted);
+}
+
+/* Toast */
+[data-theme="dark"] .toast {
+    background-color: var(--nb-bg-card);
+    color: var(--nb-text);
+    border-color: var(--nb-border);
+}
+
+[data-theme="dark"] .toast-header {
+    background-color: var(--nb-bg-dark);
+    color: var(--nb-text);
+    border-color: var(--nb-border);
+}
+
+/* Tables con clases especiales */
+[data-theme="dark"] .table-responsive {
+    background-color: transparent;
+}
+
+[data-theme="dark"] .table> :not(caption)>*>* {
+    background-color: inherit;
+    color: inherit;
+}
+
+/* Fix específico para group headers en tablas */
+[data-theme="dark"] tbody tr[class*="group"],
+[data-theme="dark"] tbody tr.group-header,
+[data-theme="dark"] tbody tr[style*="background"] {
+    background-color: var(--nb-bg-dark) !important;
+}
+
+/* Fix para cualquier elemento con inline style de background blanco */
+[data-theme="dark"] [style*="background-color: white"],
+[data-theme="dark"] [style*="background-color:#fff"],
+[data-theme="dark"] [style*="background-color: #fff"],
+[data-theme="dark"] [style*="background: white"],
+[data-theme="dark"] [style*="background:#fff"],
+[data-theme="dark"] [style*="background: #fff"] {
+    background-color: var(--nb-bg-card) !important;
+}
+
+/* Fix para elementos con background inline rgb */
+[data-theme="dark"] [style*="background-color: rgb(255"],
+[data-theme="dark"] [style*="background: rgb(255"] {
+    background-color: var(--nb-bg-card) !important;
+}
+
+/* Fix para rounded-pill badges sin clase bg especifica */
+[data-theme="dark"] .badge.rounded-pill:not([class*="bg-"]) {
+    background-color: var(--nb-bg-input) !important;
+    color: var(--nb-text) !important;
+}
+
+/* Placeholder text en todos los inputs */
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder,
+[data-theme="dark"] .form-control::placeholder {
+    color: var(--nb-text-muted) !important;
+    opacity: 0.7;
+}
+
+/* Fix para selects dentro de forms */
+[data-theme="dark"] select,
+[data-theme="dark"] input[type="text"],
+[data-theme="dark"] input[type="email"],
+[data-theme="dark"] input[type="password"],
+[data-theme="dark"] input[type="search"],
+[data-theme="dark"] input[type="number"],
+[data-theme="dark"] textarea {
+    background-color: var(--nb-bg-input) !important;
+    color: var(--nb-text) !important;
+    border-color: var(--nb-border) !important;
+}
+
+/* Table striped con más especificidad */
+[data-theme="dark"] .table-striped tbody tr:nth-of-type(odd)>* {
+    background-color: rgba(255, 255, 255, 0.02);
+    color: var(--nb-text);
+}
+
+[data-theme="dark"] .table-striped tbody tr:nth-of-type(even)>* {
+    background-color: var(--nb-bg-card);
     color: var(--nb-text);
 }
