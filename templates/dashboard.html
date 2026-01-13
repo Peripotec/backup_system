@@ -885,7 +885,18 @@
             var tb = document.getElementById('jobs-table'); tb.innerHTML = '';
             data.jobs.forEach(j => {
                 var ts = j.timestamp ? j.timestamp.split('.')[0] : '';
-                var st = j.status === 'SUCCESS' ? '<span class="badge bg-success">OK</span>' : '<span class="badge bg-danger">ERR</span>';
+                // Differentiate: SUCCESS with changes, NO_CHANGE (success but no diff), ERROR
+                var st;
+                var msg = (j.message || '').toLowerCase();
+                if (j.status === 'SUCCESS') {
+                    if (msg.includes('sin cambios') || msg.includes('no change') || msg.includes('identical')) {
+                        st = '<span class="badge bg-warning text-dark" title="Sin cambios detectados">=</span>';
+                    } else {
+                        st = '<span class="badge bg-success" title="Backup exitoso">OK</span>';
+                    }
+                } else {
+                    st = '<span class="badge bg-danger" title="Error">ERR</span>';
+                }
                 var displayName = j.nombre || j.hostname;
                 var msgFull = (j.message || '').replace(/"/g, '&quot;');
                 var msgShort = (j.message || '').substring(0, 40);

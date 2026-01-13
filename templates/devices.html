@@ -216,6 +216,7 @@
                                 <input type="text" id="tag-input" placeholder="Escriba y presione Enter...">
                             </div>
                             <div class="autocomplete-dropdown" id="tag-autocomplete" style="display:none;"></div>
+                            <div id="suggested-tags" class="mt-1"></div>
                         </div>
                     </div>
                 </div>
@@ -446,6 +447,45 @@
     function renderTypeDropdown() {
         var sel = document.getElementById('device-tipo');
         sel.innerHTML = '<option value="">Seleccionar...</option>' + deviceTypes.map(t => '<option value="' + t.id + '">' + t.name + '</option>').join('');
+        // Add listener for tag suggestions
+        sel.addEventListener('change', showTagSuggestions);
+    }
+
+    // Tag suggestions by device type
+    var tagsByType = {
+        'router': ['wan', 'core', 'routing', 'internet'],
+        'switch': ['lan', 'acceso', 'core', 'distribution'],
+        'olt': ['gpon', 'ftth', 'olt', 'fiber'],
+        'firewall': ['seguridad', 'perimetral', 'fw'],
+        'ap': ['wifi', 'wireless', 'wlan'],
+        'server': ['datacenter', 'servidor', 'vm'],
+        'concentrador': ['vpn', 'acceso', 'remoto']
+    };
+
+    function showTagSuggestions() {
+        var sel = document.getElementById('device-tipo');
+        var container = document.getElementById('suggested-tags');
+        var typeId = sel.value.toLowerCase();
+        var typeName = sel.options[sel.selectedIndex]?.text.toLowerCase() || '';
+
+        // Try to match by type ID or name
+        var suggestions = tagsByType[typeId] || tagsByType[typeName] || [];
+
+        if (suggestions.length === 0) {
+            container.innerHTML = '';
+            return;
+        }
+
+        // Filter out already selected tags
+        suggestions = suggestions.filter(t => !selectedTags.includes(t));
+
+        if (suggestions.length === 0) {
+            container.innerHTML = '<small class="text-muted">✓ Tags sugeridos ya agregados</small>';
+            return;
+        }
+
+        container.innerHTML = '<small class="text-muted">Sugerencias:</small> ' +
+            suggestions.map(t => '<span class="badge bg-light text-dark border me-1" style="cursor:pointer;" onclick="addTag(\'' + t + '\'); showTagSuggestions();">' + t + ' +</span>').join('');
     }
 
     function renderLocalidadDropdown() {
