@@ -727,3 +727,189 @@
     background-color: var(--nb-bg-card);
     color: var(--nb-text);
 }
+
+/* ===== FIXES ESPECÍFICOS POR TEMPLATE ===== */
+
+/* === BTN-CHECK (files.html tabs) === */
+/* Cuando btn-check está :checked, Bootstrap aplica estilos al label siguiente */
+[data-theme="dark"] .btn-check:checked+.btn-outline-primary {
+    background-color: var(--nb-bg-input) !important;
+    border-color: var(--nb-primary) !important;
+    color: var(--nb-primary) !important;
+}
+
+[data-theme="dark"] .btn-check:checked+.btn-outline-secondary {
+    background-color: var(--nb-bg-input) !important;
+    border-color: var(--nb-border) !important;
+    color: var(--nb-text) !important;
+}
+
+[data-theme="dark"] .btn-check+.btn-outline-primary {
+    color: var(--nb-text-muted);
+    border-color: var(--nb-border);
+}
+
+[data-theme="dark"] .btn-check+.btn-outline-primary:hover {
+    background-color: rgba(100, 181, 246, 0.1);
+    color: var(--nb-primary);
+}
+
+/* === TABLE-SECONDARY (localidades.html group rows) === */
+/* Bootstrap 5 usa CSS variables en tables, hay que sobrescribirlas */
+[data-theme="dark"] .table-secondary {
+    --bs-table-bg: var(--nb-bg-dark) !important;
+    --bs-table-color: var(--nb-text) !important;
+    --bs-table-border-color: var(--nb-border) !important;
+    --bs-table-striped-bg: var(--nb-bg-dark) !important;
+    --bs-table-striped-color: var(--nb-text) !important;
+    --bs-table-hover-bg: rgba(255, 255, 255, 0.05) !important;
+    --bs-table-hover-color: var(--nb-text) !important;
+}
+
+[data-theme="dark"] tr.table-secondary,
+[data-theme="dark"] .table>tbody>tr.table-secondary {
+    background-color: var(--nb-bg-dark) !important;
+}
+
+[data-theme="dark"] tr.table-secondary>td,
+[data-theme="dark"] tr.table-secondary>th,
+[data-theme="dark"] .table>tbody>tr.table-secondary>td {
+    background-color: var(--nb-bg-dark) !important;
+    color: var(--nb-text) !important;
+}
+
+/* === BREADCRUMB BG-LIGHT (files.html) === */
+[data-theme="dark"] .breadcrumb.bg-light,
+[data-theme="dark"] ol.breadcrumb.bg-light {
+    background-color: var(--nb-bg-dark) !important;
+}
+
+/* === TOOLBAR BG-LIGHT (groups.html search bar) === */
+[data-theme="dark"] .bg-light.border-bottom,
+[data-theme="dark"] div.bg-light {
+    background-color: var(--nb-bg-dark) !important;
+    border-color: var(--nb-border) !important;
+}
+
+/* === BADGE BG-SECONDARY specifico === */
+/* Mayor especificidad para badges dentro de tablas */
+[data-theme="dark"] .table .badge.bg-secondary,
+[data-theme="dark"] td .badge.bg-secondary,
+[data-theme="dark"] tr .badge.bg-secondary {
+    background-color: var(--nb-bg-input) !important;
+    color: var(--nb-text) !important;
+}
+
+/* === TABLE-LIGHT === */
+[data-theme="dark"] .table-light {
+    --bs-table-bg: var(--nb-bg-dark) !important;
+    --bs-table-color: var(--nb-text) !important;
+    --bs-table-border-color: var(--nb-border) !important;
+}
+
+[data-theme="dark"] tr.table-light>td,
+[data-theme="dark"] tr.table-light>th {
+    background-color: var(--nb-bg-dark) !important;
+    color: var(--nb-text) !important;
+}
+
+/* === CARD-HEADER con colores === */
+[data-theme="dark"] .card-header.bg-primary {
+    background-color: rgba(100, 181, 246, 0.2) !important;
+    color: var(--nb-primary) !important;
+}
+
+[data-theme="dark"] .card-header.bg-success {
+    background-color: rgba(129, 199, 132, 0.2) !important;
+    color: var(--nb-success) !important;
+}
+
+[data-theme="dark"] .card-header.bg-warning {
+    background-color: rgba(255, 241, 118, 0.2) !important;
+    color: var(--nb-warning) !important;
+}
+
+[data-theme="dark"] .card-header.bg-danger {
+    background-color: rgba(229, 115, 115, 0.2) !important;
+    color: var(--nb-danger) !important;
+}
+
+[data-theme="dark"] .card-header.bg-info {
+    background-color: rgba(77, 208, 225, 0.2) !important;
+    color: var(--nb-info) !important;
+}
+
+[data-theme="dark"] .card-header.bg-secondary {
+    background-color: var(--nb-bg-dark) !important;
+    color: var(--nb-text) !important;
+}
+
+/* === MODAL HEADERS con colores === */
+[data-theme="dark"] .modal-header.bg-success,
+[data-theme="dark"] .modal-header.bg-primary,
+[data-theme="dark"] .modal-header.bg-warning,
+[data-theme="dark"] .modal-header.bg-danger {
+    color: var(--nb-text) !important;
+}
+
+[data-theme="dark"] .modal-header.bg-success {
+    background-color: rgba(129, 199, 132, 0.3) !important;
+}
+
+[data-theme="dark"] .modal-header.bg-danger {
+    background-color: rgba(229, 115, 115, 0.3) !important;
+}
+
+/* === LIST-GROUP-ITEM dentro de card === */
+[data-theme="dark"] .card .list-group-item,
+[data-theme="dark"] .list-group-flush .list-group-item {
+    background-color: var(--nb-bg-card) !important;
+    border-color: var(--nb-border) !important;
+    color: var(--nb-text) !important;
+}
+
+[data-theme="dark"] .list-group-item:hover,
+[data-theme="dark"] .list-group-item.file-item:hover {
+    background-color: var(--nb-bg-input) !important;
+}
+
+/* === NAV-TABS dentro de cards (groups.html) === */
+[data-theme="dark"] .card-header .nav-tabs {
+    border-bottom-color: transparent;
+}
+
+[data-theme="dark"] .card-header .nav-tabs .nav-link {
+    color: var(--nb-text-muted);
+    border-color: transparent;
+}
+
+[data-theme="dark"] .card-header .nav-tabs .nav-link:hover {
+    border-color: var(--nb-border);
+}
+
+[data-theme="dark"] .card-header .nav-tabs .nav-link.active {
+    background-color: var(--nb-bg-card);
+    border-color: var(--nb-border) var(--nb-border) var(--nb-bg-card);
+    color: var(--nb-text);
+}
+
+/* === ALERT-INFO (tips) === */
+[data-theme="dark"] .alert-info {
+    background-color: rgba(77, 208, 225, 0.1) !important;
+    border-color: rgba(77, 208, 225, 0.3) !important;
+    color: var(--nb-info) !important;
+}
+
+/* === PRE/CODE en file viewer === */
+[data-theme="dark"] pre.file-content,
+[data-theme="dark"] .file-content {
+    background-color: var(--nb-bg-darker) !important;
+    color: var(--nb-text) !important;
+}
+
+/* === Asegurar que TODOS los td/th en tables hereden colores === */
+[data-theme="dark"] .table td,
+[data-theme="dark"] .table th {
+    color: var(--nb-text);
+    border-color: var(--nb-border);
+}
