@@ -616,6 +616,22 @@ class ConfigManager:
         finally:
             conn.close()
     
+    def get_all_tokens(self):
+        """Get all tokens (for superadmin)."""
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT t.id, t.name, t.created_at, t.expires_at, t.last_used,
+                       u.id as user_id, u.username
+                FROM api_tokens t
+                JOIN users u ON t.user_id = u.id
+                ORDER BY t.created_at DESC
+            ''')
+            return [dict(row) for row in cursor.fetchall()]
+        finally:
+            conn.close()
+    
     def delete_api_token(self, token_id, user_id=None):
         """Delete an API token."""
         conn = self._get_connection()
