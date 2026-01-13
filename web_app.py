@@ -2319,6 +2319,47 @@ def api_get_tags():
                 tags.add(tag)
     return jsonify(sorted(list(tags)))
 
+
+@app.route('/api/tags/suggestions')
+@requires_auth
+def api_get_tag_suggestions():
+    """Get tag suggestions based on vendor and/or model context.
+    
+    Query params:
+    - vendor: filter by vendor
+    - model: filter by model (modelo field)
+    
+    Returns tags used by similar devices, ranked by frequency.
+    """
+    vendor_filter = request.args.get('vendor', '').lower()
+    model_filter = request.args.get('model', '').lower()
+    
+    inv = load_inventory()
+    tag_counts = {}
+    
+    for group in inv.get('groups', []):
+        group_vendor = group.get('vendor', '').lower()
+        
+        for device in group.get('devices', []):
+            device_model = str(device.get('modelo', '')).lower()
+            
+            # Match by vendor or model
+            matches = False
+            if model_filter and device_model == model_filter:
+                matches = True
+            elif vendor_filter and group_vendor == vendor_filter:
+                matches = True
+            
+            if matches:
+                for tag in device.get('tags', []):
+                    tag_counts[tag] = tag_counts.get(tag, 0) + 1
+    
+    # Sort by frequency (most used first)
+    sorted_tags = sorted(tag_counts.items(), key=lambda x: -x[1])
+    
+    # Return tags with their counts
+    return jsonify([{"tag": t, "count": c} for t, c in sorted_tags[:15]])
+
 # ==========================
 # CATALOG: LOCALIDADES
 # ==========================

@@ -428,6 +428,9 @@
         // Vendor change listener for mixed groups
         var vendorSel = document.getElementById('device-vendor');
         if (vendorSel) vendorSel.addEventListener('change', updateModelDropdown);
+
+        // Setup tag suggestion listeners
+        setupTagSuggestionListeners();
     }
 
     function renderVendorDropdown(vendors) {
@@ -447,45 +450,59 @@
     function renderTypeDropdown() {
         var sel = document.getElementById('device-tipo');
         sel.innerHTML = '<option value="">Seleccionar...</option>' + deviceTypes.map(t => '<option value="' + t.id + '">' + t.name + '</option>').join('');
-        // Add listener for tag suggestions
-        sel.addEventListener('change', showTagSuggestions);
     }
 
-    // Tag suggestions by device type
-    var tagsByType = {
-        'router': ['wan', 'core', 'routing', 'internet'],
-        'switch': ['lan', 'acceso', 'core', 'distribution'],
-        'olt': ['gpon', 'ftth', 'olt', 'fiber'],
-        'firewall': ['seguridad', 'perimetral', 'fw'],
-        'ap': ['wifi', 'wireless', 'wlan'],
-        'server': ['datacenter', 'servidor', 'vm'],
-        'concentrador': ['vpn', 'acceso', 'remoto']
-    };
-
+    // Fetch tag suggestions based on vendor/model context
     function showTagSuggestions() {
-        var sel = document.getElementById('device-tipo');
         var container = document.getElementById('suggested-tags');
-        var typeId = sel.value.toLowerCase();
-        var typeName = sel.options[sel.selectedIndex]?.text.toLowerCase() || '';
+        var vendorSel = document.getElementById('device-vendor');
+        var modelSel = document.getElementById('device-modelo');
 
-        // Try to match by type ID or name
-        var suggestions = tagsByType[typeId] || tagsByType[typeName] || [];
+        var vendor = vendorSel ? vendorSel.value : '';
+        var model = modelSel ? modelSel.value : '';
 
-        if (suggestions.length === 0) {
+        // Need at least vendor or model
+        if (!vendor && !model) {
             container.innerHTML = '';
             return;
         }
 
-        // Filter out already selected tags
-        suggestions = suggestions.filter(t => !selectedTags.includes(t));
+        container.innerHTML = '<small class="text-muted">Buscando tags...</small>';
 
-        if (suggestions.length === 0) {
-            container.innerHTML = '<small class="text-muted">✓ Tags sugeridos ya agregados</small>';
-            return;
-        }
+        var params = [];
+        if (vendor) params.push('vendor=' + encodeURIComponent(vendor));
+        if (model) params.push('model=' + encodeURIComponent(model));
 
-        container.innerHTML = '<small class="text-muted">Sugerencias:</small> ' +
-            suggestions.map(t => '<span class="badge bg-light text-dark border me-1" style="cursor:pointer;" onclick="addTag(\'' + t + '\'); showTagSuggestions();">' + t + ' +</span>').join('');
+        fetch('/api/tags/suggestions?' + params.join('&'))
+            .then(r => r.json())
+            .then(suggestions => {
+                if (!suggestions || suggestions.length === 0) {
+                    container.innerHTML = '<small class="text-muted">No hay sugerencias para este vendor/modelo</small>';
+                    return;
+                }
+
+                // Filter out already selected tags
+                suggestions = suggestions.filter(s => !selectedTags.includes(s.tag));
+
+                if (suggestions.length === 0) {
+                    container.innerHTML = '<small class="text-muted">✓ Ya tienes los tags más usados</small>';
+                    return;
+                }
+
+                container.innerHTML = '<small class="text-muted">Usados por equipos similares:</small> ' +
+                    suggestions.map(s => '<span class="badge bg-light text-dark border me-1" style="cursor:pointer;" onclick="addTag(\'' + s.tag + '\'); showTagSuggestions();" title="Usado en ' + s.count + ' dispositivo(s)">' + s.tag + ' <small class="text-secondary">(' + s.count + ')</small></span>').join('');
+            })
+            .catch(() => {
+                container.innerHTML = '';
+            });
+    }
+
+    // Update suggestions when vendor or model changes
+    function setupTagSuggestionListeners() {
+        var vendorSel = document.getElementById('device-vendor');
+        var modelSel = document.getElementById('device-modelo');
+        if (vendorSel) vendorSel.addEventListener('change', showTagSuggestions);
+        if (modelSel) modelSel.addEventListener('change', showTagSuggestions);
     }
 
     function renderLocalidadDropdown() {

@@ -48,13 +48,33 @@
     fetch('/api/diff/{{ vendor }}/{{ hostname }}')
         .then(r => r.json())
         .then(data => {
-            let content = data.diff || data.error || 'Sin cambios registrados';
-            content = content
-                .replace(/^(\+.*)$/gm, '<span class="diff-add">$1</span>')
-                .replace(/^(-.*)$/gm, '<span class="diff-del">$1</span>')
-                .replace(/^(@@.*)$/gm, '<span class="diff-header">$1</span>')
-                .replace(/^(commit .*)$/gm, '<span class="diff-header">$1</span>');
-            document.getElementById('diff-content').innerHTML = content;
+            var contentEl = document.getElementById('diff-content');
+            var content = data.diff || '';
+            var error = data.error || '';
+
+            // Distinguish between different states
+            if (error) {
+                // No backup file found - red alert
+                contentEl.innerHTML = '<div class="alert alert-danger mb-0"><i class="bi bi-exclamation-triangle"></i> ' + error + '</div>';
+            } else if (!content || content.includes('Sin historial') || content.includes('aún no ha sido versionado')) {
+                // File exists but no version history - yellow
+                contentEl.innerHTML = '<div class="alert alert-warning mb-0"><i class="bi bi-info-circle"></i> Sin historial de cambios registrados.<br><small class="text-muted">El archivo existe pero aún no tiene versiones para comparar. Se registrarán cambios en el próximo backup.</small></div>';
+            } else if (content.trim() === '' || content.includes('identical')) {
+                // No changes detected - info blue
+                contentEl.innerHTML = '<div class="alert alert-info mb-0"><i class="bi bi-check-circle"></i> Sin cambios detectados desde el último backup.<br><small class="text-muted">La configuración actual es idéntica a la versión anterior.</small></div>';
+            } else {
+                // Normal diff display with syntax highlighting
+                content = content
+                    .replace(/^(\+.*)$/gm, '<span class="diff-add">$1</span>')
+                    .replace(/^(-.*)$/gm, '<span class="diff-del">$1</span>')
+                    .replace(/^(@@.*)$/gm, '<span class="diff-header">$1</span>')
+                    .replace(/^(=== Commit:.*)$/gm, '<span class="diff-header">$1</span>')
+                    .replace(/^(commit .*)$/gm, '<span class="diff-header">$1</span>');
+                contentEl.innerHTML = content;
+            }
+        })
+        .catch(err => {
+            document.getElementById('diff-content').innerHTML = '<div class="alert alert-danger">Error al cargar historial: ' + err + '</div>';
         });
 </script>
 {% endblock %}
