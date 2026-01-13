@@ -150,7 +150,7 @@
                     <th>🔗 Troncal</th>
                     <th>Equipo</th>
                     <th>Criticidad</th>
-                    <th>Estado / Acción</th>
+                    <th>Acción / Estado</th>
                 </tr>
             </thead>
             <tbody id="devices-table"></tbody>
@@ -342,13 +342,13 @@
                 var tipoPill = d.tipo ? '<br><span class="badge bg-light text-dark">' + d.tipo + '</span>' : '';
 
                 html += '<tr>' +
-                    '<td><a href="/diff/' + d.vendor + '/' + sysname + '" class="text-decoration-none"><strong>' + nombre + '</strong></a>' + sysnameSecondary + '</td>' +
+                    '<td style="padding-left: 24px;"><a href="/diff/' + d.vendor + '/' + sysname + '" class="text-decoration-none"><strong>' + nombre + '</strong></a>' + sysnameSecondary + '</td>' +
                     '<td><code class="clickable-ip" onclick="copyToClipboard(\'' + d.ip + '\', this)" title="Click para copiar">' + d.ip + '</code></td>' +
                     '<td>' + locBadge + '</td>' +
                     '<td>' + tronBadge + '</td>' +
                     '<td>' + vendorText + tipoPill + '</td>' +
                     '<td>' + critPill + '</td>' +
-                    '<td class="text-nowrap">' + statusIndicator + ' <a href="/diff/' + d.vendor + '/' + sysname + '" class="btn btn-sm btn-outline-primary ms-2" title="Ver historial"><i class="bi bi-file-diff"></i> Ver</a></td>' +
+                    '<td class="text-nowrap"><a href="/diff/' + d.vendor + '/' + sysname + '" class="btn btn-sm btn-outline-primary" title="Ver historial"><i class="bi bi-file-diff"></i> Ver</a> ' + statusIndicator + '</td>' +
                     '</tr>';
             });
         });
