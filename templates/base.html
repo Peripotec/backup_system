@@ -581,6 +581,165 @@
         [data-theme="dark"] .popover-body {
             color: var(--text-primary);
         }
+
+        /* ===== FIXES DE AUDITORÍA COMPLETA ===== */
+
+        /* E.1 Botones blancos → outline style */
+        [data-theme="dark"] .btn-light,
+        [data-theme="dark"] .btn-white {
+            background-color: transparent !important;
+            color: #e9ecef !important;
+            border: 1px solid #6c757d !important;
+        }
+
+        [data-theme="dark"] .btn-light:hover,
+        [data-theme="dark"] .btn-white:hover {
+            background-color: rgba(255, 255, 255, 0.1) !important;
+            color: #fff !important;
+        }
+
+        /* E.2 Thead de tablas → oscuro */
+        [data-theme="dark"] thead,
+        [data-theme="dark"] .table thead,
+        [data-theme="dark"] .table>thead {
+            background-color: #283548 !important;
+        }
+
+        [data-theme="dark"] thead th,
+        [data-theme="dark"] .table thead th {
+            background-color: #283548 !important;
+            color: #e9ecef !important;
+            border-color: #334155 !important;
+        }
+
+        /* E.3 Tags bg-light → oscuros */
+        [data-theme="dark"] .badge.bg-light,
+        [data-theme="dark"] .tag.bg-light,
+        [data-theme="dark"] span.bg-light {
+            background-color: rgba(255, 255, 255, 0.1) !important;
+            color: #e9ecef !important;
+        }
+
+        /* E.4 Card headers saturados → suaves */
+        [data-theme="dark"] .card-header.bg-warning,
+        [data-theme="dark"] .bg-warning {
+            background-color: rgba(255, 193, 7, 0.2) !important;
+            color: #ffda6a !important;
+        }
+
+        [data-theme="dark"] .card-header.bg-info,
+        [data-theme="dark"] .bg-info:not(.badge) {
+            background-color: rgba(13, 202, 240, 0.15) !important;
+            color: #6edff6 !important;
+        }
+
+        [data-theme="dark"] .card-header.bg-cyan,
+        [data-theme="dark"] .bg-cyan {
+            background-color: rgba(13, 202, 240, 0.15) !important;
+            color: #6edff6 !important;
+        }
+
+        /* E.5 Filas separadoras de grupo */
+        [data-theme="dark"] tr.table-light,
+        [data-theme="dark"] tr.bg-light,
+        [data-theme="dark"] .group-header,
+        [data-theme="dark"] .table-active {
+            background-color: #283548 !important;
+            color: #e9ecef !important;
+        }
+
+        /* E.6 Secciones de modal (credentials override) */
+        [data-theme="dark"] .border.rounded,
+        [data-theme="dark"] .p-3.border,
+        [data-theme="dark"] .credentials-section,
+        [data-theme="dark"] fieldset {
+            background-color: rgba(0, 0, 0, 0.2) !important;
+            border-color: #475569 !important;
+        }
+
+        /* E.7 Contadores/Pills pequeños */
+        [data-theme="dark"] .badge.rounded-pill.bg-light,
+        [data-theme="dark"] .count-badge {
+            background-color: #475569 !important;
+            color: #e9ecef !important;
+        }
+
+        /* E.8 Tips/Info boxes al final de páginas */
+        [data-theme="dark"] .alert.alert-info,
+        [data-theme="dark"] .tip-box,
+        [data-theme="dark"] .info-box {
+            background-color: rgba(13, 202, 240, 0.08) !important;
+            border-color: rgba(13, 202, 240, 0.2) !important;
+            color: #6edff6 !important;
+        }
+
+        [data-theme="dark"] .alert.alert-info strong,
+        [data-theme="dark"] .tip-box strong {
+            color: #a7e8ff !important;
+        }
+
+        /* E.9 Barras de búsqueda/control en tablas */
+        [data-theme="dark"] .card-body.bg-light,
+        [data-theme="dark"] .toolbar,
+        [data-theme="dark"] .search-bar,
+        [data-theme="dark"] .filter-bar {
+            background-color: rgba(0, 0, 0, 0.15) !important;
+        }
+
+        /* E.10 Iconos de acción en tablas */
+        [data-theme="dark"] .btn-sm.btn-outline-info,
+        [data-theme="dark"] .btn-sm.btn-info {
+            background-color: transparent !important;
+            color: #6edff6 !important;
+            border-color: #6edff6 !important;
+        }
+
+        /* E.11 Texto en inputs dentro de modales */
+        [data-theme="dark"] .modal input,
+        [data-theme="dark"] .modal select,
+        [data-theme="dark"] .modal textarea {
+            background-color: #334155 !important;
+            color: #e9ecef !important;
+            border-color: #475569 !important;
+        }
+
+        /* E.12 Legend y fieldset labels */
+        [data-theme="dark"] legend,
+        [data-theme="dark"] .form-check-label {
+            color: #e9ecef !important;
+        }
+
+        /* E.13 Hover en filas de tabla */
+        [data-theme="dark"] .table-hover tbody tr:hover {
+            background-color: rgba(255, 255, 255, 0.05) !important;
+            color: #e9ecef !important;
+        }
+
+        /* E.14 Bordes de cards */
+        [data-theme="dark"] .card {
+            border-color: #334155 !important;
+        }
+
+        /* E.15 Iconos brillantes → heredar color */
+        [data-theme="dark"] .bi.text-primary {
+            color: #6ea8fe !important;
+        }
+
+        [data-theme="dark"] .bi.text-info {
+            color: #6edff6 !important;
+        }
+
+        [data-theme="dark"] .bi.text-success {
+            color: #75b798 !important;
+        }
+
+        [data-theme="dark"] .bi.text-danger {
+            color: #ea868f !important;
+        }
+
+        [data-theme="dark"] .bi.text-warning {
+            color: #ffda6a !important;
+        }
     </style>
     {% block head %}{% endblock %}
 </head>
