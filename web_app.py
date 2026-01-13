@@ -715,6 +715,23 @@ def api_get_devices():
     # Sort by sysname
     all_devices.sort(key=lambda x: x['sysname'].lower())
     
+    # Get last backup status for all devices
+    db = get_db()
+    last_jobs = db.get_last_job_status_all()
+    
+    # Add backup_status to each device
+    for d in all_devices:
+        sysname = d.get('sysname') or d.get('hostname')
+        job = last_jobs.get(sysname)
+        if not job:
+            d['backup_status'] = 'none'  # No backup yet
+        elif job['status'] == 'ERROR':
+            d['backup_status'] = 'error'  # Last backup failed
+        elif job['changed']:
+            d['backup_status'] = 'ok'  # Success with changes
+        else:
+            d['backup_status'] = 'unchanged'  # Success, no changes
+    
     # Pagination
     total = len(all_devices)
     start = (page - 1) * per_page

@@ -119,14 +119,14 @@
         tbody.innerHTML = '';
 
         if (data.total === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No se encontraron dispositivos con historial.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No se encontraron dispositivos con historial.</td></tr>';
             return;
         }
 
         // Render grouped
         Object.keys(data.grouped).sort().forEach(key => {
             var devices = data.grouped[key];
-            tbody.innerHTML += '<tr class="table-secondary"><td colspan="7"><strong>' +
+            tbody.innerHTML += '<tr class="table-secondary"><td colspan="8"><strong>' +
                 key.charAt(0).toUpperCase() + key.slice(1) + '</strong> ' +
                 '<span class="badge bg-secondary">' + devices.length + '</span></td></tr>';
 
@@ -135,11 +135,27 @@
                 var nombre = d.nombre || sysname;
                 var sysnameSecondary = d.nombre ? '<br><small class="text-muted">' + sysname + '</small>' : '';
 
-                // Criticidad badge
-                var critBadge = '';
-                if (d.criticidad === 'alta') critBadge = '<span class="badge bg-danger">🔴 Alta</span>';
-                else if (d.criticidad === 'media') critBadge = '<span class="badge bg-warning text-dark">🟡 Media</span>';
-                else if (d.criticidad === 'baja') critBadge = '<span class="badge bg-success">🟢 Baja</span>';
+                // Backup status semaphore (replaces criticidad colors)
+                var statusBadge = '';
+                switch (d.backup_status) {
+                    case 'ok':
+                        statusBadge = '<span class="badge bg-success" title="Backup exitoso con cambios">🟢</span>';
+                        break;
+                    case 'unchanged':
+                        statusBadge = '<span class="badge bg-warning text-dark" title="Sin cambios detectados">🟡</span>';
+                        break;
+                    case 'error':
+                        statusBadge = '<span class="badge bg-danger" title="Último backup falló">🔴</span>';
+                        break;
+                    default:
+                        statusBadge = '<span class="badge bg-light text-muted" title="Sin backup aún">⚪</span>';
+                }
+
+                // Criticidad as discrete text (not semaphore)
+                var critText = '';
+                if (d.criticidad === 'alta') critText = '<small class="text-danger">⚠️Alta</small>';
+                else if (d.criticidad === 'media') critText = '<small class="text-warning">📌Media</small>';
+                else if (d.criticidad === 'baja') critText = '<small class="text-muted">Baja</small>';
 
                 // Location badges
                 var locBadge = d.localidad ?
@@ -153,12 +169,12 @@
                 var tipoBadge = d.tipo ? '<br><span class="badge bg-light text-dark">' + d.tipo + '</span>' : '';
 
                 tbody.innerHTML += '<tr>' +
-                    '<td><a href="/diff/' + d.vendor + '/' + sysname + '" class="text-decoration-none"><strong>' + nombre + '</strong></a>' + sysnameSecondary + '</td>' +
+                    '<td>' + statusBadge + ' <a href="/diff/' + d.vendor + '/' + sysname + '" class="text-decoration-none"><strong>' + nombre + '</strong></a>' + sysnameSecondary + '</td>' +
                     '<td><code class="clickable-ip" onclick="copyToClipboard(\'' + d.ip + '\')" title="Click para copiar">' + d.ip + '</code></td>' +
                     '<td>' + locBadge + '</td>' +
                     '<td>' + tronBadge + '</td>' +
                     '<td>' + vendorBadge + tipoBadge + '</td>' +
-                    '<td class="text-center">' + critBadge + '</td>' +
+                    '<td class="text-center">' + critText + '</td>' +
                     '<td><a href="/diff/' + d.vendor + '/' + sysname + '" class="btn btn-sm btn-outline-primary" title="Ver historial">' +
                     '<i class="bi bi-file-diff"></i> Ver Diff</a></td>' +
                     '</tr>';

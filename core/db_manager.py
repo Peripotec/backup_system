@@ -441,3 +441,39 @@ class DBManager:
             return 0
         finally:
             conn.close()
+
+    def get_last_job_status_all(self):
+        """Get the last job status for each device.
+        
+        Returns dict: hostname -> {'status': 'SUCCESS'|'ERROR', 'changed': bool, 'timestamp': str}
+        Used for showing backup status semaphore in historial view.
+        """
+        conn = self._get_connection()
+        conn.row_factory = sqlite3.Row
+        try:
+            cursor = conn.cursor()
+            # Get the most recent job for each hostname
+            cursor.execute('''
+                SELECT j.hostname, j.status, j.changed, j.timestamp, j.message
+                FROM jobs j
+                INNER JOIN (
+                    SELECT hostname, MAX(id) as max_id
+                    FROM jobs
+                    GROUP BY hostname
+                ) latest ON j.id = latest.max_id
+            ''')
+            result = {}
+            for row in cursor.fetchall():
+                result[row['hostname']] = {
+                    'status': row['status'],
+                    'changed': bool(row['changed']),
+                    'timestamp': row['timestamp'],
+                    'message': row['message']
+                }
+            return result
+        except Exception as e:
+            log.error(f"Failed to get last job status: {e}")
+            return {}
+        finally:
+            conn.close()
+
