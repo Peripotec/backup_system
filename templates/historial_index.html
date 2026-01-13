@@ -310,10 +310,10 @@
                 var statusIndicator = '';
                 switch (d.backup_status) {
                     case 'ok':
-                        statusIndicator = '<span class="status-indicator"><span class="status-dot bg-success"></span> OK</span>';
+                        statusIndicator = '<span class="status-indicator text-success"><span class="status-dot bg-success"></span> Cambios</span>';
                         break;
                     case 'unchanged':
-                        statusIndicator = '<span class="status-indicator"><span class="status-dot bg-warning"></span> Sin cambios</span>';
+                        statusIndicator = '<span class="status-indicator text-warning"><span class="status-dot bg-warning"></span> Sin cambios</span>';
                         break;
                     case 'error':
                         statusIndicator = '<span class="status-indicator text-danger"><span class="status-dot bg-danger"></span> Error</span>';
