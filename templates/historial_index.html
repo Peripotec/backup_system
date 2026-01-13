@@ -1,6 +1,34 @@
 {% extends "base.html" %}
 {% block title %}Historial de Cambios{% endblock %}
 
+{% block head %}
+<style>
+    .status-dot {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+    }
+
+    .clickable-badge {
+        cursor: pointer;
+        transition: opacity 0.15s;
+    }
+
+    .clickable-badge:hover {
+        opacity: 0.8;
+    }
+
+    .clickable-ip {
+        cursor: pointer;
+    }
+
+    .clickable-ip:hover {
+        color: #0d6efd;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="card">
     <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
@@ -20,10 +48,11 @@
         <table class="table table-hover table-striped mb-0">
             <thead class="table-dark">
                 <tr>
+                    <th style="width: 40px;" class="text-center"></th>
                     <th>Dispositivo</th>
                     <th>IP</th>
-                    <th>📍 Ubicación</th>
-                    <th>🔗 Troncal</th>
+                    <th>Ubicación</th>
+                    <th>Troncal</th>
                     <th>Equipo</th>
                     <th>Criticidad</th>
                     <th>Acciones</th>
@@ -119,7 +148,7 @@
         tbody.innerHTML = '';
 
         if (data.total === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No se encontraron dispositivos con historial.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No se encontraron dispositivos.</td></tr>';
             return;
         }
 
@@ -135,48 +164,51 @@
                 var nombre = d.nombre || sysname;
                 var sysnameSecondary = d.nombre ? '<br><small class="text-muted">' + sysname + '</small>' : '';
 
-                // Backup status semaphore (replaces criticidad colors)
-                var statusBadge = '';
+                // Status indicator - clean circles with CSS
+                var statusDot = '';
+                var statusTitle = '';
                 switch (d.backup_status) {
                     case 'ok':
-                        statusBadge = '<span class="badge bg-success" title="Backup exitoso con cambios">🟢</span>';
+                        statusDot = '<span class="status-dot bg-success" title="Backup exitoso con cambios"></span>';
                         break;
                     case 'unchanged':
-                        statusBadge = '<span class="badge bg-warning text-dark" title="Sin cambios detectados">🟡</span>';
+                        statusDot = '<span class="status-dot bg-warning" title="Sin cambios detectados"></span>';
                         break;
                     case 'error':
-                        statusBadge = '<span class="badge bg-danger" title="Último backup falló">🔴</span>';
+                        statusDot = '<span class="status-dot bg-danger" title="Último backup falló"></span>';
                         break;
                     default:
-                        statusBadge = '<span class="badge bg-light text-muted" title="Sin backup aún">⚪</span>';
+                        statusDot = '<span class="status-dot bg-secondary opacity-25" title="Sin backup aún"></span>';
                 }
 
-                // Criticidad as discrete text (not semaphore)
-                var critText = '';
-                if (d.criticidad === 'alta') critText = '<small class="text-danger">⚠️Alta</small>';
-                else if (d.criticidad === 'media') critText = '<small class="text-warning">📌Media</small>';
-                else if (d.criticidad === 'baja') critText = '<small class="text-muted">Baja</small>';
+                // Criticidad - simple text
+                var critText = '-';
+                if (d.criticidad === 'alta') critText = '<span class="text-danger fw-semibold">Alta</span>';
+                else if (d.criticidad === 'media') critText = '<span class="text-warning">Media</span>';
+                else if (d.criticidad === 'baja') critText = '<span class="text-success">Baja</span>';
 
-                // Location badges
+                // Location - clean badges without emojis
                 var locBadge = d.localidad ?
-                    '<span class="badge bg-info clickable-badge" onclick="quickFilter(\'localidad\', \'' + d.localidad + '\')" title="Filtrar">📍' + d.localidad + '</span>' : '';
-
-                var tronBadge = d.troncal ?
-                    '<span class="badge bg-primary clickable-badge" onclick="quickFilter(\'troncal\', \'' + d.troncal + '\')" title="Filtrar">🔗' + d.troncal + '</span>' :
+                    '<span class="badge bg-info text-dark clickable-badge" onclick="quickFilter(\'localidad\', \'' + d.localidad + '\')" title="Filtrar por localidad">' + d.localidad + '</span>' :
                     '<span class="text-muted">-</span>';
 
-                var vendorBadge = '<span class="badge bg-secondary clickable-badge" onclick="quickFilter(\'vendor\', \'' + d.vendor + '\')" title="Filtrar">🏭' + d.vendor + '</span>';
-                var tipoBadge = d.tipo ? '<br><span class="badge bg-light text-dark">' + d.tipo + '</span>' : '';
+                var tronBadge = d.troncal ?
+                    '<span class="badge bg-primary clickable-badge" onclick="quickFilter(\'troncal\', \'' + d.troncal + '\')" title="Filtrar por troncal">' + d.troncal + '</span>' :
+                    '<span class="text-muted">-</span>';
+
+                // Equipo - vendor + tipo
+                var vendorBadge = '<span class="badge bg-dark clickable-badge" onclick="quickFilter(\'vendor\', \'' + d.vendor + '\')" title="Filtrar por vendor">' + d.vendor + '</span>';
+                var tipoBadge = d.tipo ? '<br><small class="text-muted">' + d.tipo + '</small>' : '';
 
                 tbody.innerHTML += '<tr>' +
-                    '<td>' + statusBadge + ' <a href="/diff/' + d.vendor + '/' + sysname + '" class="text-decoration-none"><strong>' + nombre + '</strong></a>' + sysnameSecondary + '</td>' +
-                    '<td><code class="clickable-ip" onclick="copyToClipboard(\'' + d.ip + '\')" title="Click para copiar">' + d.ip + '</code></td>' +
+                    '<td class="text-center align-middle">' + statusDot + '</td>' +
+                    '<td><a href="/diff/' + d.vendor + '/' + sysname + '" class="text-decoration-none fw-semibold">' + nombre + '</a>' + sysnameSecondary + '</td>' +
+                    '<td><code class="clickable-ip small" onclick="copyToClipboard(\'' + d.ip + '\')" title="Click para copiar">' + d.ip + '</code></td>' +
                     '<td>' + locBadge + '</td>' +
                     '<td>' + tronBadge + '</td>' +
                     '<td>' + vendorBadge + tipoBadge + '</td>' +
                     '<td class="text-center">' + critText + '</td>' +
-                    '<td><a href="/diff/' + d.vendor + '/' + sysname + '" class="btn btn-sm btn-outline-primary" title="Ver historial">' +
-                    '<i class="bi bi-file-diff"></i> Ver Diff</a></td>' +
+                    '<td><a href="/diff/' + d.vendor + '/' + sysname + '" class="btn btn-sm btn-outline-primary" title="Ver historial"><i class="bi bi-file-diff"></i></a></td>' +
                     '</tr>';
             });
         });
