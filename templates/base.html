@@ -441,6 +441,146 @@
         [data-theme="dark"] .breadcrumb-item.active {
             color: #adb5bd;
         }
+
+        /* ===== DASHBOARD SPECIFIC FIXES ===== */
+
+        /* D.1 Badges OK/ERR en tabla - menos saturados */
+        [data-theme="dark"] .badge.bg-success {
+            background-color: rgba(25, 135, 84, 0.25) !important;
+            color: #75b798;
+        }
+
+        [data-theme="dark"] .badge.bg-danger {
+            background-color: rgba(220, 53, 69, 0.25) !important;
+            color: #ea868f;
+        }
+
+        [data-theme="dark"] .badge.bg-warning {
+            background-color: rgba(255, 193, 7, 0.25) !important;
+            color: #ffda6a;
+        }
+
+        /* D.2 Encabezados de sección en filtros - menos brillantes */
+        [data-theme="dark"] .filter-section-header,
+        [data-theme="dark"] .filter-category,
+        [data-theme="dark"] .bg-primary.bg-opacity-10,
+        [data-theme="dark"] [class*="bg-primary"][class*="opacity"] {
+            background-color: rgba(59, 130, 246, 0.15) !important;
+            color: #93bbfc !important;
+        }
+
+        /* D.3 Select/Input en filtros */
+        [data-theme="dark"] select.form-select,
+        [data-theme="dark"] input.form-control {
+            background-color: #334155 !important;
+            color: #e9ecef !important;
+            border-color: #475569 !important;
+        }
+
+        [data-theme="dark"] select.form-select option {
+            background-color: #1e293b;
+            color: #e9ecef;
+        }
+
+        /* D.4 Card headers - menos saturados */
+        [data-theme="dark"] .card-header.bg-primary {
+            background-color: #334155 !important;
+            color: #e9ecef !important;
+        }
+
+        [data-theme="dark"] .card-header.bg-secondary {
+            background-color: #475569 !important;
+            color: #e9ecef !important;
+        }
+
+        /* D.5 Botones de accion en tabla */
+        [data-theme="dark"] .btn-outline-secondary {
+            color: #adb5bd;
+            border-color: #6c757d;
+        }
+
+        [data-theme="dark"] .btn-outline-secondary:hover {
+            background-color: rgba(108, 117, 125, 0.2);
+            color: #e9ecef;
+        }
+
+        /* D.6 Progress bars */
+        [data-theme="dark"] .progress {
+            background-color: #334155;
+        }
+
+        /* D.7 Sidebar active item - menos saturado */
+        [data-theme="dark"] .sidebar-nav .nav-link.active {
+            background: rgba(59, 130, 246, 0.3);
+        }
+
+        /* D.8 Texto general en tablas */
+        [data-theme="dark"] .table {
+            --bs-table-color: #e9ecef;
+            --bs-table-border-color: #334155;
+        }
+
+        [data-theme="dark"] .table>tbody>tr>td {
+            color: #e9ecef;
+            border-color: #334155;
+        }
+
+        /* D.9 Inputs placeholder */
+        [data-theme="dark"] input::placeholder {
+            color: #64748b !important;
+        }
+
+        /* D.10 Iconos de filtro */
+        [data-theme="dark"] .filter-icon,
+        [data-theme="dark"] .bi {
+            color: inherit;
+        }
+
+        /* D.11 Tooltips */
+        [data-theme="dark"] .tooltip-inner {
+            background-color: #334155;
+            color: #e9ecef;
+        }
+
+        /* D.12 Filter panel lateral */
+        [data-theme="dark"] .filter-panel,
+        [data-theme="dark"] .filter-dropdown {
+            background-color: var(--bg-card) !important;
+            border-color: var(--border-color) !important;
+        }
+
+        /* D.13 Secciones colapsables */
+        [data-theme="dark"] .collapse-header,
+        [data-theme="dark"] .accordion-button {
+            background-color: #283548 !important;
+            color: #e9ecef !important;
+        }
+
+        [data-theme="dark"] .accordion-button:not(.collapsed) {
+            background-color: rgba(59, 130, 246, 0.15) !important;
+            color: #93bbfc !important;
+        }
+
+        /* D.14 Nav tabs */
+        [data-theme="dark"] .nav-tabs .nav-link {
+            color: #adb5bd;
+        }
+
+        [data-theme="dark"] .nav-tabs .nav-link.active {
+            background-color: var(--bg-card);
+            border-color: var(--border-color);
+            color: var(--text-primary);
+        }
+
+        /* D.15 Popovers */
+        [data-theme="dark"] .popover {
+            background-color: var(--bg-card);
+            border-color: var(--border-color);
+        }
+
+        [data-theme="dark"] .popover-body {
+            color: var(--text-primary);
+        }
     </style>
     {% block head %}{% endblock %}
 </head>
