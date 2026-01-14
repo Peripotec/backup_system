@@ -913,3 +913,103 @@
     color: var(--nb-text);
     border-color: var(--nb-border);
 }
+
+/* ===== FIXES DE AUDITORÍA VISUAL - 2026-01-14 ===== */
+
+/* === LOCALIDADES: Filas de grupo table-secondary === */
+/* Bootstrap 5 usa CSS custom properties, hay que sobrescribirlas todas */
+[data-theme="dark"] tr.table-secondary,
+[data-theme="dark"] .table tr.table-secondary,
+[data-theme="dark"] tbody tr.table-secondary {
+    --bs-table-bg: #1e3a5f !important;
+    --bs-table-color: var(--nb-text) !important;
+    --bs-table-border-color: var(--nb-border) !important;
+    background-color: #1e3a5f !important;
+    color: var(--nb-text) !important;
+}
+
+[data-theme="dark"] tr.table-secondary>td,
+[data-theme="dark"] tr.table-secondary td {
+    --bs-table-bg-state: #1e3a5f !important;
+    background-color: #1e3a5f !important;
+    color: var(--nb-text) !important;
+}
+
+/* === VENDORS: Badge y nombres con color fijo === */
+[data-theme="dark"] .vendor-badge {
+    background-color: #374151 !important;
+    color: var(--nb-text) !important;
+}
+
+[data-theme="dark"] .vendor-name,
+[data-theme="dark"] .model-name,
+[data-theme="dark"] .model-info,
+[data-theme="dark"] .model-item {
+    color: var(--nb-text) !important;
+}
+
+/* === ROLES MODAL: Labels de permisos en negro === */
+[data-theme="dark"] .modal-body .form-label,
+[data-theme="dark"] .modal-body .form-check-label,
+[data-theme="dark"] .modal-body strong,
+[data-theme="dark"] .modal-body label {
+    color: var(--nb-text) !important;
+}
+
+[data-theme="dark"] .modal-body .form-text {
+    color: var(--nb-text-muted) !important;
+}
+
+/* Card dentro de modal (permisos grid) */
+[data-theme="dark"] .modal-body .card {
+    background-color: var(--nb-bg-dark) !important;
+    border-color: var(--nb-border) !important;
+}
+
+/* Emoji picker en modal de roles */
+[data-theme="dark"] .emoji-picker {
+    background-color: var(--nb-bg-card) !important;
+}
+
+[data-theme="dark"] .emoji-option:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* === SETTINGS/GENERAL: Labels y form text === */
+[data-theme="dark"] .form-label,
+[data-theme="dark"] label:not(.btn) {
+    color: var(--nb-text) !important;
+}
+
+[data-theme="dark"] .form-text,
+[data-theme="dark"] .text-muted,
+[data-theme="dark"] small.text-muted {
+    color: var(--nb-text-muted) !important;
+}
+
+/* === GROUPS/DASHBOARD: Barras bg-light === */
+[data-theme="dark"] .bg-light {
+    background-color: var(--nb-bg-dark) !important;
+    color: var(--nb-text) !important;
+}
+
+/* === Dashboard: Jobs sidebar === */
+[data-theme="dark"] .jobs-sidebar {
+    background-color: var(--nb-bg-dark) !important;
+    border-color: var(--nb-border) !important;
+}
+
+[data-theme="dark"] .sidebar-header {
+    background-color: var(--nb-bg-darker) !important;
+    border-color: var(--nb-border) !important;
+}
+
+[data-theme="dark"] .sidebar-title,
+[data-theme="dark"] .filter-label {
+    color: var(--nb-text-muted) !important;
+}
+
+/* === Modal de backup: bg-light filter bar === */
+[data-theme="dark"] .modal-body .bg-light {
+    background-color: var(--nb-bg-dark) !important;
+}
