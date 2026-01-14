@@ -85,7 +85,7 @@
     transition: transform var(--tree-transition);
 }
 
-.tree-view__node--expanded > .tree-view__node-header .tree-view__toggle {
+.tree-view__node--expanded>.tree-view__node-header .tree-view__toggle {
     transform: rotate(90deg);
 }
 
@@ -95,12 +95,29 @@
 }
 
 /* Vendor-specific colors */
-.tree-view__node-icon--hp { color: #0d6efd; }
-.tree-view__node-icon--huawei { color: #dc3545; }
-.tree-view__node-icon--zte { color: #ffc107; }
-.tree-view__node-icon--cisco { color: #17a2b8; }
-.tree-view__node-icon--mikrotik { color: #343a40; }
-.tree-view__node-icon--default { color: #6c757d; }
+.tree-view__node-icon--hp {
+    color: #0d6efd;
+}
+
+.tree-view__node-icon--huawei {
+    color: #dc3545;
+}
+
+.tree-view__node-icon--zte {
+    color: #ffc107;
+}
+
+.tree-view__node-icon--cisco {
+    color: #17a2b8;
+}
+
+.tree-view__node-icon--mikrotik {
+    color: #343a40;
+}
+
+.tree-view__node-icon--default {
+    color: #6c757d;
+}
 
 /* Node Label */
 .tree-view__node-label {
@@ -123,11 +140,26 @@
     border-radius: 10px;
 }
 
-.tree-view__node--hp .tree-view__node-count { background-color: #0d6efd; }
-.tree-view__node--huawei .tree-view__node-count { background-color: #dc3545; }
-.tree-view__node--zte .tree-view__node-count { background-color: #ffc107; color: #212529; }
-.tree-view__node--cisco .tree-view__node-count { background-color: #17a2b8; }
-.tree-view__node--mikrotik .tree-view__node-count { background-color: #343a40; }
+.tree-view__node--hp .tree-view__node-count {
+    background-color: #0d6efd;
+}
+
+.tree-view__node--huawei .tree-view__node-count {
+    background-color: #dc3545;
+}
+
+.tree-view__node--zte .tree-view__node-count {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.tree-view__node--cisco .tree-view__node-count {
+    background-color: #17a2b8;
+}
+
+.tree-view__node--mikrotik .tree-view__node-count {
+    background-color: #343a40;
+}
 
 /* ============================================
    Children Container
@@ -139,7 +171,7 @@
     margin-left: 10px;
 }
 
-.tree-view__node--expanded > .tree-view__children {
+.tree-view__node--expanded>.tree-view__children {
     display: block;
 }
 
@@ -243,7 +275,9 @@
 }
 
 @keyframes tree-spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /* ============================================
@@ -263,8 +297,78 @@
     .tree-view__device-grupo {
         display: none;
     }
-    
+
     .tree-view__device-actions {
         opacity: 1;
     }
+}
+
+/* ============================================
+   Dark Mode Support
+   ============================================ */
+[data-theme="dark"] {
+    --tree-line-color: #475569;
+    --tree-node-hover: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .tree-view__section-header {
+    color: #e9ecef;
+    border-color: var(--tree-line-color);
+}
+
+[data-theme="dark"] .tree-view__toggle {
+    color: #9ca3af;
+}
+
+[data-theme="dark"] .tree-view__node-label {
+    color: #e9ecef;
+}
+
+[data-theme="dark"] .tree-view__children {
+    border-left-color: var(--tree-line-color);
+}
+
+[data-theme="dark"] .tree-view__device-name {
+    color: #e9ecef;
+}
+
+[data-theme="dark"] .tree-view__device-ip {
+    color: #9ca3af;
+}
+
+[data-theme="dark"] .tree-view__device-grupo {
+    color: #6b7280;
+}
+
+[data-theme="dark"] .tree-view__action-btn {
+    background: #334155;
+    border-color: #475569;
+    color: #e9ecef;
+}
+
+[data-theme="dark"] .tree-view__action-btn:hover {
+    background: #475569;
+    border-color: #64748b;
+}
+
+[data-theme="dark"] .tree-view__action-btn--primary:hover {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    color: #fff;
+}
+
+[data-theme="dark"] .tree-view__action-btn--success:hover {
+    background: #22c55e;
+    border-color: #22c55e;
+    color: #fff;
+}
+
+[data-theme="dark"] .tree-view__loading,
+[data-theme="dark"] .tree-view__empty {
+    color: #9ca3af;
+}
+
+[data-theme="dark"] .tree-view__loading-spinner {
+    border-color: #475569;
+    border-top-color: #3b82f6;
 }

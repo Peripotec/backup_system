@@ -210,6 +210,43 @@
             max-height: 0;
         }
     }
+
+    /* Dark Mode Support for Dashboard Sidebar */
+    [data-theme="dark"] .sidebar-toggle:hover {
+        background: #334155;
+    }
+
+    [data-theme="dark"] .filter-group {
+        border-bottom-color: #475569;
+    }
+
+    [data-theme="dark"] .filter-label {
+        color: #9ca3af;
+    }
+
+    [data-theme="dark"] .filter-actions {
+        border-top-color: #475569;
+    }
+
+    [data-theme="dark"] .sidebar-expand-btn {
+        background: #334155;
+        border-color: #475569;
+        color: #e9ecef;
+    }
+
+    [data-theme="dark"] .sidebar-expand-btn:hover {
+        background: #475569;
+    }
+
+    [data-theme="dark"] .content-toolbar {
+        background: var(--bg-card, #1e293b);
+        border-bottom-color: #475569;
+    }
+
+    [data-theme="dark"] .jobs-sidebar {
+        background: var(--bg-card, #1e293b);
+        border-color: #475569;
+    }
 </style>
 {% endblock %}
 
