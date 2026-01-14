@@ -123,12 +123,14 @@
         .global-search-dropdown {
             position: absolute;
             top: 100%;
-            left: 1rem;
-            right: 1rem;
+            left: 0;
+            min-width: 280px;
+            width: max-content;
+            max-width: 400px;
             background: #1e293b;
             border: 1px solid #475569;
             border-radius: 8px;
-            max-height: 300px;
+            max-height: 350px;
             overflow-y: auto;
             z-index: 1100;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
@@ -676,10 +678,12 @@
                                 '<div class="device-ip">' + r.ip + '</div>' +
                                 '</div>' +
                                 '<div class="search-item-actions">' +
-                                '<a href="/files?device=' + encodeURIComponent(r.sysname) + '&vendor=' + encodeURIComponent(r.vendor) + '" class="search-action" title="Ver archivos de backup">' +
+                                '<a href="/files/' + encodeURIComponent(r.grupo) + '/' + encodeURIComponent(r.sysname) + '" class="search-action" title="Ver archivos de backup">' +
                                 '<i class="bi bi-folder2-open"></i> Archivos</a>' +
                                 '<a href="/diff/' + encodeURIComponent(r.vendor) + '/' + encodeURIComponent(r.sysname) + '" class="search-action" title="Ver historial de cambios">' +
                                 '<i class="bi bi-clock-history"></i> Historial</a>' +
+                                '<a href="/?device=' + encodeURIComponent(r.sysname) + '" class="search-action" title="Ver últimas ejecuciones">' +
+                                '<i class="bi bi-speedometer2"></i> Jobs</a>' +
                                 '<a href="/inventory/devices?search=' + encodeURIComponent(r.sysname) + '" class="search-action" title="Editar dispositivo">' +
                                 '<i class="bi bi-pencil"></i> Editar</a>' +
                                 '</div>' +
@@ -699,7 +703,7 @@
                 if (index >= 0 && index < currentResults.length) {
                     var r = currentResults[index];
                     // Default: ir a archivos (opción más común para un sistema de backup)
-                    window.location.href = '/files?device=' + encodeURIComponent(r.sysname) + '&vendor=' + encodeURIComponent(r.vendor);
+                    window.location.href = '/files/' + encodeURIComponent(r.grupo) + '/' + encodeURIComponent(r.sysname);
                 }
             }
 
