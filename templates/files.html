@@ -357,8 +357,8 @@
             list.innerHTML += '<li class="list-group-item file-item d-flex justify-content-between align-items-center" onclick="loadFiles(\'' + fp + '\')"' + tooltip + '>' +
                 '<span>📁 <strong>' + displayName + '</strong></span>' +
                 '<div>' +
-                '<button class="btn btn-primary btn-sm me-1" onclick="event.stopPropagation(); downloadZipDir(\'' + fp + '\')" title="Descargar carpeta como ZIP">⬇️ Descargar</button>' +
-                '<button class="btn btn-outline-danger btn-sm" onclick="event.stopPropagation(); prepareDelete(\'' + fp + '\', true)" title="Eliminar carpeta">🗑️ Eliminar</button>' +
+                '<button class="btn btn-primary btn-sm py-0 me-1" onclick="event.stopPropagation(); downloadZipDir(\'' + fp + '\')" title="Descargar carpeta como ZIP"><small>⬇️ Descargar</small></button>' +
+                '<button class="btn btn-outline-danger btn-sm py-0" onclick="event.stopPropagation(); prepareDelete(\'' + fp + '\', true)" title="Eliminar carpeta"><small>🗑️ Eliminar</small></button>' +
                 '</div></li>';
         });
         items.filter(i => !i.is_dir).forEach(item => {
