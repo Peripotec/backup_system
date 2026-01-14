@@ -1014,6 +1014,25 @@
     });
 
     populateJobsFilters();
+
+    // Check for device filter from URL (used by global search)
+    (function () {
+        var params = new URLSearchParams(window.location.search);
+        var deviceFilter = params.get('device');
+        if (deviceFilter) {
+            var searchField = document.getElementById('jobs-filter-search');
+            if (searchField) {
+                searchField.value = deviceFilter;
+                // Show active filter badge
+                var badge = document.getElementById('active-filters-count');
+                if (badge) {
+                    badge.textContent = '1 filtro';
+                    badge.style.display = 'inline-block';
+                }
+            }
+        }
+    })();
+
     loadJobs(1);
 </script>
 {% endblock %}
