@@ -119,6 +119,59 @@
             letter-spacing: 0.05em;
         }
 
+        /* Global Search Dropdown */
+        .global-search-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 1rem;
+            right: 1rem;
+            background: #1e293b;
+            border: 1px solid #475569;
+            border-radius: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1100;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .global-search-item {
+            padding: 0.6rem 1rem;
+            cursor: pointer;
+            border-bottom: 1px solid #334155;
+            color: #f1f5f9;
+            font-size: 0.85rem;
+        }
+
+        .global-search-item:last-child {
+            border-bottom: none;
+        }
+
+        .global-search-item:hover,
+        .global-search-item.active {
+            background: rgba(59, 130, 246, 0.2);
+        }
+
+        .global-search-item .device-name {
+            font-weight: 500;
+        }
+
+        .global-search-item .device-ip {
+            color: #94a3b8;
+            font-size: 0.8rem;
+        }
+
+        .global-search-item .device-meta {
+            color: #64748b;
+            font-size: 0.75rem;
+        }
+
+        .global-search-empty {
+            padding: 1rem;
+            color: #94a3b8;
+            text-align: center;
+            font-size: 0.85rem;
+        }
+
         .sidebar-footer {
             flex-shrink: 0;
             padding: 0.75rem;
@@ -273,6 +326,19 @@
         <a href="/" class="sidebar-brand" style="text-decoration: none; color: inherit;">
             🛡️ Backup System
         </a>
+
+        <!-- Global Search -->
+        <div class="global-search-wrapper" style="padding: 0.75rem 1rem; position: relative;">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-transparent border-end-0" style="border-color: #475569;">
+                    <i class="bi bi-search text-muted"></i>
+                </span>
+                <input type="text" class="form-control border-start-0" id="global-search-input"
+                    placeholder="Buscar dispositivo..." autocomplete="off"
+                    style="background: rgba(255,255,255,0.05); border-color: #475569; color: #f1f5f9;">
+            </div>
+            <div id="global-search-results" class="global-search-dropdown" style="display: none;"></div>
+        </div>
 
         <div class="sidebar-nav-wrapper">
             <ul class="sidebar-nav">
@@ -543,6 +609,105 @@
                 });
             }
         });
+
+        // ===== GLOBAL SEARCH =====
+        (function () {
+            var searchInput = document.getElementById('global-search-input');
+            var resultsContainer = document.getElementById('global-search-results');
+            if (!searchInput || !resultsContainer) return;
+
+            var debounceTimer = null;
+            var currentResults = [];
+            var activeIndex = -1;
+
+            function performSearch(query) {
+                if (!query || query.length < 2) {
+                    resultsContainer.style.display = 'none';
+                    currentResults = [];
+                    return;
+                }
+                fetch('/api/search?q=' + encodeURIComponent(query))
+                    .then(r => r.json())
+                    .then(data => {
+                        currentResults = data.results || [];
+                        activeIndex = -1;
+                        if (currentResults.length === 0) {
+                            resultsContainer.innerHTML = '<div class="global-search-empty">No se encontraron dispositivos</div>';
+                        } else {
+                            resultsContainer.innerHTML = currentResults.map((r, i) =>
+                                '<div class="global-search-item" data-index="' + i + '">' +
+                                '<div class="device-name">' + (r.nombre || r.sysname) + '</div>' +
+                                '<div class="device-ip">' + r.ip + '</div>' +
+                                '<div class="device-meta">' + r.grupo + ' · ' + (r.tipo || r.vendor) + '</div>' +
+                                '</div>'
+                            ).join('');
+                        }
+                        resultsContainer.style.display = 'block';
+                    })
+                    .catch(() => {
+                        resultsContainer.style.display = 'none';
+                    });
+            }
+
+            function navigateToResult(index) {
+                if (index >= 0 && index < currentResults.length) {
+                    var r = currentResults[index];
+                    window.location.href = '/inventory/devices?search=' + encodeURIComponent(r.sysname);
+                }
+            }
+
+            function updateActiveItem() {
+                var items = resultsContainer.querySelectorAll('.global-search-item');
+                items.forEach((item, i) => {
+                    item.classList.toggle('active', i === activeIndex);
+                });
+            }
+
+            searchInput.addEventListener('input', function () {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => performSearch(this.value.trim()), 300);
+            });
+
+            searchInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') {
+                    resultsContainer.style.display = 'none';
+                    this.blur();
+                } else if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    if (activeIndex < currentResults.length - 1) {
+                        activeIndex++;
+                        updateActiveItem();
+                    }
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    if (activeIndex > 0) {
+                        activeIndex--;
+                        updateActiveItem();
+                    }
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (activeIndex >= 0) {
+                        navigateToResult(activeIndex);
+                    } else if (currentResults.length > 0) {
+                        navigateToResult(0);
+                    }
+                }
+            });
+
+            resultsContainer.addEventListener('click', function (e) {
+                var item = e.target.closest('.global-search-item');
+                if (item) {
+                    navigateToResult(parseInt(item.dataset.index));
+                }
+            });
+
+            // Close on click outside
+            document.addEventListener('click', function (e) {
+                if (!searchInput.contains(e.target) && !resultsContainer.contains(e.target)) {
+                    resultsContainer.style.display = 'none';
+                }
+            });
+        })();
     </script>
     {% block scripts %}{% endblock %}
 </body>

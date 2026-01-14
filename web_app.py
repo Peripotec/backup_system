@@ -340,6 +340,59 @@ def health_check():
 
 
 # ==========================
+# GLOBAL SEARCH API
+# ==========================
+
+@app.route('/api/search')
+@requires_auth
+def api_global_search():
+    """
+    Global search across devices.
+    Returns up to 10 results matching the query.
+    """
+    query = request.args.get('q', '').strip().lower()
+    if not query or len(query) < 2:
+        return jsonify({'results': []})
+    
+    inv = load_inventory()
+    results = []
+    
+    for group in inv.get('groups', []):
+        group_name = group.get('name', '')
+        vendor = group.get('vendor', '')
+        
+        for device in group.get('devices', []):
+            sysname = device.get('sysname', device.get('hostname', ''))
+            nombre = device.get('nombre', device.get('name', sysname))
+            ip = device.get('ip', '')
+            localidad = device.get('localidad', '')
+            tipo = device.get('tipo', '')
+            
+            # Search in multiple fields
+            searchable = f"{sysname} {nombre} {ip} {localidad} {tipo} {group_name} {vendor}".lower()
+            
+            if query in searchable:
+                results.append({
+                    'sysname': sysname,
+                    'nombre': nombre,
+                    'ip': ip,
+                    'grupo': group_name,
+                    'vendor': vendor,
+                    'tipo': tipo,
+                    'localidad': localidad
+                })
+                
+                # Limit results
+                if len(results) >= 10:
+                    break
+        
+        if len(results) >= 10:
+            break
+    
+    return jsonify({'results': results, 'total': len(results)})
+
+
+# ==========================
 # LOGIN / LOGOUT
 # ==========================
 
