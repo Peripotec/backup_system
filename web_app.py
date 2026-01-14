@@ -378,6 +378,7 @@ def api_global_search():
                     'ip': ip,
                     'grupo': group_name,
                     'vendor': vendor,
+                    'vendor_folder': normalize_vendor_folder(vendor),  # Physical folder name
                     'tipo': tipo,
                     'localidad': localidad
                 })

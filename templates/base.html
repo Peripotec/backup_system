@@ -678,7 +678,7 @@
                                 '<div class="device-ip">' + r.ip + '</div>' +
                                 '</div>' +
                                 '<div class="search-item-actions">' +
-                                '<a href="/files/' + encodeURIComponent(r.grupo) + '/' + encodeURIComponent(r.sysname) + '" class="search-action" title="Ver archivos de backup">' +
+                                '<a href="/files/' + encodeURIComponent(r.vendor_folder) + '/' + encodeURIComponent(r.sysname) + '" class="search-action" title="Ver archivos de backup">' +
                                 '<i class="bi bi-folder2-open"></i> Archivos</a>' +
                                 '<a href="/diff/' + encodeURIComponent(r.vendor) + '/' + encodeURIComponent(r.sysname) + '" class="search-action" title="Ver historial de cambios">' +
                                 '<i class="bi bi-clock-history"></i> Historial</a>' +
@@ -703,7 +703,7 @@
                 if (index >= 0 && index < currentResults.length) {
                     var r = currentResults[index];
                     // Default: ir a archivos (opción más común para un sistema de backup)
-                    window.location.href = '/files/' + encodeURIComponent(r.grupo) + '/' + encodeURIComponent(r.sysname);
+                    window.location.href = '/files/' + encodeURIComponent(r.vendor_folder) + '/' + encodeURIComponent(r.sysname);
                 }
             }
 
