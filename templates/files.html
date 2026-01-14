@@ -115,6 +115,54 @@
         </div>
     </div>
 </div>
+
+<!-- ZIP Download Confirmation Modal -->
+<div class="modal fade" id="zipModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">📦 Descargar como ZIP</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="zip-loading" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-2 text-muted">Calculando tamaños...</p>
+                </div>
+                <div id="zip-content" style="display: none;">
+                    <div class="alert alert-info mb-3">
+                        <strong>Carpeta:</strong> <code id="zip-path"></code>
+                    </div>
+                    <h6>Directorios a incluir:</h6>
+                    <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                        <table class="table table-sm table-striped" id="zip-folders-table">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>Directorio</th>
+                                    <th class="text-end">Archivos</th>
+                                    <th class="text-end">Tamaño</th>
+                                </tr>
+                            </thead>
+                            <tbody id="zip-folders-body"></tbody>
+                        </table>
+                    </div>
+                    <div class="border-top pt-3 mt-3 d-flex justify-content-between">
+                        <div><strong>Total:</strong> <span id="zip-total-files"></span> archivos</div>
+                        <div><strong>Tamaño total:</strong> <span id="zip-total-size"
+                                class="text-primary fw-bold"></span></div>
+                    </div>
+                </div>
+                <div id="zip-error" class="alert alert-danger" style="display: none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="confirm-zip-btn" onclick="confirmZipDownload()">
+                    📦 Descargar ZIP
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -157,8 +205,59 @@
 
     function downloadZip() {
         if (!currentPath) return;
-        // Navigate to ZIP download endpoint
-        window.location.href = '/download-zip/' + encodeURIComponent(currentPath);
+
+        const view = getViewType();
+        const zipModal = new bootstrap.Modal(document.getElementById('zipModal'));
+
+        // Reset modal state
+        document.getElementById('zip-loading').style.display = 'block';
+        document.getElementById('zip-content').style.display = 'none';
+        document.getElementById('zip-error').style.display = 'none';
+        document.getElementById('zip-path').textContent = currentPath;
+
+        zipModal.show();
+
+        // Fetch zip info
+        fetch('/api/files/zip-info/' + encodeURIComponent(currentPath) + '?view=' + view)
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('zip-loading').style.display = 'none';
+
+                if (data.error || !data.folders || data.folders.length === 0) {
+                    document.getElementById('zip-error').textContent = data.error || 'No se encontraron archivos para descargar';
+                    document.getElementById('zip-error').style.display = 'block';
+                    document.getElementById('confirm-zip-btn').disabled = true;
+                    return;
+                }
+
+                document.getElementById('confirm-zip-btn').disabled = false;
+                document.getElementById('zip-content').style.display = 'block';
+
+                // Populate table
+                var tbody = document.getElementById('zip-folders-body');
+                tbody.innerHTML = data.folders.map(f =>
+                    '<tr><td><i class="bi bi-folder-fill text-warning"></i> ' + f.name + '</td>' +
+                    '<td class="text-end">' + f.files + '</td>' +
+                    '<td class="text-end">' + f.size_human + '</td></tr>'
+                ).join('');
+
+                document.getElementById('zip-total-files').textContent = data.total_files;
+                document.getElementById('zip-total-size').textContent = data.total_size_human;
+            })
+            .catch(err => {
+                document.getElementById('zip-loading').style.display = 'none';
+                document.getElementById('zip-error').textContent = 'Error al cargar información: ' + err;
+                document.getElementById('zip-error').style.display = 'block';
+                document.getElementById('confirm-zip-btn').disabled = true;
+            });
+    }
+
+    function confirmZipDownload() {
+        if (!currentPath) return;
+        const view = getViewType();
+        // Close modal and start download
+        bootstrap.Modal.getInstance(document.getElementById('zipModal')).hide();
+        window.location.href = '/download-zip/' + encodeURIComponent(currentPath) + '?view=' + view;
     }
 
     function loadFiles(path) {

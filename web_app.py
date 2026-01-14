@@ -1875,62 +1875,196 @@ def download_file(filepath):
         return abort(404)
     return send_from_directory(os.path.dirname(safe_path), os.path.basename(safe_path), as_attachment=True)
 
+@app.route('/api/files/zip-info/<path:folderpath>')
+@requires_auth
+@requires_permission('view_files')
+def api_zip_info(folderpath):
+    """
+    Get information about a folder for ZIP download confirmation.
+    Returns list of subdirectories, file counts, and sizes.
+    """
+    inv = load_inventory()
+    view = request.args.get('view', 'grupo')
+    parts = folderpath.split('/')
+    
+    # Resolve virtual path to physical paths (may return multiple for groups)
+    physical_paths = resolve_zip_paths(folderpath, view, inv)
+    
+    if not physical_paths:
+        return jsonify({'error': 'Path not found', 'folders': []}), 404
+    
+    folders_info = []
+    total_files = 0
+    total_size = 0
+    
+    for ppath in physical_paths:
+        safe_path = os.path.abspath(os.path.join(ARCHIVE_DIR, ppath))
+        if not safe_path.startswith(os.path.abspath(ARCHIVE_DIR)):
+            continue
+        if not os.path.exists(safe_path):
+            continue
+            
+        folder_name = os.path.basename(ppath)
+        file_count = 0
+        folder_size = 0
+        
+        for root, dirs, files in os.walk(safe_path):
+            for f in files:
+                file_count += 1
+                try:
+                    folder_size += os.path.getsize(os.path.join(root, f))
+                except:
+                    pass
+        
+        folders_info.append({
+            'name': folder_name,
+            'path': ppath,
+            'files': file_count,
+            'size': folder_size,
+            'size_human': format_size(folder_size)
+        })
+        total_files += file_count
+        total_size += folder_size
+    
+    return jsonify({
+        'folders': folders_info,
+        'total_files': total_files,
+        'total_size': total_size,
+        'total_size_human': format_size(total_size)
+    })
+
+def format_size(size_bytes):
+    """Format bytes as human-readable string."""
+    for unit in ['B', 'KB', 'MB', 'GB']:
+        if size_bytes < 1024:
+            return f"{size_bytes:.1f} {unit}"
+        size_bytes /= 1024
+    return f"{size_bytes:.1f} TB"
+
+def resolve_zip_paths(folderpath, view, inv):
+    """
+    Resolve virtual path to physical path(s).
+    For groups/localidades, returns list of all device folders.
+    For device folders, returns single path.
+    """
+    parts = folderpath.split('/')
+    physical_paths = []
+    
+    # Direct path - check if it exists
+    direct_path = os.path.join(ARCHIVE_DIR, folderpath)
+    if os.path.exists(direct_path) and os.path.isdir(direct_path):
+        return [folderpath]
+    
+    # Virtual path resolution based on view type
+    if view == 'grupo':
+        # First part might be a group name
+        group_name = parts[0]
+        for group in inv.get('groups', []):
+            if group.get('name', '').lower() == group_name.lower():
+                vendor_folder = normalize_vendor_folder(group.get('vendor', ''))
+                if len(parts) == 1:
+                    # Group level - return all device folders
+                    for device in group.get('devices', []):
+                        sysname = device.get('sysname') or device.get('hostname')
+                        if sysname:
+                            device_path = os.path.join(vendor_folder, sysname)
+                            if os.path.exists(os.path.join(ARCHIVE_DIR, device_path)):
+                                physical_paths.append(device_path)
+                else:
+                    # Device level inside group
+                    device_name = parts[1]
+                    device_path = os.path.join(vendor_folder, device_name)
+                    if os.path.exists(os.path.join(ARCHIVE_DIR, device_path)):
+                        physical_paths.append(device_path)
+                break
+    
+    elif view == 'vendor':
+        # First part is vendor folder
+        vendor_folder = parts[0].lower()
+        if len(parts) >= 2:
+            device_path = os.path.join(vendor_folder, parts[1])
+            if os.path.exists(os.path.join(ARCHIVE_DIR, device_path)):
+                physical_paths.append(device_path)
+        else:
+            # All devices of this vendor
+            vendor_path = os.path.join(ARCHIVE_DIR, vendor_folder)
+            if os.path.exists(vendor_path):
+                for item in os.listdir(vendor_path):
+                    item_path = os.path.join(vendor_folder, item)
+                    if os.path.isdir(os.path.join(ARCHIVE_DIR, item_path)):
+                        physical_paths.append(item_path)
+    
+    elif view == 'localidad':
+        localidad_name = parts[0]
+        for group in inv.get('groups', []):
+            vendor_folder = normalize_vendor_folder(group.get('vendor', ''))
+            for device in group.get('devices', []):
+                device_loc = device.get('localidad', '')
+                if device_loc.lower() == localidad_name.lower():
+                    sysname = device.get('sysname') or device.get('hostname')
+                    if sysname:
+                        if len(parts) == 1 or (len(parts) >= 2 and parts[1].lower() == sysname.lower()):
+                            device_path = os.path.join(vendor_folder, sysname)
+                            if os.path.exists(os.path.join(ARCHIVE_DIR, device_path)):
+                                physical_paths.append(device_path)
+    
+    elif view == 'tipo':
+        tipo_name = parts[0]
+        for group in inv.get('groups', []):
+            vendor_folder = normalize_vendor_folder(group.get('vendor', ''))
+            for device in group.get('devices', []):
+                device_tipo = device.get('tipo', '')
+                if device_tipo.lower() == tipo_name.lower():
+                    sysname = device.get('sysname') or device.get('hostname')
+                    if sysname:
+                        if len(parts) == 1 or (len(parts) >= 2 and parts[1].lower() == sysname.lower()):
+                            device_path = os.path.join(vendor_folder, sysname)
+                            if os.path.exists(os.path.join(ARCHIVE_DIR, device_path)):
+                                physical_paths.append(device_path)
+    
+    return physical_paths
+
 @app.route('/download-zip/<path:folderpath>')
 @requires_auth
 @requires_permission('view_files')
 def download_zip(folderpath):
     """
-    Download a folder as a ZIP file.
-    Streams the ZIP to avoid memory issues with large folders.
+    Download a folder (or multiple folders for groups) as a ZIP file.
     """
     import zipfile
     from io import BytesIO
     
-    # Resolve virtual path to physical path (same logic as file browser)
     inv = load_inventory()
-    parts = folderpath.split('/')
-    physical_path = folderpath
+    view = request.args.get('view', 'grupo')
     
-    # Check if first part is a device sysname and resolve to vendor folder
-    for group in inv.get('groups', []):
-        for device in group.get('devices', []):
-            sysname = device.get('sysname') or device.get('hostname')
-            if sysname and parts[0].lower() == sysname.lower():
-                # Found device, prepend vendor folder
-                vendor_folder = normalize_vendor_folder(group.get('vendor', ''))
-                physical_path = os.path.join(vendor_folder, folderpath)
-                break
+    physical_paths = resolve_zip_paths(folderpath, view, inv)
     
-    # Also try if it's a vendor_folder/sysname format
-    if len(parts) >= 1:
-        for group in inv.get('groups', []):
-            vendor_folder = normalize_vendor_folder(group.get('vendor', ''))
-            if parts[0].lower() == vendor_folder.lower():
-                physical_path = folderpath
-                break
-    
-    safe_path = os.path.abspath(os.path.join(ARCHIVE_DIR, physical_path))
-    
-    # Security check
-    if not safe_path.startswith(os.path.abspath(ARCHIVE_DIR)):
-        return jsonify({'error': 'Access denied'}), 403
-    
-    if not os.path.exists(safe_path):
+    if not physical_paths:
         return jsonify({'error': 'Path not found'}), 404
-    
-    if not os.path.isdir(safe_path):
-        # Single file - just download it directly
-        return send_from_directory(os.path.dirname(safe_path), os.path.basename(safe_path), as_attachment=True)
     
     # Generate ZIP in memory
     memory_file = BytesIO()
     
     with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
-        for root, dirs, files in os.walk(safe_path):
-            for file in files:
-                file_path = os.path.join(root, file)
-                arcname = os.path.relpath(file_path, safe_path)
-                zf.write(file_path, arcname)
+        for ppath in physical_paths:
+            safe_path = os.path.abspath(os.path.join(ARCHIVE_DIR, ppath))
+            if not safe_path.startswith(os.path.abspath(ARCHIVE_DIR)):
+                continue
+            if not os.path.exists(safe_path):
+                continue
+                
+            folder_name = os.path.basename(ppath)
+            
+            if os.path.isdir(safe_path):
+                for root, dirs, files in os.walk(safe_path):
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        # Archive name includes folder name to group files
+                        arcname = os.path.join(folder_name, os.path.relpath(file_path, safe_path))
+                        zf.write(file_path, arcname)
+            else:
+                # Single file
+                zf.write(safe_path, folder_name)
     
     memory_file.seek(0)
     
@@ -1945,6 +2079,7 @@ def download_zip(folderpath):
             'Content-Type': 'application/zip'
         }
     )
+
 
 # ==========================
 # ADMIN: SETTINGS
