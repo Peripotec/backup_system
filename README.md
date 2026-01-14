@@ -1,11 +1,13 @@
 # Network Backup System
 
 Sistema de respaldo automatizado para equipos de red (Huawei, HP, ZTE OLT) con:
-- Ejecución concurrente (ThreadPool)
-- Versionado híbrido (Git para texto, Archivo para binarios)
-- Base de datos SQLite para trazabilidad
-- Dashboard Web (Flask)
-- Notificaciones por Email
+- 🚀 Ejecución concurrente (ThreadPool)
+- 📚 Versionado híbrido (Git para texto, Archivo para binarios)
+- 🗄️ Base de datos SQLite para trazabilidad
+- 🌐 Dashboard Web (Flask) con Dark Mode
+- 🔐 RBAC (Control de acceso basado en roles)
+- 📧 Notificaciones por Email
+- 🔑 Vault encriptado para credenciales
 
 ## Quick Start
 

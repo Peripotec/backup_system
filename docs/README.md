@@ -43,9 +43,8 @@ backup_system/
 │   ├── models.py            # Modelos de datos (Device)
 │   └── notifier.py          # Notificaciones por email
 ├── vendors/
-│   ├── base.py             # Clase base para vendors
+│   ├── base_vendor.py      # Clase base para vendors
 │   ├── huawei.py           # Implementación Huawei
-│   ├── cisco.py            # Implementación Cisco
 │   ├── hp.py               # Implementación HP
 │   └── zte_olt.py          # Implementación ZTE OLT
 ├── templates/              # Templates HTML (Jinja2)
