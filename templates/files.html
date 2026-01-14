@@ -205,6 +205,7 @@
 
     function downloadZip() {
         if (!currentPath) return;
+        zipTargetPath = currentPath;
 
         const view = getViewType();
         const zipModal = new bootstrap.Modal(document.getElementById('zipModal'));
@@ -252,12 +253,65 @@
             });
     }
 
+    var zipTargetPath = ''; // Store path for confirmation
+
+    function downloadZipDir(path) {
+        if (!path) return;
+        zipTargetPath = path;
+
+        const view = getViewType();
+        const zipModal = new bootstrap.Modal(document.getElementById('zipModal'));
+
+        // Reset modal state
+        document.getElementById('zip-loading').style.display = 'block';
+        document.getElementById('zip-content').style.display = 'none';
+        document.getElementById('zip-error').style.display = 'none';
+        document.getElementById('zip-path').textContent = path;
+
+        zipModal.show();
+
+        // Fetch zip info
+        fetch('/api/files/zip-info/' + encodeURIComponent(path) + '?view=' + view)
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('zip-loading').style.display = 'none';
+
+                if (data.error || !data.folders || data.folders.length === 0) {
+                    document.getElementById('zip-error').textContent = data.error || 'No se encontraron archivos para descargar';
+                    document.getElementById('zip-error').style.display = 'block';
+                    document.getElementById('confirm-zip-btn').disabled = true;
+                    return;
+                }
+
+                document.getElementById('confirm-zip-btn').disabled = false;
+                document.getElementById('zip-content').style.display = 'block';
+
+                // Populate table
+                var tbody = document.getElementById('zip-folders-body');
+                tbody.innerHTML = data.folders.map(f =>
+                    '<tr><td><i class="bi bi-folder-fill text-warning"></i> ' + f.name + '</td>' +
+                    '<td class="text-end">' + f.files + '</td>' +
+                    '<td class="text-end">' + f.size_human + '</td></tr>'
+                ).join('');
+
+                document.getElementById('zip-total-files').textContent = data.total_files;
+                document.getElementById('zip-total-size').textContent = data.total_size_human;
+            })
+            .catch(err => {
+                document.getElementById('zip-loading').style.display = 'none';
+                document.getElementById('zip-error').textContent = 'Error al cargar información: ' + err;
+                document.getElementById('zip-error').style.display = 'block';
+                document.getElementById('confirm-zip-btn').disabled = true;
+            });
+    }
+
     function confirmZipDownload() {
-        if (!currentPath) return;
+        const path = zipTargetPath || currentPath;
+        if (!path) return;
         const view = getViewType();
         // Close modal and start download
         bootstrap.Modal.getInstance(document.getElementById('zipModal')).hide();
-        window.location.href = '/download-zip/' + encodeURIComponent(currentPath) + '?view=' + view;
+        window.location.href = '/download-zip/' + encodeURIComponent(path) + '?view=' + view;
     }
 
     function loadFiles(path) {
@@ -300,7 +354,12 @@
             var fp = currentPath ? currentPath + '/' + item.name : item.name;
             var displayName = item.display_name || (isVendorView ? getVendorDisplayName(item.name) : item.name);
             var tooltip = item.display_name ? ' title="' + item.name + '"' : '';
-            list.innerHTML += '<li class="list-group-item file-item d-flex justify-content-between" onclick="loadFiles(\'' + fp + '\')"' + tooltip + '><span>📁 <strong>' + displayName + '</strong></span><button class="btn btn-sm btn-outline-danger delete-btn py-0" onclick="event.stopPropagation(); prepareDelete(\'' + fp + '\', true)">🗑️</button></li>';
+            list.innerHTML += '<li class="list-group-item file-item d-flex justify-content-between" onclick="loadFiles(\'' + fp + '\')"' + tooltip + '>' +
+                '<span>📁 <strong>' + displayName + '</strong></span>' +
+                '<div class="btn-group btn-group-sm">' +
+                '<button class="btn btn-outline-primary py-0" onclick="event.stopPropagation(); downloadZipDir(\'' + fp + '\')" title="Descargar como ZIP">📦</button>' +
+                '<button class="btn btn-outline-danger py-0" onclick="event.stopPropagation(); prepareDelete(\'' + fp + '\', true)">🗑️</button>' +
+                '</div></li>';
         });
         items.filter(i => !i.is_dir).forEach(item => {
             var fp = currentPath ? currentPath + '/' + item.name : item.name;

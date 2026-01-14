@@ -1979,8 +1979,8 @@ def resolve_zip_paths(folderpath, view, inv):
                 break
     
     elif view == 'vendor':
-        # First part is vendor folder
-        vendor_folder = parts[0].lower()
+        # First part is vendor folder - normalize it
+        vendor_folder = normalize_vendor_folder(parts[0])
         if len(parts) >= 2:
             device_path = os.path.join(vendor_folder, parts[1])
             if os.path.exists(os.path.join(ARCHIVE_DIR, device_path)):
