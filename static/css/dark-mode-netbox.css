@@ -1013,3 +1013,125 @@
 [data-theme="dark"] .modal-body .bg-light {
     background-color: var(--nb-bg-dark) !important;
 }
+
+/* ===== FIXES ADICIONALES - 2026-01-14 ===== */
+
+/* === DASHBOARD: Sidebar Body (filtros laterales) === */
+[data-theme="dark"] .sidebar-body {
+    background-color: var(--nb-bg-dark) !important;
+    color: var(--nb-text) !important;
+}
+
+[data-theme="dark"] .filter-group {
+    border-color: var(--nb-border) !important;
+}
+
+/* === GROUPS: Tree-View (grupos automáticos) === */
+[data-theme="dark"] .tree-view {
+    background-color: var(--nb-bg-card) !important;
+    color: var(--nb-text) !important;
+}
+
+[data-theme="dark"] .tree-view__section-header {
+    color: var(--nb-text) !important;
+}
+
+[data-theme="dark"] .tree-view__node-header {
+    color: var(--nb-text) !important;
+}
+
+[data-theme="dark"] .tree-view__node-label {
+    color: var(--nb-text) !important;
+}
+
+[data-theme="dark"] .tree-view__node-count {
+    color: var(--nb-text-muted) !important;
+}
+
+[data-theme="dark"] .tree-view__toggle {
+    color: var(--nb-text-muted) !important;
+}
+
+[data-theme="dark"] .tree-view__device {
+    background-color: var(--nb-bg-dark) !important;
+    color: var(--nb-text) !important;
+    border-color: var(--nb-border) !important;
+}
+
+[data-theme="dark"] .tree-view__device-name {
+    color: var(--nb-text) !important;
+}
+
+[data-theme="dark"] .tree-view__device-ip {
+    color: var(--nb-text-muted) !important;
+}
+
+[data-theme="dark"] .tree-view__device-grupo {
+    color: var(--nb-text-muted) !important;
+}
+
+[data-theme="dark"] .tree-view__children {
+    background-color: var(--nb-bg-dark) !important;
+}
+
+/* === VENDORS: Card spans con texto negro === */
+[data-theme="dark"] .vendor-card {
+    background-color: var(--nb-bg-card) !important;
+    border-color: var(--nb-border) !important;
+}
+
+[data-theme="dark"] .vendor-card span,
+[data-theme="dark"] .vendor-header span,
+[data-theme="dark"] .vendor-name span {
+    color: var(--nb-text) !important;
+}
+
+[data-theme="dark"] .models-list {
+    border-color: var(--nb-border) !important;
+}
+
+[data-theme="dark"] .model-item {
+    border-color: var(--nb-border) !important;
+}
+
+[data-theme="dark"] .model-name,
+[data-theme="dark"] .model-type,
+[data-theme="dark"] .model-desc {
+    color: var(--nb-text) !important;
+}
+
+[data-theme="dark"] .model-desc {
+    color: var(--nb-text-muted) !important;
+}
+
+/* === SETTINGS: Headings h5 y h6 negros === */
+[data-theme="dark"] h5,
+[data-theme="dark"] h6,
+[data-theme="dark"] .tab-pane h5,
+[data-theme="dark"] .tab-pane h6 {
+    color: var(--nb-text) !important;
+}
+
+/* === SETTINGS: Schedule sections === */
+[data-theme="dark"] .schedule-section h6 {
+    color: var(--nb-text) !important;
+}
+
+/* === General: Todos los headings === */
+[data-theme="dark"] h1,
+[data-theme="dark"] h2,
+[data-theme="dark"] h3,
+[data-theme="dark"] h4 {
+    color: var(--nb-text) !important;
+}
+
+/* === HR separadores === */
+[data-theme="dark"] hr {
+    border-color: var(--nb-border) !important;
+    opacity: 0.5;
+}
+
+/* === Alert info con herencia === */
+[data-theme="dark"] .alert-info strong {
+    color: var(--nb-info) !important;
+}
