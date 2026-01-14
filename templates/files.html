@@ -63,11 +63,17 @@
                 <input type="text" class="form-control form-control-sm mb-2" id="search-input"
                     placeholder="🔍 Buscar archivo..." onkeyup="filterFiles()">
 
-                <nav>
-                    <ol class="breadcrumb bg-light p-2 rounded mb-0" id="breadcrumb">
-                        <li class="breadcrumb-item"><a href="#" onclick="loadFiles('')">root</a></li>
-                    </ol>
-                </nav>
+                <div class="d-flex align-items-center gap-2 mb-0">
+                    <nav class="flex-grow-1">
+                        <ol class="breadcrumb bg-light p-2 rounded mb-0" id="breadcrumb">
+                            <li class="breadcrumb-item"><a href="#" onclick="loadFiles('')">root</a></li>
+                        </ol>
+                    </nav>
+                    <a href="#" class="btn btn-outline-primary btn-sm" id="download-zip-btn" style="display:none;"
+                        onclick="downloadZip()" title="Descargar carpeta como ZIP">
+                        📦 ZIP
+                    </a>
+                </div>
             </div>
             <ul class="list-group list-group-flush" id="file-list" style="max-height: 500px; overflow-y: auto;"></ul>
         </div>
@@ -141,6 +147,18 @@
             });
         }
         document.getElementById('breadcrumb').innerHTML = html;
+
+        // Show/hide ZIP download button based on whether we have a path
+        var zipBtn = document.getElementById('download-zip-btn');
+        if (zipBtn) {
+            zipBtn.style.display = path ? 'inline-block' : 'none';
+        }
+    }
+
+    function downloadZip() {
+        if (!currentPath) return;
+        // Navigate to ZIP download endpoint
+        window.location.href = '/download-zip/' + encodeURIComponent(currentPath);
     }
 
     function loadFiles(path) {

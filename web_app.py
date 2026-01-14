@@ -1875,6 +1875,77 @@ def download_file(filepath):
         return abort(404)
     return send_from_directory(os.path.dirname(safe_path), os.path.basename(safe_path), as_attachment=True)
 
+@app.route('/download-zip/<path:folderpath>')
+@requires_auth
+@requires_permission('view_files')
+def download_zip(folderpath):
+    """
+    Download a folder as a ZIP file.
+    Streams the ZIP to avoid memory issues with large folders.
+    """
+    import zipfile
+    from io import BytesIO
+    
+    # Resolve virtual path to physical path (same logic as file browser)
+    inv = load_inventory()
+    parts = folderpath.split('/')
+    physical_path = folderpath
+    
+    # Check if first part is a device sysname and resolve to vendor folder
+    for group in inv.get('groups', []):
+        for device in group.get('devices', []):
+            sysname = device.get('sysname') or device.get('hostname')
+            if sysname and parts[0].lower() == sysname.lower():
+                # Found device, prepend vendor folder
+                vendor_folder = normalize_vendor_folder(group.get('vendor', ''))
+                physical_path = os.path.join(vendor_folder, folderpath)
+                break
+    
+    # Also try if it's a vendor_folder/sysname format
+    if len(parts) >= 1:
+        for group in inv.get('groups', []):
+            vendor_folder = normalize_vendor_folder(group.get('vendor', ''))
+            if parts[0].lower() == vendor_folder.lower():
+                physical_path = folderpath
+                break
+    
+    safe_path = os.path.abspath(os.path.join(ARCHIVE_DIR, physical_path))
+    
+    # Security check
+    if not safe_path.startswith(os.path.abspath(ARCHIVE_DIR)):
+        return jsonify({'error': 'Access denied'}), 403
+    
+    if not os.path.exists(safe_path):
+        return jsonify({'error': 'Path not found'}), 404
+    
+    if not os.path.isdir(safe_path):
+        # Single file - just download it directly
+        return send_from_directory(os.path.dirname(safe_path), os.path.basename(safe_path), as_attachment=True)
+    
+    # Generate ZIP in memory
+    memory_file = BytesIO()
+    
+    with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for root, dirs, files in os.walk(safe_path):
+            for file in files:
+                file_path = os.path.join(root, file)
+                arcname = os.path.relpath(file_path, safe_path)
+                zf.write(file_path, arcname)
+    
+    memory_file.seek(0)
+    
+    # Generate filename from path
+    zip_filename = folderpath.replace('/', '_').replace('\\', '_') + '.zip'
+    
+    return Response(
+        memory_file.getvalue(),
+        mimetype='application/zip',
+        headers={
+            'Content-Disposition': f'attachment; filename="{zip_filename}"',
+            'Content-Type': 'application/zip'
+        }
+    )
+
 # ==========================
 # ADMIN: SETTINGS
 # ==========================
