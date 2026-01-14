@@ -206,20 +206,30 @@
             }
         });
 
-        // Sanitize filter options - remove undefined/null/empty
-        function safeOptions(arr) {
+        // Convert API options to FilterBar format {value, label}
+        // Handles both strings and objects {id, name}
+        function toFilterOptions(arr) {
             return (arr || [])
-                .filter(v => v !== undefined && v !== null && String(v).trim() !== '' && v !== 'undefined')
-                .map(v => String(v).trim());
+                .filter(v => v !== undefined && v !== null && v !== 'undefined')
+                .map(v => {
+                    if (typeof v === 'object' && v !== null) {
+                        // Object with id/name from API
+                        return { value: v.id || v.value || '', label: v.name || v.label || v.id || '' };
+                    }
+                    // Simple string
+                    const str = String(v).trim();
+                    return str ? { value: str, label: str.charAt(0).toUpperCase() + str.slice(1) } : null;
+                })
+                .filter(v => v !== null && v.value !== '');
         }
 
         // Load filter options
         fetch('/api/filter-options').then(r => r.json()).then(opts => {
-            filterBar.populateFilter('localidad', safeOptions(opts.localidades));
-            filterBar.populateFilter('troncal', safeOptions(opts.troncales));
-            filterBar.populateFilter('tipo', safeOptions(opts.tipos));
-            filterBar.populateFilter('vendor', safeOptions(opts.vendors));
-            filterBar.populateFilter('grupo', safeOptions(opts.grupos));
+            filterBar.populateFilter('localidad', toFilterOptions(opts.localidades));
+            filterBar.populateFilter('troncal', toFilterOptions(opts.troncales));
+            filterBar.populateFilter('tipo', toFilterOptions(opts.tipos));
+            filterBar.populateFilter('vendor', toFilterOptions(opts.vendors));
+            filterBar.populateFilter('grupo', toFilterOptions(opts.grupos));
             loadDevices();
         });
 

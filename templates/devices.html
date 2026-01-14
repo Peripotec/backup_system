@@ -277,14 +277,29 @@
             }
         });
 
+        // Convert API options to FilterBar format {value, label}
+        // Handles both strings and objects {id, name}
+        function toFilterOptions(arr) {
+            return (arr || [])
+                .filter(v => v !== undefined && v !== null && v !== 'undefined')
+                .map(v => {
+                    if (typeof v === 'object' && v !== null) {
+                        return { value: v.id || v.value || '', label: v.name || v.label || v.id || '' };
+                    }
+                    const str = String(v).trim();
+                    return str ? { value: str, label: str.charAt(0).toUpperCase() + str.slice(1) } : null;
+                })
+                .filter(v => v !== null && v.value !== '');
+        }
+
         // Load filter options from API
         fetch('/api/filter-options').then(r => r.json()).then(opts => {
-            filterBar.populateFilter('localidad', opts.localidades);
-            filterBar.populateFilter('troncal', opts.troncales);
-            filterBar.populateFilter('tipo', opts.tipos);
-            filterBar.populateFilter('vendor', opts.vendors);
-            filterBar.populateFilter('grupo', opts.grupos);
-            filterBar.populateFilter('tag', opts.tags);
+            filterBar.populateFilter('localidad', toFilterOptions(opts.localidades));
+            filterBar.populateFilter('troncal', toFilterOptions(opts.troncales));
+            filterBar.populateFilter('tipo', toFilterOptions(opts.tipos));
+            filterBar.populateFilter('vendor', toFilterOptions(opts.vendors));
+            filterBar.populateFilter('grupo', toFilterOptions(opts.grupos));
+            filterBar.populateFilter('tag', toFilterOptions(opts.tags));
 
             // Initial load with URL params already applied by FilterBar
             loadDevices();
