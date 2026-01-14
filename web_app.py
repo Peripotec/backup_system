@@ -1394,11 +1394,48 @@ def api_list_files(subpath=""):
 @app.route('/api/files/content/<path:filepath>')
 def api_file_content(filepath):
     base = ARCHIVE_DIR
-    target = os.path.abspath(os.path.join(base, filepath))
+    
+    # Helper function to resolve virtual path to physical path
+    def resolve_virtual_path(vpath):
+        """
+        Resolve virtual browser path to physical archive path.
+        Virtual: grupo/Huawei/DEVICE/file.cfg or localidad/cello/DEVICE/file.cfg
+        Physical: vendor/DEVICE/file.cfg (e.g., huawei/DEVICE/file.cfg)
+        """
+        parts = vpath.split('/')
+        if len(parts) < 2:
+            return vpath  # Already physical or too short
+        
+        # Find the device in the path and lookup its physical location
+        inv = load_inventory()
+        
+        # Try to find a device match anywhere in the path
+        for i, part in enumerate(parts):
+            for g in inv.get('groups', []):
+                for d in g.get('devices', []):
+                    sysname = d.get('sysname') or d.get('hostname')
+                    if sysname and sysname.lower() == part.lower():
+                        # Found device! Build physical path
+                        vendor = g.get('vendor', '').lower()
+                        remaining = '/'.join(parts[i+1:]) if i+1 < len(parts) else ''
+                        if remaining:
+                            return os.path.join(vendor, sysname, remaining)
+                        else:
+                            return os.path.join(vendor, sysname)
+        
+        # Fallback: return as-is (might already be physical)
+        return vpath
+    
+    # Resolve virtual path to physical
+    physical_path = resolve_virtual_path(filepath)
+    
+    target = os.path.abspath(os.path.join(base, physical_path))
     if not target.startswith(os.path.abspath(base)):
         return jsonify({"error": "Access denied"}), 403
     
     if not os.path.isfile(target):
+        # Log for debugging
+        log.debug(f"File not found: {target} (original path: {filepath})")
         return jsonify({"error": "File not found"}), 404
     
     try:
@@ -1407,6 +1444,7 @@ def api_file_content(filepath):
         return jsonify({"filename": os.path.basename(filepath), "content": content})
     except Exception:
         return jsonify({"error": "Cannot read file"}), 500
+
 
 @app.route('/api/files/delete/<path:filepath>', methods=['DELETE'])
 @requires_auth
