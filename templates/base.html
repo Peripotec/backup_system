@@ -165,6 +165,41 @@
             font-size: 0.75rem;
         }
 
+        .search-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.4rem;
+        }
+
+        .search-item-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.3rem;
+        }
+
+        .search-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.7rem;
+            color: #94a3b8;
+            text-decoration: none;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            transition: all 0.15s;
+        }
+
+        .search-action:hover {
+            background: var(--accent);
+            color: white;
+        }
+
+        .search-action i {
+            font-size: 0.75rem;
+        }
+
         .global-search-empty {
             padding: 1rem;
             color: #94a3b8;
@@ -635,10 +670,19 @@
                             resultsContainer.innerHTML = '<div class="global-search-empty">No se encontraron dispositivos</div>';
                         } else {
                             resultsContainer.innerHTML = currentResults.map((r, i) =>
-                                '<div class="global-search-item" data-index="' + i + '">' +
+                                '<div class="global-search-item" data-index="' + i + '" data-sysname="' + r.sysname + '" data-vendor="' + r.vendor + '">' +
+                                '<div class="search-item-header">' +
                                 '<div class="device-name">' + (r.nombre || r.sysname) + '</div>' +
                                 '<div class="device-ip">' + r.ip + '</div>' +
-                                '<div class="device-meta">' + r.grupo + ' · ' + (r.tipo || r.vendor) + '</div>' +
+                                '</div>' +
+                                '<div class="search-item-actions">' +
+                                '<a href="/files?device=' + encodeURIComponent(r.sysname) + '&vendor=' + encodeURIComponent(r.vendor) + '" class="search-action" title="Ver archivos de backup">' +
+                                '<i class="bi bi-folder2-open"></i> Archivos</a>' +
+                                '<a href="/diff/' + encodeURIComponent(r.vendor) + '/' + encodeURIComponent(r.sysname) + '" class="search-action" title="Ver historial de cambios">' +
+                                '<i class="bi bi-clock-history"></i> Historial</a>' +
+                                '<a href="/inventory/devices?search=' + encodeURIComponent(r.sysname) + '" class="search-action" title="Editar dispositivo">' +
+                                '<i class="bi bi-pencil"></i> Editar</a>' +
+                                '</div>' +
                                 '</div>'
                             ).join('');
                         }
@@ -650,9 +694,12 @@
             }
 
             function navigateToResult(index) {
+                // Con el nuevo diseño, la navegación se hace via los links directamente
+                // Esta función ahora solo expande/colapsa para teclado
                 if (index >= 0 && index < currentResults.length) {
                     var r = currentResults[index];
-                    window.location.href = '/inventory/devices?search=' + encodeURIComponent(r.sysname);
+                    // Default: ir a archivos (opción más común para un sistema de backup)
+                    window.location.href = '/files?device=' + encodeURIComponent(r.sysname) + '&vendor=' + encodeURIComponent(r.vendor);
                 }
             }
 
