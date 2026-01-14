@@ -1375,8 +1375,8 @@ def api_list_files(subpath=""):
         for d in g.get('devices', []):
             if (d.get('sysname') or d.get('hostname')).lower() == device_name.lower():
                 # Physical folder structure: /archive/{vendor}/{sysname}/
-                # vendor_name comes from group's vendor (lowercased, as used by engine)
-                vendor_name = g.get('vendor', '').lower()
+                # Normalize vendor name: remove underscores (zte_olt -> zteolt)
+                vendor_name = g.get('vendor', '').lower().replace('_', '')
                 device_folder_name = d.get('sysname') or d.get('hostname')
                 phys_path = os.path.join(vendor_name, device_folder_name)
                 break
@@ -1416,7 +1416,8 @@ def api_file_content(filepath):
                     sysname = d.get('sysname') or d.get('hostname')
                     if sysname and sysname.lower() == part.lower():
                         # Found device! Build physical path
-                        vendor = g.get('vendor', '').lower()
+                        # Normalize vendor name: remove underscores (zte_olt -> zteolt)
+                        vendor = g.get('vendor', '').lower().replace('_', '')
                         remaining = '/'.join(parts[i+1:]) if i+1 < len(parts) else ''
                         if remaining:
                             return os.path.join(vendor, sysname, remaining)
