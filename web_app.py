@@ -48,6 +48,38 @@ app.config['SESSION_COOKIE_NAME'] = 'backup_session'
 
 # Rate limiting storage (in-memory, resets on restart)
 login_attempts = defaultdict(lambda: {'count': 0, 'blocked_until': None})
+
+# ===========================================
+# VENDOR FOLDER MAPPING
+# ===========================================
+# The backup engine creates folders using the Python class name lowercased.
+# This maps inventory vendor values to physical folder names.
+VENDOR_FOLDER_MAP = {
+    'hp': 'hp',
+    'huawei': 'huawei', 
+    'zte_olt': 'zteolt',  # Class ZteOlt -> folder 'zteolt'
+    'cisco': 'cisco',
+    'mikrotik': 'mikrotik',
+    'juniper': 'juniper',
+    'fortinet': 'fortinet',
+}
+
+def normalize_vendor_folder(vendor):
+    """
+    Convert inventory vendor value to physical folder name.
+    The backup engine uses ClassName.lower() for folders.
+    Examples:
+        'zte_olt' -> 'zteolt' (class ZteOlt)
+        'huawei' -> 'huawei' (class Huawei)
+    """
+    if not vendor:
+        return ''
+    vendor_lower = vendor.lower()
+    if vendor_lower in VENDOR_FOLDER_MAP:
+        return VENDOR_FOLDER_MAP[vendor_lower]
+    # Fallback: remove underscores and lowercase (matches class naming convention)
+    return vendor_lower.replace('_', '')
+
 MAX_LOGIN_ATTEMPTS = 5
 LOGIN_BLOCK_DURATION = 300  # 5 minutes
 
@@ -1375,8 +1407,7 @@ def api_list_files(subpath=""):
         for d in g.get('devices', []):
             if (d.get('sysname') or d.get('hostname')).lower() == device_name.lower():
                 # Physical folder structure: /archive/{vendor}/{sysname}/
-                # Normalize vendor name: remove underscores (zte_olt -> zteolt)
-                vendor_name = g.get('vendor', '').lower().replace('_', '')
+                vendor_name = normalize_vendor_folder(g.get('vendor', ''))
                 device_folder_name = d.get('sysname') or d.get('hostname')
                 phys_path = os.path.join(vendor_name, device_folder_name)
                 break
@@ -1416,8 +1447,7 @@ def api_file_content(filepath):
                     sysname = d.get('sysname') or d.get('hostname')
                     if sysname and sysname.lower() == part.lower():
                         # Found device! Build physical path
-                        # Normalize vendor name: remove underscores (zte_olt -> zteolt)
-                        vendor = g.get('vendor', '').lower().replace('_', '')
+                        vendor = normalize_vendor_folder(g.get('vendor', ''))
                         remaining = '/'.join(parts[i+1:]) if i+1 < len(parts) else ''
                         if remaining:
                             return os.path.join(vendor, sysname, remaining)
