@@ -9,78 +9,100 @@
 
 :root {
     /* === Colores Base - Modo Claro === */
-    --ds-bg-base: #f1f5f9;          /* Fondo principal */
-    --ds-bg-surface: #ffffff;        /* Cards, paneles */
-    --ds-bg-elevated: #f8fafc;       /* Elementos elevados */
-    --ds-bg-input: #ffffff;          /* Inputs */
-    --ds-bg-hover: #e2e8f0;          /* Hover sobre elementos */
-    
+    --ds-bg-base: #f1f5f9;
+    /* Fondo principal */
+    --ds-bg-surface: #ffffff;
+    /* Cards, paneles */
+    --ds-bg-elevated: #f8fafc;
+    /* Elementos elevados */
+    --ds-bg-input: #ffffff;
+    /* Inputs */
+    --ds-bg-hover: #e2e8f0;
+    /* Hover sobre elementos */
+
     /* Texto */
-    --ds-text-primary: #1e293b;      /* Texto principal */
-    --ds-text-secondary: #475569;    /* Texto secundario */
-    --ds-text-muted: #64748b;        /* Texto deshabilitado/hint */
-    --ds-text-inverse: #ffffff;      /* Texto sobre fondos oscuros */
-    
+    --ds-text-primary: #1e293b;
+    /* Texto principal */
+    --ds-text-secondary: #475569;
+    /* Texto secundario */
+    --ds-text-muted: #64748b;
+    /* Texto deshabilitado/hint */
+    --ds-text-inverse: #ffffff;
+    /* Texto sobre fondos oscuros */
+
     /* Bordes */
     --ds-border-color: #e2e8f0;
     --ds-border-color-strong: #cbd5e1;
-    
+
     /* Colores Semánticos */
     --ds-primary: #3b82f6;
     --ds-primary-hover: #2563eb;
     --ds-primary-light: #dbeafe;
-    
+
     --ds-success: #22c55e;
     --ds-success-hover: #16a34a;
     --ds-success-light: #dcfce7;
-    
+
     --ds-warning: #f59e0b;
     --ds-warning-hover: #d97706;
     --ds-warning-light: #fef3c7;
-    
+
     --ds-danger: #ef4444;
     --ds-danger-hover: #dc2626;
     --ds-danger-light: #fee2e2;
-    
+
     --ds-info: #06b6d4;
     --ds-info-hover: #0891b2;
     --ds-info-light: #cffafe;
-    
+
     /* Sidebar (siempre oscuro) */
     --ds-sidebar-bg: #1e293b;
     --ds-sidebar-text: #f1f5f9;
     --ds-sidebar-hover: rgba(255, 255, 255, 0.1);
     --ds-sidebar-active: rgba(59, 130, 246, 0.2);
-    
+
     /* Espaciado */
-    --ds-space-1: 0.25rem;   /* 4px */
-    --ds-space-2: 0.5rem;    /* 8px */
-    --ds-space-3: 0.75rem;   /* 12px */
-    --ds-space-4: 1rem;      /* 16px */
-    --ds-space-5: 1.5rem;    /* 24px */
-    --ds-space-6: 2rem;      /* 32px */
-    
+    --ds-space-1: 0.25rem;
+    /* 4px */
+    --ds-space-2: 0.5rem;
+    /* 8px */
+    --ds-space-3: 0.75rem;
+    /* 12px */
+    --ds-space-4: 1rem;
+    /* 16px */
+    --ds-space-5: 1.5rem;
+    /* 24px */
+    --ds-space-6: 2rem;
+    /* 32px */
+
     /* Bordes redondeados */
     --ds-radius-sm: 0.25rem;
     --ds-radius-md: 0.375rem;
     --ds-radius-lg: 0.5rem;
     --ds-radius-xl: 0.75rem;
-    
+
     /* Sombras */
     --ds-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
     --ds-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
     --ds-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
-    
+
     /* Tipografía */
     --ds-font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    --ds-font-size-xs: 0.75rem;    /* 12px */
-    --ds-font-size-sm: 0.8125rem;  /* 13px */
-    --ds-font-size-base: 0.875rem; /* 14px */
-    --ds-font-size-md: 1rem;       /* 16px */
-    --ds-font-size-lg: 1.125rem;   /* 18px */
-    --ds-font-size-xl: 1.25rem;    /* 20px */
-    --ds-font-size-2xl: 1.5rem;    /* 24px */
-    
+    --ds-font-size-xs: 0.75rem;
+    /* 12px */
+    --ds-font-size-sm: 0.8125rem;
+    /* 13px */
+    --ds-font-size-base: 0.875rem;
+    /* 14px */
+    --ds-font-size-md: 1rem;
+    /* 16px */
+    --ds-font-size-lg: 1.125rem;
+    /* 18px */
+    --ds-font-size-xl: 1.25rem;
+    /* 20px */
+    --ds-font-size-2xl: 1.5rem;
+    /* 24px */
+
     /* Transiciones */
     --ds-transition-fast: 150ms ease;
     --ds-transition-normal: 250ms ease;
@@ -91,41 +113,41 @@
 [data-theme="dark"] {
     --ds-bg-base: #0f172a;
     --ds-bg-surface: #1e293b;
-    --ds-bg-elevated: #334155;
-    --ds-bg-input: #334155;
-    --ds-bg-hover: #475569;
-    
+    --ds-bg-elevated: #283548;
+    --ds-bg-input: #1e293b;
+    --ds-bg-hover: #3b4a5e;
+
     --ds-text-primary: #f1f5f9;
     --ds-text-secondary: #cbd5e1;
     --ds-text-muted: #94a3b8;
     --ds-text-inverse: #1e293b;
-    
-    --ds-border-color: #334155;
-    --ds-border-color-strong: #475569;
-    
+
+    --ds-border-color: #3b4a5e;
+    --ds-border-color-strong: #526078;
+
     /* Colores semánticos ajustados para dark mode */
     --ds-primary: #60a5fa;
     --ds-primary-hover: #3b82f6;
     --ds-primary-light: rgba(59, 130, 246, 0.2);
-    
+
     --ds-success: #4ade80;
     --ds-success-hover: #22c55e;
     --ds-success-light: rgba(34, 197, 94, 0.2);
-    
+
     --ds-warning: #fbbf24;
     --ds-warning-hover: #f59e0b;
     --ds-warning-light: rgba(245, 158, 11, 0.2);
-    
+
     --ds-danger: #f87171;
     --ds-danger-hover: #ef4444;
     --ds-danger-light: rgba(239, 68, 68, 0.2);
-    
+
     --ds-info: #22d3ee;
     --ds-info-hover: #06b6d4;
     --ds-info-light: rgba(6, 182, 212, 0.2);
-    
+
     --ds-sidebar-bg: #0f172a;
-    
+
     /* Sombras dark mode */
     --ds-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
     --ds-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
@@ -141,8 +163,8 @@ body {
     color: var(--ds-text-primary);
     font-family: var(--ds-font-family);
     font-size: var(--ds-font-size-base);
-    transition: background-color var(--ds-transition-normal), 
-                color var(--ds-transition-normal);
+    transition: background-color var(--ds-transition-normal),
+        color var(--ds-transition-normal);
 }
 
 /* =====================================================
@@ -158,7 +180,7 @@ body {
 }
 
 .ds-card-header,
-.card-header {
+.card-header:not(.bg-primary):not(.bg-secondary):not(.bg-success):not(.bg-danger):not(.bg-warning):not(.bg-info) {
     background-color: var(--ds-bg-elevated);
     border-bottom: 1px solid var(--ds-border-color);
     color: var(--ds-text-primary);
@@ -320,8 +342,8 @@ body {
     border: 1px solid var(--ds-border-color);
     border-radius: var(--ds-radius-md);
     color: var(--ds-text-primary);
-    transition: border-color var(--ds-transition-fast), 
-                box-shadow var(--ds-transition-fast);
+    transition: border-color var(--ds-transition-fast),
+        box-shadow var(--ds-transition-fast);
 }
 
 .ds-input:focus,
@@ -621,17 +643,35 @@ pre {
    ===================================================== */
 
 /* Backgrounds */
-.ds-bg-base { background-color: var(--ds-bg-base) !important; }
-.ds-bg-surface { background-color: var(--ds-bg-surface) !important; }
-.ds-bg-elevated { background-color: var(--ds-bg-elevated) !important; }
+.ds-bg-base {
+    background-color: var(--ds-bg-base) !important;
+}
+
+.ds-bg-surface {
+    background-color: var(--ds-bg-surface) !important;
+}
+
+.ds-bg-elevated {
+    background-color: var(--ds-bg-elevated) !important;
+}
 
 /* Texto */
-.ds-text-primary { color: var(--ds-text-primary) !important; }
-.ds-text-secondary { color: var(--ds-text-secondary) !important; }
-.ds-text-muted { color: var(--ds-text-muted) !important; }
+.ds-text-primary {
+    color: var(--ds-text-primary) !important;
+}
+
+.ds-text-secondary {
+    color: var(--ds-text-secondary) !important;
+}
+
+.ds-text-muted {
+    color: var(--ds-text-muted) !important;
+}
 
 /* Bordes */
-.ds-border { border-color: var(--ds-border-color) !important; }
+.ds-border {
+    border-color: var(--ds-border-color) !important;
+}
 
 /* Fix para Bootstrap bg-light en dark mode */
 .bg-light {
@@ -683,6 +723,26 @@ pre {
 /* Btn close en dark mode */
 [data-theme="dark"] .btn-close {
     filter: invert(1);
+}
+
+/* Mejora contraste de inputs en dark mode */
+[data-theme="dark"] .form-control,
+[data-theme="dark"] .form-select {
+    background-color: #1e293b;
+    border-color: #475569;
+}
+
+[data-theme="dark"] .form-control:focus,
+[data-theme="dark"] .form-select:focus {
+    border-color: var(--ds-primary);
+    background-color: #243447;
+}
+
+/* Mejor contraste para table headers en dark mode */
+[data-theme="dark"] .table-dark,
+[data-theme="dark"] thead.table-dark {
+    --bs-table-bg: #1e293b;
+    --bs-table-border-color: #475569;
 }
 
 /* Accordion */
