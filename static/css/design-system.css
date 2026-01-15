@@ -200,6 +200,22 @@ body {
     border-top: 1px solid var(--ds-border-color);
 }
 
+/* Toolbar/FilterBar que sigue al header - separador visual */
+.card-header+.bg-light,
+.card-header+div>.bg-light:first-child {
+    border-top: 2px solid var(--ds-border-color-strong);
+}
+
+/* Dark mode: bg-light debe ser distinguible */
+[data-theme="dark"] .bg-light {
+    background-color: #1e293b !important;
+    border-color: #334155;
+}
+
+[data-theme="dark"] .bg-light.border-bottom {
+    border-bottom-color: #475569 !important;
+}
+
 /* =====================================================
    4. COMPONENTES - BOTONES
    ===================================================== */
@@ -745,33 +761,40 @@ pre {
     --bs-table-border-color: #475569;
 }
 
-/* Soporte para table-secondary en dark mode (Group headers) - Mejor contraste */
+/* Soporte para table-secondary en dark mode (Group headers) - ALTO contraste */
 [data-theme="dark"] .table-secondary {
-    background-color: #2d3748 !important;
-    /* Distinguible del fondo pero no estridente */
-    --bs-table-bg: #2d3748;
-    --bs-table-border-color: #4a5568;
-    color: #e2e8f0;
-    /* Texto claro para buen contraste */
+    background-color: #3d4f5c !important;
+    /* Gris-azulado más oscuro y distintivo */
+    --bs-table-bg: #3d4f5c;
+    --bs-table-border-color: #5a6d7a;
+    color: #ffffff;
+    /* Texto blanco para máximo contraste */
 }
 
 [data-theme="dark"] .table-secondary td,
 [data-theme="dark"] .table-secondary th {
-    color: #e2e8f0;
+    color: #ffffff;
 }
 
 [data-theme="dark"] .table-secondary .badge.bg-secondary {
-    background-color: #4a5568 !important;
-    color: #e2e8f0;
+    background-color: #5a6d7a !important;
+    color: #ffffff;
 }
 
-/* Fix para selects/inputs saturados en dark mode */
+/* Fix para selects/inputs saturados en dark mode - BORDE VISIBLE */
 [data-theme="dark"] .form-select,
 [data-theme="dark"] .form-control {
     background-color: #0f172a;
-    /* Más oscuro que el card */
-    border-color: #334155;
+    /* Fondo oscuro */
+    border: 1px solid #64748b;
+    /* Borde gris visible */
     color: #f1f5f9;
+}
+
+[data-theme="dark"] .form-control:focus,
+[data-theme="dark"] .form-select:focus {
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.25);
 }
 
 [data-theme="dark"] .btn-outline-primary {
