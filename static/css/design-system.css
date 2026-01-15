@@ -770,6 +770,40 @@ pre {
     --bs-table-border-color: #475569;
 }
 
+/* TABLAS COMPLETAS en dark mode - filas normales oscuras */
+[data-theme="dark"] .table {
+    --bs-table-bg: #0f172a;
+    --bs-table-color: #e2e8f0;
+    --bs-table-border-color: #334155;
+    background-color: #0f172a;
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .table>tbody>tr {
+    background-color: #0f172a;
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .table>tbody>tr>td {
+    background-color: #0f172a;
+    color: #e2e8f0;
+    border-color: #334155;
+}
+
+/* Table striped - filas alternadas más claras */
+[data-theme="dark"] .table-striped>tbody>tr:nth-of-type(odd)>td {
+    background-color: #1e293b;
+}
+
+[data-theme="dark"] .table-striped>tbody>tr:nth-of-type(even)>td {
+    background-color: #0f172a;
+}
+
+/* Table hover - efecto hover visible */
+[data-theme="dark"] .table-hover>tbody>tr:hover>td {
+    background-color: #334155 !important;
+}
+
 /* Soporte para table-secondary en dark mode (Group headers) - ALTO contraste */
 [data-theme="dark"] .table-secondary {
     background-color: #3d4f5c !important;
