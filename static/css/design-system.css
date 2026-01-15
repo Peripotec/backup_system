@@ -128,9 +128,10 @@
     --ds-border-color-strong: #526078;
 
     /* Colores semánticos ajustados para dark mode */
-    --ds-primary: #60a5fa;
+    --ds-primary: #4b86e0;
+    /* Less electric/neon, more calming blue */
     --ds-primary-hover: #3b82f6;
-    --ds-primary-light: rgba(59, 130, 246, 0.2);
+    --ds-primary-light: rgba(75, 134, 224, 0.2);
 
     --ds-success: #4ade80;
     --ds-success-hover: #22c55e;

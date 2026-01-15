@@ -342,9 +342,11 @@
         // Render grouped
         Object.keys(data.grouped).sort().forEach(key => {
             var devices = data.grouped[key];
-            tbody.innerHTML += '<tr class="table-secondary"><td colspan="7"><strong>' +
+            // Fix: Improved contrast for group headers + Icon
+            tbody.innerHTML += '<tr class="group-header"><td colspan="7" class="bg-dark text-white py-2 ps-3" style="--bs-bg-opacity: .8;"><strong>' +
+                '<i class="bi bi-folder2-open me-2"></i>' +
                 key.charAt(0).toUpperCase() + key.slice(1) + '</strong> ' +
-                '<span class="badge bg-secondary">' + devices.length + '</span></td></tr>';
+                '<span class="badge bg-light text-dark ms-2">' + devices.length + '</span></td></tr>';
 
             devices.forEach(d => {
                 var sysname = d.sysname || d.hostname;
@@ -379,8 +381,9 @@
                     ).join('');
                 }
 
+                // Fix: Added ps-5 (padding) and border-start to create "sangría" (indentation)
                 tbody.innerHTML += '<tr>' +
-                    '<td><a href="#" onclick="openEditDeviceModal(\'' + d.group_name + '\', ' + JSON.stringify(d).replace(/"/g, '&quot;') + '); return false;"><strong>' + nombre + '</strong></a>' + sysnameSecondary +
+                    '<td class="ps-5 border-start border-3 border-secondary" style="border-left-color: var(--ds-border-color) !important;"><a href="#" onclick="openEditDeviceModal(\'' + d.group_name + '\', ' + JSON.stringify(d).replace(/"/g, '&quot;') + '); return false;"><strong>' + nombre + '</strong></a>' + sysnameSecondary +
                     (tagsHtml ? '<div class="mt-1">' + tagsHtml + '</div>' : '') + '</td>' +
                     '<td><code class="clickable-ip" onclick="copyToClipboard(\'' + d.ip + '\')" title="Click para copiar">' + d.ip + '</code></td>' +
                     '<td>' + locBadge + '</td>' +
