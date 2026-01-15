@@ -30,9 +30,11 @@
     --ds-text-inverse: #ffffff;
     /* Texto sobre fondos oscuros */
 
-    /* Bordes */
-    --ds-border-color: #e2e8f0;
-    --ds-border-color-strong: #cbd5e1;
+    /* Bordes - Slightly increased contrast for definition */
+    --ds-border-color: #cbd5e1;
+    /* Was #e2e8f0 */
+    --ds-border-color-strong: #94a3b8;
+    /* Was #cbd5e1 */
 
     /* Colores Semánticos */
     --ds-primary: #3b82f6;
@@ -186,6 +188,12 @@ body {
     color: var(--ds-text-primary);
     font-weight: 600;
     padding: var(--ds-space-3) var(--ds-space-4);
+    /* Slight gradient for depth */
+    background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0));
+}
+
+[data-theme="dark"] .card-header:not(.bg-primary):not(.bg-secondary):not(.bg-success):not(.bg-danger):not(.bg-warning):not(.bg-info) {
+    background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0));
 }
 
 .ds-card-body,
@@ -377,6 +385,7 @@ label {
    6. COMPONENTES - TABLAS
    ===================================================== */
 
+/* Table specific improvements for data density and readability */
 .ds-table,
 .table {
     --bs-table-bg: var(--ds-bg-surface);
@@ -387,9 +396,15 @@ label {
 .ds-table thead th,
 .table thead th {
     background-color: var(--ds-bg-elevated);
-    border-bottom: 2px solid var(--ds-border-color);
-    color: var(--ds-text-primary);
+    border-bottom: 2px solid var(--ds-border-color-strong);
+    color: var(--ds-text-secondary);
     font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    /* Smaller, clearer headers */
+    letter-spacing: 0.05em;
+    padding-top: var(--ds-space-3);
+    padding-bottom: var(--ds-space-3);
 }
 
 .ds-table tbody td,
@@ -397,6 +412,8 @@ label {
     border-color: var(--ds-border-color);
     color: var(--ds-text-primary);
     vertical-align: middle;
+    font-size: 0.875rem;
+    /* Ensure readable data size */
 }
 
 .ds-table tbody tr:hover,
