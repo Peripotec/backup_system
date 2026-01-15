@@ -7,28 +7,28 @@
     .log-panel {
         font-family: 'Consolas', monospace;
         font-size: 10px;
-        background: var(--ds-bg-base);
-        color: var(--ds-info);
+        background: #0d1117;
+        color: #58a6ff;
         min-height: 60px;
         max-height: 100px;
         overflow-y: auto;
-        border-radius: var(--ds-radius-md);
+        border-radius: 6px;
     }
 
     .log-success {
-        color: var(--ds-success);
+        color: #3fb950;
     }
 
     .log-error {
-        color: var(--ds-danger);
+        color: #f85149;
     }
 
     .log-info {
-        color: var(--ds-info);
+        color: #58a6ff;
     }
 
     .log-warning {
-        color: var(--ds-warning);
+        color: #f0ad4e;
     }
 
     .stat-box {
@@ -67,14 +67,14 @@
     .jobs-layout {
         display: flex;
         align-items: flex-start;
-        border-top: 1px solid var(--ds-border-color);
+        border-top: 1px solid #dee2e6;
     }
 
     .jobs-sidebar {
         width: 240px;
         min-width: 240px;
-        background: var(--ds-bg-elevated);
-        border-right: 1px solid var(--ds-border-color);
+        background: #f8f9fa;
+        border-right: 1px solid #dee2e6;
         transition: width 0.25s ease, min-width 0.25s ease, opacity 0.25s ease;
         overflow: hidden;
     }
@@ -123,7 +123,7 @@
     .filter-group {
         margin-bottom: 0.5rem;
         padding-bottom: 0.5rem;
-        border-bottom: 1px solid var(--ds-border-color);
+        border-bottom: 1px solid #e9ecef;
     }
 
     .filter-group:last-of-type {
@@ -132,9 +132,9 @@
 
     .filter-label {
         display: block;
-        font-size: var(--ds-font-size-xs);
+        font-size: 0.7rem;
         font-weight: 600;
-        color: var(--ds-text-muted);
+        color: #6c757d;
         text-transform: uppercase;
         letter-spacing: 0.3px;
         margin-bottom: 0.25rem;
@@ -143,20 +143,20 @@
     .filter-actions {
         margin-top: 1rem;
         padding-top: 0.75rem;
-        border-top: 1px solid var(--ds-border-color);
+        border-top: 1px solid #dee2e6;
     }
 
     .sidebar-expand-btn {
-        background: var(--ds-bg-elevated);
-        border: 1px solid var(--ds-border-color);
-        border-radius: var(--ds-radius-sm);
+        background: #e9ecef;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
         padding: 2px 8px;
         cursor: pointer;
-        font-size: var(--ds-font-size-xs);
+        font-size: 10px;
     }
 
     .sidebar-expand-btn:hover {
-        background: var(--ds-bg-hover);
+        background: #dee2e6;
     }
 
     .jobs-content {
@@ -211,7 +211,42 @@
         }
     }
 
-    /* Dark mode now handled by design-system.css variables */
+    /* Dark Mode Support for Dashboard Sidebar */
+    [data-theme="dark"] .sidebar-toggle:hover {
+        background: #334155;
+    }
+
+    [data-theme="dark"] .filter-group {
+        border-bottom-color: #475569;
+    }
+
+    [data-theme="dark"] .filter-label {
+        color: #9ca3af;
+    }
+
+    [data-theme="dark"] .filter-actions {
+        border-top-color: #475569;
+    }
+
+    [data-theme="dark"] .sidebar-expand-btn {
+        background: #334155;
+        border-color: #475569;
+        color: #e9ecef;
+    }
+
+    [data-theme="dark"] .sidebar-expand-btn:hover {
+        background: #475569;
+    }
+
+    [data-theme="dark"] .content-toolbar {
+        background: var(--bg-card, #1e293b);
+        border-bottom-color: #475569;
+    }
+
+    [data-theme="dark"] .jobs-sidebar {
+        background: var(--bg-card, #1e293b);
+        border-color: #475569;
+    }
 </style>
 {% endblock %}
 
