@@ -952,8 +952,8 @@ def api_add_group():
     vendor = data.get("vendor", "").strip()
     credential_ids = data.get("credential_ids", [])
     
-    if not name or not vendor:
-        return jsonify({"error": "Nombre y vendor son requeridos"}), 400
+    if not name:
+        return jsonify({"error": "Nombre es requerido"}), 400
     
     if not credential_ids:
         return jsonify({"error": "Seleccione al menos una credencial"}), 400
