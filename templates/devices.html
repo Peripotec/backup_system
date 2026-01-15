@@ -380,7 +380,7 @@
                 }
 
                 tbody.innerHTML += '<tr>' +
-                    '<td><a href="#" onclick="openEditDeviceModal(\'' + d.group_name + '\', ' + JSON.stringify(d).replace(/"/g, '&quot;') + '); return false;"><strong>' + nombre + '</strong></a>' + sysnameSecondary +
+                    '<td style="padding-left: 24px;"><a href="#" onclick="openEditDeviceModal(\'' + d.group_name + '\', ' + JSON.stringify(d).replace(/"/g, '&quot;') + '); return false;"><strong>' + nombre + '</strong></a>' + sysnameSecondary +
                     (tagsHtml ? '<div class="mt-1">' + tagsHtml + '</div>' : '') + '</td>' +
                     '<td><code class="clickable-ip" onclick="copyToClipboard(\'' + d.ip + '\')" title="Click para copiar">' + d.ip + '</code></td>' +
                     '<td>' + locBadge + '</td>' +

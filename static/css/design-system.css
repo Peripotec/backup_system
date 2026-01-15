@@ -745,14 +745,24 @@ pre {
     --bs-table-border-color: #475569;
 }
 
-/* Soporte para table-secondary en dark mode (Soft headers) - Ajustado a muy sutil */
+/* Soporte para table-secondary en dark mode (Group headers) - Mejor contraste */
 [data-theme="dark"] .table-secondary {
-    background-color: #1e293b !important;
-    /* Mismo que bg-surface o apenas diferente */
-    --bs-table-bg: #1e293b;
-    --bs-table-border-color: #3b4a5e;
-    color: #94a3b8;
-    /* Text muted para que no resalte tanto */
+    background-color: #2d3748 !important;
+    /* Distinguible del fondo pero no estridente */
+    --bs-table-bg: #2d3748;
+    --bs-table-border-color: #4a5568;
+    color: #e2e8f0;
+    /* Texto claro para buen contraste */
+}
+
+[data-theme="dark"] .table-secondary td,
+[data-theme="dark"] .table-secondary th {
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .table-secondary .badge.bg-secondary {
+    background-color: #4a5568 !important;
+    color: #e2e8f0;
 }
 
 /* Fix para selects/inputs saturados en dark mode */
