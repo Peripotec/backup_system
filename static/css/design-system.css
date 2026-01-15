@@ -745,6 +745,13 @@ pre {
     --bs-table-border-color: #475569;
 }
 
+/* Soporte para table-secondary en dark mode (Soft headers) */
+[data-theme="dark"] .table-secondary {
+    --bs-table-bg: var(--ds-bg-elevated);
+    --bs-table-border-color: var(--ds-border-color);
+    color: var(--ds-text-primary);
+}
+
 /* Accordion */
 .accordion-item {
     background-color: var(--ds-bg-surface);

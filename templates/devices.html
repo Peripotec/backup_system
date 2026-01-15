@@ -76,8 +76,8 @@
 
 {% block content %}
 <div class="card mb-4">
-    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-hdd-network"></i> Dispositivos Registrados</span>
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-hdd-network me-2"></i>Dispositivos Registrados</span>
         <div class="d-flex gap-2">
             <select class="form-select form-select-sm" id="group-by" style="width: auto;">
                 <option value="group">Agrupar por: Grupo</option>
@@ -346,7 +346,7 @@
                 key.charAt(0).toUpperCase() + key.slice(1) + '</strong> ' +
                 '<span class="badge bg-secondary">' + devices.length + '</span></td></tr>';
 
-            devices.forEach(d => {
+            devies.forEach(d => {
                 var sysname = d.sysname || d.hostname;
                 var nombre = d.nombre || sysname; // Si no hay nombre, mostrar sysname
                 var sysnameSecondary = d.nombre ? '<br><small class="text-muted">' + sysname + '</small>' : '';
