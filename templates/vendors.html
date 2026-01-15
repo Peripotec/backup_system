@@ -280,19 +280,25 @@
             populateTypeSelect();
         });
 
-        // Load models
-        fetch('/api/device_models').then(r => r.json()).then(data => {
-            models = data;
+        // Load available vendor plugins
+        var availableVendors = [];
+        fetch('/api/vendors').then(r => r.json()).then(data => {
+            availableVendors = data;
 
-            // Extract unique vendors from models
-            var vendorSet = new Set();
-            models.forEach(m => {
-                if (m.vendor) vendorSet.add(m.vendor);
+            // Load models and combine vendors
+            fetch('/api/device_models').then(r => r.json()).then(data => {
+                models = data;
+
+                // Extract unique vendors from models
+                var vendorSet = new Set(availableVendors);  // Start with available plugins
+                models.forEach(m => {
+                    if (m.vendor) vendorSet.add(m.vendor);
+                });
+                vendors = Array.from(vendorSet).sort();
+
+                renderVendors();
+                populateVendorSelect();
             });
-            vendors = Array.from(vendorSet).sort();
-
-            renderVendors();
-            populateVendorSelect();
         });
     }
 
