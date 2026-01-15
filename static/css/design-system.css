@@ -200,20 +200,29 @@ body {
     border-top: 1px solid var(--ds-border-color);
 }
 
-/* Toolbar/FilterBar que sigue al header - separador visual */
+/* Toolbar/FilterBar que sigue al header - separador visual MUY VISIBLE */
 .card-header+.bg-light,
-.card-header+div>.bg-light:first-child {
-    border-top: 2px solid var(--ds-border-color-strong);
+.card-header+div>.bg-light:first-child,
+.card>.bg-light:not(:first-child) {
+    border-top: 3px solid var(--ds-border-color-strong);
+    margin-top: 0;
 }
 
-/* Dark mode: bg-light debe ser distinguible */
+/* Dark mode: bg-light toolbar debe ser MUY distinguible del header */
 [data-theme="dark"] .bg-light {
-    background-color: #1e293b !important;
-    border-color: #334155;
+    background-color: #0f172a !important;
+    /* Mucho más oscuro que el header para contrastar */
+    border-color: #475569;
 }
 
 [data-theme="dark"] .bg-light.border-bottom {
-    border-bottom-color: #475569 !important;
+    border-bottom: 2px solid #475569 !important;
+}
+
+/* Separador superior visible en dark mode */
+[data-theme="dark"] .card-header+.bg-light,
+[data-theme="dark"] .card>.bg-light:not(:first-child) {
+    border-top: 3px solid #475569;
 }
 
 /* =====================================================
@@ -781,20 +790,25 @@ pre {
     color: #ffffff;
 }
 
-/* Fix para selects/inputs saturados en dark mode - BORDE VISIBLE */
+/* Fix para selects/inputs saturados en dark mode - BORDE MUY VISIBLE */
 [data-theme="dark"] .form-select,
 [data-theme="dark"] .form-control {
     background-color: #0f172a;
-    /* Fondo oscuro */
-    border: 1px solid #64748b;
-    /* Borde gris visible */
+    /* Fondo muy oscuro */
+    border: 2px solid #64748b;
+    /* Borde gris grueso y visible */
     color: #f1f5f9;
+}
+
+/* Input pequeños (como paginación) necesitan ser más obvios */
+[data-theme="dark"] .form-control-sm {
+    border: 2px solid #64748b;
 }
 
 [data-theme="dark"] .form-control:focus,
 [data-theme="dark"] .form-select:focus {
     border-color: #60a5fa;
-    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.25);
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.3);
 }
 
 [data-theme="dark"] .btn-outline-primary {
