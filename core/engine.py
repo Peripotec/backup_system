@@ -219,7 +219,7 @@ class BackupEngine:
 
             for group in self.inventory['groups']:
                 grp_name = group['name']
-                vendor_type = group['vendor']
+                grp_vendor = group['vendor']  # May be empty for mixed groups
                 # Get credential_ids for vault lookup (new format)
                 grp_credential_ids = group.get('credential_ids', [])
 
@@ -233,6 +233,12 @@ class BackupEngine:
                         hostname = device.get('hostname')
                         if sysname not in target_devices and hostname not in target_devices:
                             continue
+                    
+                    # Determine vendor: device-level overrides group-level (for mixed groups)
+                    vendor_type = device.get('vendor') or grp_vendor
+                    if not vendor_type:
+                        log.warning(f"Skipping device {device.get('sysname', device.get('hostname'))}: no vendor defined")
+                        continue
                     
                     # Device-specific credential_ids override group, but include group as fallback
                     device_cred_ids = device.get('credential_ids', [])
@@ -297,13 +303,14 @@ class BackupEngine:
             return
         
         for group in self.inventory['groups']:
-            vendor_type = group['vendor']
+            grp_vendor = group['vendor']
             grp_credential_ids = group.get('credential_ids', [])
             
             for device in group['devices']:
                 # Enrich device with vendor and group info for schedule calculation
                 enriched = device.copy()
-                enriched['vendor'] = vendor_type
+                # Device vendor takes priority over group vendor (for mixed groups)
+                enriched['vendor'] = device.get('vendor') or grp_vendor
                 enriched['_group_name'] = group['name']
                 enriched['_group_cred_ids'] = grp_credential_ids
                 all_devices.append(enriched)
