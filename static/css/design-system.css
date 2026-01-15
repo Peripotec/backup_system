@@ -1,0 +1,746 @@
+/* =====================================================
+   BACKUP SYSTEM - DESIGN SYSTEM
+   Sistema de diseño unificado para modo claro y oscuro
+   ===================================================== */
+
+/* =====================================================
+   1. DESIGN TOKENS (Variables CSS)
+   ===================================================== */
+
+:root {
+    /* === Colores Base - Modo Claro === */
+    --ds-bg-base: #f1f5f9;          /* Fondo principal */
+    --ds-bg-surface: #ffffff;        /* Cards, paneles */
+    --ds-bg-elevated: #f8fafc;       /* Elementos elevados */
+    --ds-bg-input: #ffffff;          /* Inputs */
+    --ds-bg-hover: #e2e8f0;          /* Hover sobre elementos */
+    
+    /* Texto */
+    --ds-text-primary: #1e293b;      /* Texto principal */
+    --ds-text-secondary: #475569;    /* Texto secundario */
+    --ds-text-muted: #64748b;        /* Texto deshabilitado/hint */
+    --ds-text-inverse: #ffffff;      /* Texto sobre fondos oscuros */
+    
+    /* Bordes */
+    --ds-border-color: #e2e8f0;
+    --ds-border-color-strong: #cbd5e1;
+    
+    /* Colores Semánticos */
+    --ds-primary: #3b82f6;
+    --ds-primary-hover: #2563eb;
+    --ds-primary-light: #dbeafe;
+    
+    --ds-success: #22c55e;
+    --ds-success-hover: #16a34a;
+    --ds-success-light: #dcfce7;
+    
+    --ds-warning: #f59e0b;
+    --ds-warning-hover: #d97706;
+    --ds-warning-light: #fef3c7;
+    
+    --ds-danger: #ef4444;
+    --ds-danger-hover: #dc2626;
+    --ds-danger-light: #fee2e2;
+    
+    --ds-info: #06b6d4;
+    --ds-info-hover: #0891b2;
+    --ds-info-light: #cffafe;
+    
+    /* Sidebar (siempre oscuro) */
+    --ds-sidebar-bg: #1e293b;
+    --ds-sidebar-text: #f1f5f9;
+    --ds-sidebar-hover: rgba(255, 255, 255, 0.1);
+    --ds-sidebar-active: rgba(59, 130, 246, 0.2);
+    
+    /* Espaciado */
+    --ds-space-1: 0.25rem;   /* 4px */
+    --ds-space-2: 0.5rem;    /* 8px */
+    --ds-space-3: 0.75rem;   /* 12px */
+    --ds-space-4: 1rem;      /* 16px */
+    --ds-space-5: 1.5rem;    /* 24px */
+    --ds-space-6: 2rem;      /* 32px */
+    
+    /* Bordes redondeados */
+    --ds-radius-sm: 0.25rem;
+    --ds-radius-md: 0.375rem;
+    --ds-radius-lg: 0.5rem;
+    --ds-radius-xl: 0.75rem;
+    
+    /* Sombras */
+    --ds-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --ds-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+    --ds-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+    
+    /* Tipografía */
+    --ds-font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --ds-font-size-xs: 0.75rem;    /* 12px */
+    --ds-font-size-sm: 0.8125rem;  /* 13px */
+    --ds-font-size-base: 0.875rem; /* 14px */
+    --ds-font-size-md: 1rem;       /* 16px */
+    --ds-font-size-lg: 1.125rem;   /* 18px */
+    --ds-font-size-xl: 1.25rem;    /* 20px */
+    --ds-font-size-2xl: 1.5rem;    /* 24px */
+    
+    /* Transiciones */
+    --ds-transition-fast: 150ms ease;
+    --ds-transition-normal: 250ms ease;
+    --ds-transition-slow: 350ms ease;
+}
+
+/* === Modo Oscuro === */
+[data-theme="dark"] {
+    --ds-bg-base: #0f172a;
+    --ds-bg-surface: #1e293b;
+    --ds-bg-elevated: #334155;
+    --ds-bg-input: #334155;
+    --ds-bg-hover: #475569;
+    
+    --ds-text-primary: #f1f5f9;
+    --ds-text-secondary: #cbd5e1;
+    --ds-text-muted: #94a3b8;
+    --ds-text-inverse: #1e293b;
+    
+    --ds-border-color: #334155;
+    --ds-border-color-strong: #475569;
+    
+    /* Colores semánticos ajustados para dark mode */
+    --ds-primary: #60a5fa;
+    --ds-primary-hover: #3b82f6;
+    --ds-primary-light: rgba(59, 130, 246, 0.2);
+    
+    --ds-success: #4ade80;
+    --ds-success-hover: #22c55e;
+    --ds-success-light: rgba(34, 197, 94, 0.2);
+    
+    --ds-warning: #fbbf24;
+    --ds-warning-hover: #f59e0b;
+    --ds-warning-light: rgba(245, 158, 11, 0.2);
+    
+    --ds-danger: #f87171;
+    --ds-danger-hover: #ef4444;
+    --ds-danger-light: rgba(239, 68, 68, 0.2);
+    
+    --ds-info: #22d3ee;
+    --ds-info-hover: #06b6d4;
+    --ds-info-light: rgba(6, 182, 212, 0.2);
+    
+    --ds-sidebar-bg: #0f172a;
+    
+    /* Sombras dark mode */
+    --ds-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --ds-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+    --ds-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+}
+
+/* =====================================================
+   2. ESTILOS BASE
+   ===================================================== */
+
+body {
+    background-color: var(--ds-bg-base);
+    color: var(--ds-text-primary);
+    font-family: var(--ds-font-family);
+    font-size: var(--ds-font-size-base);
+    transition: background-color var(--ds-transition-normal), 
+                color var(--ds-transition-normal);
+}
+
+/* =====================================================
+   3. COMPONENTES - CARDS
+   ===================================================== */
+
+.ds-card,
+.card {
+    background-color: var(--ds-bg-surface);
+    border: 1px solid var(--ds-border-color);
+    border-radius: var(--ds-radius-lg);
+    box-shadow: var(--ds-shadow-sm);
+}
+
+.ds-card-header,
+.card-header {
+    background-color: var(--ds-bg-elevated);
+    border-bottom: 1px solid var(--ds-border-color);
+    color: var(--ds-text-primary);
+    font-weight: 600;
+    padding: var(--ds-space-3) var(--ds-space-4);
+}
+
+.ds-card-body,
+.card-body {
+    background-color: var(--ds-bg-surface);
+    color: var(--ds-text-primary);
+}
+
+.ds-card-footer,
+.card-footer {
+    background-color: var(--ds-bg-elevated);
+    border-top: 1px solid var(--ds-border-color);
+}
+
+/* =====================================================
+   4. COMPONENTES - BOTONES
+   ===================================================== */
+
+/* Botón Base */
+.ds-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--ds-space-2);
+    font-weight: 500;
+    border-radius: var(--ds-radius-md);
+    transition: all var(--ds-transition-fast);
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+
+/* Tamaños */
+.ds-btn-sm,
+.btn-sm {
+    height: 28px;
+    padding: 0 var(--ds-space-3);
+    font-size: var(--ds-font-size-sm);
+}
+
+.ds-btn-md,
+.btn:not(.btn-sm):not(.btn-lg) {
+    height: 36px;
+    padding: 0 var(--ds-space-4);
+    font-size: var(--ds-font-size-base);
+}
+
+.ds-btn-lg,
+.btn-lg {
+    height: 44px;
+    padding: 0 var(--ds-space-5);
+    font-size: var(--ds-font-size-md);
+}
+
+/* Variantes - Primary */
+.ds-btn-primary,
+.btn-primary {
+    background-color: var(--ds-primary);
+    border-color: var(--ds-primary);
+    color: var(--ds-text-inverse);
+}
+
+.ds-btn-primary:hover,
+.btn-primary:hover {
+    background-color: var(--ds-primary-hover);
+    border-color: var(--ds-primary-hover);
+}
+
+/* Variantes - Outline Primary */
+.ds-btn-outline-primary,
+.btn-outline-primary {
+    background-color: transparent;
+    border-color: var(--ds-primary);
+    color: var(--ds-primary);
+}
+
+.ds-btn-outline-primary:hover,
+.btn-outline-primary:hover {
+    background-color: var(--ds-primary);
+    color: var(--ds-text-inverse);
+}
+
+/* Variantes - Success */
+.ds-btn-success,
+.btn-success {
+    background-color: var(--ds-success);
+    border-color: var(--ds-success);
+    color: var(--ds-text-inverse);
+}
+
+.ds-btn-success:hover,
+.btn-success:hover {
+    background-color: var(--ds-success-hover);
+    border-color: var(--ds-success-hover);
+}
+
+/* Variantes - Danger */
+.ds-btn-danger,
+.btn-danger {
+    background-color: var(--ds-danger);
+    border-color: var(--ds-danger);
+    color: var(--ds-text-inverse);
+}
+
+.ds-btn-danger:hover,
+.btn-danger:hover {
+    background-color: var(--ds-danger-hover);
+    border-color: var(--ds-danger-hover);
+}
+
+/* Variantes - Outline Danger */
+.ds-btn-outline-danger,
+.btn-outline-danger {
+    background-color: transparent;
+    border-color: var(--ds-danger);
+    color: var(--ds-danger);
+}
+
+.ds-btn-outline-danger:hover,
+.btn-outline-danger:hover {
+    background-color: var(--ds-danger);
+    color: var(--ds-text-inverse);
+}
+
+/* Variantes - Warning */
+.ds-btn-warning,
+.btn-warning {
+    background-color: var(--ds-warning);
+    border-color: var(--ds-warning);
+    color: var(--ds-text-inverse);
+}
+
+/* Variantes - Secondary */
+.ds-btn-secondary,
+.btn-secondary {
+    background-color: var(--ds-bg-elevated);
+    border-color: var(--ds-border-color);
+    color: var(--ds-text-primary);
+}
+
+.ds-btn-secondary:hover,
+.btn-secondary:hover {
+    background-color: var(--ds-bg-hover);
+    border-color: var(--ds-border-color-strong);
+}
+
+/* =====================================================
+   5. COMPONENTES - FORMULARIOS
+   ===================================================== */
+
+.ds-input,
+.form-control,
+.form-select {
+    background-color: var(--ds-bg-input);
+    border: 1px solid var(--ds-border-color);
+    border-radius: var(--ds-radius-md);
+    color: var(--ds-text-primary);
+    transition: border-color var(--ds-transition-fast), 
+                box-shadow var(--ds-transition-fast);
+}
+
+.ds-input:focus,
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--ds-primary);
+    box-shadow: 0 0 0 3px var(--ds-primary-light);
+    outline: none;
+}
+
+.ds-input::placeholder,
+.form-control::placeholder {
+    color: var(--ds-text-muted);
+}
+
+.ds-label,
+.form-label,
+label {
+    color: var(--ds-text-primary);
+    font-weight: 500;
+    margin-bottom: var(--ds-space-1);
+}
+
+.input-group-text {
+    background-color: var(--ds-bg-elevated);
+    border-color: var(--ds-border-color);
+    color: var(--ds-text-secondary);
+}
+
+/* =====================================================
+   6. COMPONENTES - TABLAS
+   ===================================================== */
+
+.ds-table,
+.table {
+    --bs-table-bg: var(--ds-bg-surface);
+    --bs-table-color: var(--ds-text-primary);
+    --bs-table-border-color: var(--ds-border-color);
+}
+
+.ds-table thead th,
+.table thead th {
+    background-color: var(--ds-bg-elevated);
+    border-bottom: 2px solid var(--ds-border-color);
+    color: var(--ds-text-primary);
+    font-weight: 600;
+}
+
+.ds-table tbody td,
+.table tbody td {
+    border-color: var(--ds-border-color);
+    color: var(--ds-text-primary);
+    vertical-align: middle;
+}
+
+.ds-table tbody tr:hover,
+.table-hover tbody tr:hover {
+    background-color: var(--ds-bg-hover);
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+[data-theme="dark"] .table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+/* =====================================================
+   7. COMPONENTES - BADGES
+   ===================================================== */
+
+.ds-badge,
+.badge {
+    font-weight: 500;
+    padding: var(--ds-space-1) var(--ds-space-2);
+    border-radius: var(--ds-radius-sm);
+}
+
+.badge.bg-primary {
+    background-color: var(--ds-primary-light) !important;
+    color: var(--ds-primary) !important;
+}
+
+.badge.bg-success {
+    background-color: var(--ds-success-light) !important;
+    color: var(--ds-success) !important;
+}
+
+.badge.bg-warning {
+    background-color: var(--ds-warning-light) !important;
+    color: var(--ds-warning) !important;
+}
+
+.badge.bg-danger {
+    background-color: var(--ds-danger-light) !important;
+    color: var(--ds-danger) !important;
+}
+
+.badge.bg-info {
+    background-color: var(--ds-info-light) !important;
+    color: var(--ds-info) !important;
+}
+
+.badge.bg-secondary {
+    background-color: var(--ds-bg-elevated) !important;
+    color: var(--ds-text-secondary) !important;
+}
+
+/* =====================================================
+   8. COMPONENTES - ALERTS
+   ===================================================== */
+
+.alert-primary {
+    background-color: var(--ds-primary-light);
+    border-color: var(--ds-primary);
+    color: var(--ds-primary);
+}
+
+.alert-success {
+    background-color: var(--ds-success-light);
+    border-color: var(--ds-success);
+    color: var(--ds-success);
+}
+
+.alert-warning {
+    background-color: var(--ds-warning-light);
+    border-color: var(--ds-warning);
+    color: var(--ds-warning);
+}
+
+.alert-danger {
+    background-color: var(--ds-danger-light);
+    border-color: var(--ds-danger);
+    color: var(--ds-danger);
+}
+
+.alert-info {
+    background-color: var(--ds-info-light);
+    border-color: var(--ds-info);
+    color: var(--ds-info);
+}
+
+/* =====================================================
+   9. COMPONENTES - MODALS
+   ===================================================== */
+
+.modal-content {
+    background-color: var(--ds-bg-surface);
+    border-color: var(--ds-border-color);
+    color: var(--ds-text-primary);
+}
+
+.modal-header {
+    background-color: var(--ds-bg-elevated);
+    border-color: var(--ds-border-color);
+}
+
+.modal-footer {
+    background-color: var(--ds-bg-elevated);
+    border-color: var(--ds-border-color);
+}
+
+/* =====================================================
+   10. COMPONENTES - LIST GROUPS
+   ===================================================== */
+
+.list-group-item {
+    background-color: var(--ds-bg-surface);
+    border-color: var(--ds-border-color);
+    color: var(--ds-text-primary);
+}
+
+.list-group-item:hover {
+    background-color: var(--ds-bg-hover);
+}
+
+.list-group-item.active {
+    background-color: var(--ds-primary);
+    border-color: var(--ds-primary);
+}
+
+/* =====================================================
+   11. COMPONENTES - DROPDOWNS
+   ===================================================== */
+
+.dropdown-menu {
+    background-color: var(--ds-bg-surface);
+    border-color: var(--ds-border-color);
+    box-shadow: var(--ds-shadow-md);
+}
+
+.dropdown-item {
+    color: var(--ds-text-primary);
+}
+
+.dropdown-item:hover,
+.dropdown-item:focus {
+    background-color: var(--ds-bg-hover);
+    color: var(--ds-text-primary);
+}
+
+.dropdown-divider {
+    border-color: var(--ds-border-color);
+}
+
+/* =====================================================
+   12. COMPONENTES - BREADCRUMB
+   ===================================================== */
+
+.breadcrumb {
+    background-color: var(--ds-bg-elevated);
+    border-radius: var(--ds-radius-md);
+    padding: var(--ds-space-2) var(--ds-space-3);
+}
+
+.breadcrumb-item a {
+    color: var(--ds-primary);
+}
+
+.breadcrumb-item.active {
+    color: var(--ds-text-muted);
+}
+
+/* =====================================================
+   13. COMPONENTES - NAV TABS/PILLS
+   ===================================================== */
+
+.nav-tabs {
+    border-color: var(--ds-border-color);
+}
+
+.nav-tabs .nav-link {
+    color: var(--ds-text-secondary);
+    border-color: transparent;
+}
+
+.nav-tabs .nav-link:hover {
+    border-color: var(--ds-border-color);
+    color: var(--ds-text-primary);
+}
+
+.nav-tabs .nav-link.active {
+    background-color: var(--ds-bg-surface);
+    border-color: var(--ds-border-color);
+    border-bottom-color: var(--ds-bg-surface);
+    color: var(--ds-text-primary);
+}
+
+.nav-pills .nav-link {
+    color: var(--ds-text-secondary);
+}
+
+.nav-pills .nav-link:hover {
+    background-color: var(--ds-bg-hover);
+}
+
+.nav-pills .nav-link.active {
+    background-color: var(--ds-primary);
+    color: var(--ds-text-inverse);
+}
+
+/* =====================================================
+   14. COMPONENTES - PROGRESS
+   ===================================================== */
+
+.progress {
+    background-color: var(--ds-bg-elevated);
+    border-radius: var(--ds-radius-md);
+}
+
+.progress-bar {
+    background-color: var(--ds-primary);
+}
+
+/* =====================================================
+   15. COMPONENTES - CODE
+   ===================================================== */
+
+code {
+    background-color: var(--ds-bg-elevated);
+    border-radius: var(--ds-radius-sm);
+    color: var(--ds-info);
+    padding: 0.125rem 0.25rem;
+}
+
+pre {
+    background-color: var(--ds-bg-base);
+    border: 1px solid var(--ds-border-color);
+    border-radius: var(--ds-radius-md);
+    color: var(--ds-text-primary);
+    padding: var(--ds-space-3);
+}
+
+/* =====================================================
+   16. UTILIDADES
+   ===================================================== */
+
+/* Backgrounds */
+.ds-bg-base { background-color: var(--ds-bg-base) !important; }
+.ds-bg-surface { background-color: var(--ds-bg-surface) !important; }
+.ds-bg-elevated { background-color: var(--ds-bg-elevated) !important; }
+
+/* Texto */
+.ds-text-primary { color: var(--ds-text-primary) !important; }
+.ds-text-secondary { color: var(--ds-text-secondary) !important; }
+.ds-text-muted { color: var(--ds-text-muted) !important; }
+
+/* Bordes */
+.ds-border { border-color: var(--ds-border-color) !important; }
+
+/* Fix para Bootstrap bg-light en dark mode */
+.bg-light {
+    background-color: var(--ds-bg-elevated) !important;
+    color: var(--ds-text-primary) !important;
+}
+
+.bg-white {
+    background-color: var(--ds-bg-surface) !important;
+}
+
+.text-dark {
+    color: var(--ds-text-primary) !important;
+}
+
+.text-muted {
+    color: var(--ds-text-muted) !important;
+}
+
+/* =====================================================
+   17. SIDEBAR (siempre oscuro)
+   ===================================================== */
+
+.sidebar {
+    background-color: var(--ds-sidebar-bg);
+    color: var(--ds-sidebar-text);
+}
+
+.sidebar-nav .nav-link {
+    color: var(--ds-sidebar-text);
+    opacity: 0.8;
+}
+
+.sidebar-nav .nav-link:hover {
+    background-color: var(--ds-sidebar-hover);
+    opacity: 1;
+}
+
+.sidebar-nav .nav-link.active {
+    background-color: var(--ds-sidebar-active);
+    color: var(--ds-primary);
+    opacity: 1;
+}
+
+/* =====================================================
+   18. FIXES ESPECÍFICOS
+   ===================================================== */
+
+/* Btn close en dark mode */
+[data-theme="dark"] .btn-close {
+    filter: invert(1);
+}
+
+/* Accordion */
+.accordion-item {
+    background-color: var(--ds-bg-surface);
+    border-color: var(--ds-border-color);
+}
+
+.accordion-button {
+    background-color: var(--ds-bg-elevated);
+    color: var(--ds-text-primary);
+}
+
+.accordion-button:not(.collapsed) {
+    background-color: var(--ds-primary-light);
+    color: var(--ds-primary);
+}
+
+/* Pagination */
+.page-link {
+    background-color: var(--ds-bg-surface);
+    border-color: var(--ds-border-color);
+    color: var(--ds-text-primary);
+}
+
+.page-link:hover {
+    background-color: var(--ds-bg-hover);
+    color: var(--ds-primary);
+}
+
+.page-item.active .page-link {
+    background-color: var(--ds-primary);
+    border-color: var(--ds-primary);
+    color: var(--ds-text-inverse);
+}
+
+/* Spinners */
+.spinner-border {
+    color: var(--ds-primary);
+}
+
+/* Links */
+a:not(.btn):not(.nav-link):not(.dropdown-item):not(.list-group-item) {
+    color: var(--ds-primary);
+}
+
+a:not(.btn):not(.nav-link):not(.dropdown-item):not(.list-group-item):hover {
+    color: var(--ds-primary-hover);
+}
+
+/* HR */
+hr {
+    border-color: var(--ds-border-color);
+    opacity: 0.5;
+}
+
+/* Tooltips */
+.tooltip-inner {
+    background-color: var(--ds-bg-elevated);
+    color: var(--ds-text-primary);
+}

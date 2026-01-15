@@ -8,30 +8,22 @@
     <link rel="icon" type="image/png" href="/static/favicon.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="/static/css/dark-mode-netbox.css" rel="stylesheet">
+    <link href="/static/css/design-system.css" rel="stylesheet">
     <style>
+        /* Variables heredadas para compatibilidad - usar --ds-* en nuevo código */
         :root {
-            --bg-body: #f0f2f5;
-            --bg-card: #fff;
-            --bg-sidebar: #1e293b;
-            --text-primary: #212529;
-            --text-muted: #6c757d;
-            --border-color: #dee2e6;
-            --accent: #3b82f6;
-        }
-
-        [data-theme="dark"] {
-            --bg-body: #0f172a;
-            --bg-card: #1e293b;
-            --bg-sidebar: #0f172a;
-            --text-primary: #f1f5f9;
-            --text-muted: #94a3b8;
-            --border-color: #334155;
+            --bg-body: var(--ds-bg-base);
+            --bg-card: var(--ds-bg-surface);
+            --bg-sidebar: var(--ds-sidebar-bg);
+            --text-primary: var(--ds-text-primary);
+            --text-muted: var(--ds-text-muted);
+            --border-color: var(--ds-border-color);
+            --accent: var(--ds-primary);
         }
 
         body {
-            background: var(--bg-body);
-            color: var(--text-primary);
+            background: var(--ds-bg-base);
+            color: var(--ds-text-primary);
             transition: all 0.3s;
             min-height: 100vh;
         }
