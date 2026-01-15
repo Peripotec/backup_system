@@ -772,10 +772,25 @@ pre {
 
 /* Soporte para table-secondary en dark mode (Headers de agrupamiento) */
 /* Estos son los TR que agrupan dispositivos como "HP 4", "Huawei 2", etc. */
+
+/* Sobrescribir variables de Bootstrap para .table-secondary */
+[data-theme="dark"] .table-secondary {
+    --bs-table-bg: #1e3a5f !important;
+    --bs-table-color: #e2e8f0 !important;
+    --bs-table-border-color: #2d4a6f !important;
+    --bs-table-striped-bg: #1e3a5f !important;
+    --bs-table-striped-color: #e2e8f0 !important;
+    --bs-table-hover-bg: #254a75 !important;
+    --bs-table-hover-color: #e2e8f0 !important;
+}
+
+/* Aplicar directamente los colores */
 [data-theme="dark"] .table-secondary,
 [data-theme="dark"] .table-secondary>td,
 [data-theme="dark"] tr.table-secondary,
-[data-theme="dark"] tr.table-secondary>td {
+[data-theme="dark"] tr.table-secondary>td,
+[data-theme="dark"] .table>tbody>tr.table-secondary,
+[data-theme="dark"] .table>tbody>tr.table-secondary>td {
     background-color: #1e3a5f !important;
     color: #e2e8f0 !important;
 }
