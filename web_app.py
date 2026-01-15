@@ -1173,6 +1173,8 @@ def api_add_device():
         device["tipo"] = data["tipo"]
     if data.get("modelo"):
         device["modelo"] = data["modelo"]
+    if data.get("vendor"):
+        device["vendor"] = data["vendor"]
     if data.get("criticidad"):
         device["criticidad"] = data["criticidad"]
     if data.get("tags"):
@@ -1239,7 +1241,7 @@ def api_edit_device(group_name, hostname):
         device_data["ip"] = new_ip
     
     # Update optional fields
-    for field in ["nombre", "localidad", "tipo", "modelo", "criticidad"]:
+    for field in ["nombre", "localidad", "tipo", "modelo", "vendor", "criticidad"]:
         if field in data:
             if data[field]:
                 device_data[field] = data[field]
