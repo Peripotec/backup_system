@@ -184,9 +184,10 @@
                         </div>
                     </div>
                     <div class="col-md-4">
-                        <div class="mb-3">
-                            <label class="form-label">Tipo</label>
-                            <select class="form-select" id="device-tipo"></select>
+                        <div class="mb-3" id="device-vendor-container">
+                            <label class="form-label">Vendor *</label>
+                            <select class="form-select" id="device-vendor"></select>
+                            <div class="form-text text-muted" id="vendor-hint">Requerido para grupos mixtos</div>
                         </div>
                     </div>
                     <div class="col-md-4">
@@ -198,7 +199,13 @@
                 </div>
 
                 <div class="row">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">Tipo</label>
+                            <select class="form-select" id="device-tipo"></select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
                         <div class="mb-3">
                             <label class="form-label">Criticidad</label>
                             <select class="form-select" id="device-criticidad">
@@ -673,9 +680,8 @@
         var nombre = document.getElementById('device-nombre').value.trim();
         var ip = document.getElementById('device-ip').value.trim();
         var grp = document.getElementById('device-group').value;
-        var vendorContainer = document.getElementById('device-vendor-container');
         var vendorSel = document.getElementById('device-vendor');
-        var vendor = vendorContainer && vendorContainer.style.display !== 'none' ? vendorSel.value : '';
+        var vendor = vendorSel ? vendorSel.value : '';
         var localidad = document.getElementById('device-localidad').value;
         var tipo = document.getElementById('device-tipo').value;
         var modelo = document.getElementById('device-modelo').value;
