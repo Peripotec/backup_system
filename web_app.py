@@ -1368,8 +1368,16 @@ def api_list_files(subpath=""):
         inv = load_inventory()
         cats = set()
         for g in inv.get('groups', []):
-            if key == 'vendor': 
-                cats.add(g.get('vendor', 'Unknown'))
+            if key == 'vendor':
+                # Include group vendor if defined
+                grp_vendor = g.get('vendor', '')
+                if grp_vendor:
+                    cats.add(grp_vendor)
+                # Also include device-level vendors (for mixed groups)
+                for d in g.get('devices', []):
+                    dev_vendor = d.get('vendor', '')
+                    if dev_vendor:
+                        cats.add(dev_vendor)
             else:
                 for d in g.get('devices', []):
                     val = d.get(key)
@@ -1392,7 +1400,11 @@ def api_list_files(subpath=""):
             g_vendor = g.get('vendor', '').lower()
             for d in g.get('devices', []):
                 match = False
-                if cat_key == 'vendor': match = g_vendor == cat_val.lower()
+                if cat_key == 'vendor':
+                    # Check device vendor first (for mixed groups), then group vendor
+                    dev_vendor = (d.get('vendor') or '').lower()
+                    grp_vendor = g_vendor
+                    match = dev_vendor == cat_val.lower() or (not dev_vendor and grp_vendor == cat_val.lower())
                 else: match = (d.get(cat_key) or '').lower() == cat_val.lower()
                 
                 if match:
