@@ -130,20 +130,13 @@
                 <input type="hidden" id="device-original-sysname" value="">
 
                 <div class="row">
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <div class="mb-3">
                             <label class="form-label">Grupo *</label>
                             <select class="form-select" id="device-group" required onchange="onGroupChange()"></select>
                         </div>
                     </div>
-                    <div class="col-md-4" id="device-vendor-container" style="display:none;">
-                        <div class="mb-3">
-                            <label class="form-label">Vendor *</label>
-                            <select class="form-select" id="device-vendor" required></select>
-                            <div class="form-text">Requerido para grupos mixtos</div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <div class="mb-3">
                             <label class="form-label">Sysname * (ID)</label>
                             <input type="text" class="form-control" id="device-sysname" required>
@@ -177,13 +170,26 @@
                 <hr>
                 <h6>📍 Segmentación</h6>
                 <div class="row">
-                    <div class="col-md-6">
+                    <div class="col-md-3">
                         <div class="mb-3">
                             <label class="form-label">Localidad</label>
                             <select class="form-select" id="device-localidad"></select>
                         </div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label class="form-label">Tipo</label>
+                            <select class="form-select" id="device-tipo"></select>
+                        </div>
+                    </div>
+                    <div class="col-md-3" id="device-vendor-container" style="display:none;">
+                        <div class="mb-3">
+                            <label class="form-label">Vendor *</label>
+                            <select class="form-select" id="device-vendor" required></select>
+                            <div class="form-text">Requerido para grupos mixtos</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
                         <div class="mb-3">
                             <label class="form-label">Modelo</label>
                             <select class="form-select" id="device-modelo"></select>
@@ -192,13 +198,7 @@
                 </div>
 
                 <div class="row">
-                    <div class="col-md-4">
-                        <div class="mb-3">
-                            <label class="form-label">Tipo</label>
-                            <select class="form-select" id="device-tipo"></select>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <div class="mb-3">
                             <label class="form-label">Criticidad</label>
                             <select class="form-select" id="device-criticidad">
@@ -693,8 +693,9 @@
         var nombre = document.getElementById('device-nombre').value.trim();
         var ip = document.getElementById('device-ip').value.trim();
         var grp = document.getElementById('device-group').value;
+        var vendorContainer = document.getElementById('device-vendor-container');
         var vendorSel = document.getElementById('device-vendor');
-        var vendor = vendorSel ? vendorSel.value : '';
+        var vendor = vendorContainer && vendorContainer.style.display !== 'none' ? vendorSel.value : '';
         var localidad = document.getElementById('device-localidad').value;
         var tipo = document.getElementById('device-tipo').value;
         var modelo = document.getElementById('device-modelo').value;
