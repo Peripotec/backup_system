@@ -177,20 +177,13 @@
                 <hr>
                 <h6>📍 Segmentación</h6>
                 <div class="row">
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <div class="mb-3">
                             <label class="form-label">Localidad</label>
                             <select class="form-select" id="device-localidad"></select>
                         </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="mb-3" id="device-vendor-container">
-                            <label class="form-label">Vendor *</label>
-                            <select class="form-select" id="device-vendor"></select>
-                            <div class="form-text text-muted" id="vendor-hint">Requerido para grupos mixtos</div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <div class="mb-3">
                             <label class="form-label">Modelo</label>
                             <select class="form-select" id="device-modelo"></select>
@@ -466,7 +459,23 @@
         var sel = document.getElementById('device-group');
         if (!sel || !inventory.groups) return;
         sel.innerHTML = '<option value="">Seleccionar grupo...</option>' +
-            inventory.groups.map(g => '<option value="' + g.name + '">' + g.name + ' (' + g.vendor + ')</option>').join('');
+            inventory.groups.map(g => '<option value="' + g.name + '">' + g.name + ' (' + (g.vendor || 'Mixto') + ')</option>').join('');
+    }
+
+    function onGroupChange() {
+        var grpSel = document.getElementById('device-group');
+        var vendorContainer = document.getElementById('device-vendor-container');
+        if (!grpSel || !vendorContainer) return;
+
+        var selectedGroupName = grpSel.value;
+        var group = inventory.groups.find(g => g.name === selectedGroupName);
+
+        // Show vendor selector for mixed groups (vendor is empty)
+        if (group && !group.vendor) {
+            vendorContainer.style.display = 'block';
+        } else {
+            vendorContainer.style.display = 'none';
+        }
     }
 
     function renderTypeDropdown() {
@@ -659,6 +668,10 @@
         document.getElementById('device-localidad').value = device.localidad || '';
         document.getElementById('device-tipo').value = device.tipo || '';
         onGroupChange();
+        // Pre-select device vendor if available
+        if (device.vendor) {
+            setTimeout(() => { document.getElementById('device-vendor').value = device.vendor; }, 50);
+        }
         setTimeout(() => { document.getElementById('device-modelo').value = device.modelo || ''; }, 100);
         document.getElementById('device-criticidad').value = device.criticidad || '';
         selectedTags = device.tags ? [...device.tags] : []; renderTags();
