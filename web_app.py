@@ -1475,7 +1475,10 @@ def api_list_files(subpath=""):
         for d in g.get('devices', []):
             if (d.get('sysname') or d.get('hostname')).lower() == device_name.lower():
                 # Physical folder structure: /archive/{vendor}/{sysname}/
-                vendor_name = normalize_vendor_folder(g.get('vendor', ''))
+                # Use device vendor first (for mixed groups), fallback to group vendor
+                device_vendor = d.get('vendor', '')
+                group_vendor = g.get('vendor', '')
+                vendor_name = normalize_vendor_folder(device_vendor or group_vendor)
                 device_folder_name = d.get('sysname') or d.get('hostname')
                 phys_path = os.path.join(vendor_name, device_folder_name)
                 break
@@ -1515,7 +1518,10 @@ def api_file_content(filepath):
                     sysname = d.get('sysname') or d.get('hostname')
                     if sysname and sysname.lower() == part.lower():
                         # Found device! Build physical path
-                        vendor = normalize_vendor_folder(g.get('vendor', ''))
+                        # Use device vendor first (for mixed groups), fallback to group vendor
+                        device_vendor = d.get('vendor', '')
+                        group_vendor = g.get('vendor', '')
+                        vendor = normalize_vendor_folder(device_vendor or group_vendor)
                         remaining = '/'.join(parts[i+1:]) if i+1 < len(parts) else ''
                         if remaining:
                             return os.path.join(vendor, sysname, remaining)
@@ -1975,21 +1981,30 @@ def resolve_zip_paths(folderpath, view, inv):
         group_name = parts[0]
         for group in inv.get('groups', []):
             if group.get('name', '').lower() == group_name.lower():
-                vendor_folder = normalize_vendor_folder(group.get('vendor', ''))
+                group_vendor = group.get('vendor', '')
                 if len(parts) == 1:
                     # Group level - return all device folders
                     for device in group.get('devices', []):
                         sysname = device.get('sysname') or device.get('hostname')
                         if sysname:
+                            # Use device vendor first, fallback to group vendor
+                            device_vendor = device.get('vendor', '')
+                            vendor_folder = normalize_vendor_folder(device_vendor or group_vendor)
                             device_path = os.path.join(vendor_folder, sysname)
                             if os.path.exists(os.path.join(ARCHIVE_DIR, device_path)):
                                 physical_paths.append(device_path)
                 else:
-                    # Device level inside group
+                    # Device level inside group - find the specific device
                     device_name = parts[1]
-                    device_path = os.path.join(vendor_folder, device_name)
-                    if os.path.exists(os.path.join(ARCHIVE_DIR, device_path)):
-                        physical_paths.append(device_path)
+                    for device in group.get('devices', []):
+                        sysname = device.get('sysname') or device.get('hostname')
+                        if sysname and sysname.lower() == device_name.lower():
+                            device_vendor = device.get('vendor', '')
+                            vendor_folder = normalize_vendor_folder(device_vendor or group_vendor)
+                            device_path = os.path.join(vendor_folder, sysname)
+                            if os.path.exists(os.path.join(ARCHIVE_DIR, device_path)):
+                                physical_paths.append(device_path)
+                            break
                 break
     
     elif view == 'vendor':
@@ -2011,13 +2026,16 @@ def resolve_zip_paths(folderpath, view, inv):
     elif view == 'localidad':
         localidad_name = parts[0]
         for group in inv.get('groups', []):
-            vendor_folder = normalize_vendor_folder(group.get('vendor', ''))
+            group_vendor = group.get('vendor', '')
             for device in group.get('devices', []):
                 device_loc = device.get('localidad', '')
                 if device_loc.lower() == localidad_name.lower():
                     sysname = device.get('sysname') or device.get('hostname')
                     if sysname:
                         if len(parts) == 1 or (len(parts) >= 2 and parts[1].lower() == sysname.lower()):
+                            # Use device vendor first, fallback to group vendor
+                            device_vendor = device.get('vendor', '')
+                            vendor_folder = normalize_vendor_folder(device_vendor or group_vendor)
                             device_path = os.path.join(vendor_folder, sysname)
                             if os.path.exists(os.path.join(ARCHIVE_DIR, device_path)):
                                 physical_paths.append(device_path)
@@ -2025,13 +2043,16 @@ def resolve_zip_paths(folderpath, view, inv):
     elif view == 'tipo':
         tipo_name = parts[0]
         for group in inv.get('groups', []):
-            vendor_folder = normalize_vendor_folder(group.get('vendor', ''))
+            group_vendor = group.get('vendor', '')
             for device in group.get('devices', []):
                 device_tipo = device.get('tipo', '')
                 if device_tipo.lower() == tipo_name.lower():
                     sysname = device.get('sysname') or device.get('hostname')
                     if sysname:
                         if len(parts) == 1 or (len(parts) >= 2 and parts[1].lower() == sysname.lower()):
+                            # Use device vendor first, fallback to group vendor
+                            device_vendor = device.get('vendor', '')
+                            vendor_folder = normalize_vendor_folder(device_vendor or group_vendor)
                             device_path = os.path.join(vendor_folder, sysname)
                             if os.path.exists(os.path.join(ARCHIVE_DIR, device_path)):
                                 physical_paths.append(device_path)
