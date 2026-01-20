@@ -109,15 +109,58 @@ AUDIT_CATEGORIES = {
     'user_update': 'users',
     'user_delete': 'users',
     'user_role_change': 'users',
+    'auth_password_change': 'auth',
     'settings_update': 'config',
     'schedule_update': 'config',
+    'email_test': 'config',
     'backup_manual': 'backup',
     'backup_scheduled': 'backup',
+    'backup_result': 'backup',
     'backup_error': 'backup',
     'file_view': 'files',
     'file_download': 'files',
     'file_delete': 'files',
+    'role_create': 'users',
+    'role_update': 'users',
+    'role_delete': 'users',
 }
+
+def parse_user_agent(ua_string):
+    """Parse user agent string to a short Browser/OS format."""
+    if not ua_string:
+        return None
+    
+    ua = ua_string.lower()
+    
+    # Detect browser
+    browser = "Unknown"
+    if "edg/" in ua or "edge/" in ua:
+        browser = "Edge"
+    elif "chrome/" in ua and "safari/" in ua:
+        browser = "Chrome"
+    elif "firefox/" in ua:
+        browser = "Firefox"
+    elif "safari/" in ua and "chrome/" not in ua:
+        browser = "Safari"
+    elif "opera" in ua or "opr/" in ua:
+        browser = "Opera"
+    elif "msie" in ua or "trident/" in ua:
+        browser = "IE"
+    
+    # Detect OS
+    os = "Unknown"
+    if "windows" in ua:
+        os = "Windows"
+    elif "mac os" in ua or "macintosh" in ua:
+        os = "macOS"
+    elif "linux" in ua:
+        os = "Linux"
+    elif "android" in ua:
+        os = "Android"
+    elif "iphone" in ua or "ipad" in ua:
+        os = "iOS"
+    
+    return f"{browser}/{os}"
 
 def log_audit(event_type, entity_type=None, entity_id=None, entity_name=None, details=None):
     """
@@ -128,7 +171,8 @@ def log_audit(event_type, entity_type=None, entity_id=None, entity_name=None, de
         user_id = session.get('user_id')
         username = session.get('username', 'anonymous')
         ip_address = request.remote_addr if request else None
-        user_agent = request.headers.get('User-Agent', '') if request else None
+        raw_ua = request.headers.get('User-Agent', '') if request else None
+        user_agent = parse_user_agent(raw_ua)
         event_category = AUDIT_CATEGORIES.get(event_type, 'other')
         
         db = DBManager()
@@ -622,7 +666,8 @@ backup_status = {
     "logs": []  # Detailed step-by-step logs
 }
 
-def run_backup_async(group=None, devices=None):
+def run_backup_async(group=None, devices=None, user_info=None):
+    """Run backup in background thread. user_info contains username/ip for audit."""
     global backup_status
     backup_status = {
         "running": True, 
@@ -646,14 +691,37 @@ def run_backup_async(group=None, devices=None):
         if backup_status["cancelled"]:
             backup_status["message"] = "Cancelado por usuario"
             backup_status["logs"].append({"type": "warning", "msg": "Proceso cancelado por usuario"})
+            result = "cancelled"
         else:
             errors = len(backup_status["errors"])
             completed = len(backup_status["completed"])
             backup_status["message"] = f"Completado: {completed} OK, {errors} errores"
             backup_status["progress"] = 100
             backup_status["logs"].append({"type": "success", "msg": f"Finalizado: {completed} exitosos, {errors} fallidos"})
+            result = "success" if errors == 0 else "partial"
         
         backup_status["running"] = False
+        
+        # Log backup_result with user_info passed from request context
+        if user_info:
+            target = f"{len(devices)} equipos" if devices else (group or "all")
+            db = DBManager()
+            db.log_audit_event(
+                user_id=user_info.get('user_id'),
+                username=user_info.get('username', 'unknown'),
+                event_type='backup_result',
+                event_category='backup',
+                entity_type='backup',
+                entity_name=target,
+                details={
+                    'result': result,
+                    'completed': len(backup_status["completed"]),
+                    'errors': len(backup_status["errors"]),
+                    'error_devices': backup_status["errors"][:5]  # First 5 errors
+                },
+                ip_address=user_info.get('ip_address'),
+                user_agent=user_info.get('user_agent')
+            )
         
     except Exception as e:
         backup_status["running"] = False
@@ -710,7 +778,15 @@ def trigger_backup():
     # Support multiple device parameters: ?device=A&device=B&device=C
     devices = request.args.getlist('device')
     
-    thread = threading.Thread(target=run_backup_async, args=(group, devices), daemon=True)
+    # Capture user info for audit in background thread
+    user_info = {
+        'user_id': session.get('user_id'),
+        'username': session.get('username', 'unknown'),
+        'ip_address': request.remote_addr,
+        'user_agent': parse_user_agent(request.headers.get('User-Agent', ''))
+    }
+    
+    thread = threading.Thread(target=run_backup_async, args=(group, devices, user_info), daemon=True)
     thread.start()
     
     if devices:
@@ -1993,6 +2069,11 @@ def download_file(filepath):
         return abort(403)
     if not os.path.exists(safe_path):
         return abort(404)
+    
+    # Audit log for file download
+    filename = os.path.basename(safe_path)
+    log_audit('file_download', entity_type='file', entity_id=filepath, entity_name=filename)
+    
     return send_from_directory(os.path.dirname(safe_path), os.path.basename(safe_path), as_attachment=True)
 
 @app.route('/api/files/zip-info/<path:folderpath>')
@@ -2382,9 +2463,9 @@ def api_test_email():
     notifier = Notifier()
     success, message = notifier.send_test_email()
     
-    # Audit logging (sin credenciales)
-    result_str = "OK" if success else "ERROR"
-    log.info(f"AUDIT: test_email user={user_id} role={user_role} ip={client_ip} result={result_str}")
+    # Audit with result
+    log_audit('email_test', entity_type='email', entity_name='test_email',
+              details={'result': 'success' if success else 'error', 'message': message})
     
     if success:
         return jsonify({"status": "ok", "message": message})
@@ -2478,6 +2559,11 @@ def api_update_user(user_id):
         active=data.get('active'),
         permissions=data.get('permissions')  # List of permissions
     )
+    
+    # AUDIT log for password change
+    if password:
+        log_audit('auth_password_change', entity_type='user', entity_id=str(user_id), 
+                  entity_name=target_username, details={'changed_by': 'admin'})
     
     # AUDIT log for role changes
     if old_role != new_role:
