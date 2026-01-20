@@ -227,6 +227,12 @@ class BackupEngine:
                     continue
 
                 for device in group['devices']:
+                    # Skip disabled devices
+                    if device.get('enabled') is False:
+                        sysname = device.get('sysname') or device.get('hostname')
+                        log.info(f"Skipping disabled device: {sysname} (reason: {device.get('disabled_reason', 'N/A')})")
+                        continue
+                    
                     # Filter by specific devices list
                     if target_devices:
                         sysname = device.get('sysname')
@@ -307,6 +313,12 @@ class BackupEngine:
             grp_credential_ids = group.get('credential_ids', [])
             
             for device in group['devices']:
+                # Skip disabled devices
+                if device.get('enabled') is False:
+                    sysname = device.get('sysname') or device.get('hostname')
+                    log.debug(f"Skipping disabled device from schedule: {sysname}")
+                    continue
+                
                 # Enrich device with vendor and group info for schedule calculation
                 enriched = device.copy()
                 # Device vendor takes priority over group vendor (for mixed groups)

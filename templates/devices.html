@@ -102,6 +102,7 @@
                     <th>🔗 Troncal</th>
                     <th>Equipo</th>
                     <th>Criticidad</th>
+                    <th>Estado</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
@@ -335,14 +336,14 @@
         tbody.innerHTML = '';
 
         if (data.total === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No se encontraron dispositivos.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No se encontraron dispositivos.</td></tr>';
             return;
         }
 
         // Render grouped
         Object.keys(data.grouped).sort().forEach(key => {
             var devices = data.grouped[key];
-            tbody.innerHTML += '<tr class="table-secondary"><td colspan="7"><strong>' +
+            tbody.innerHTML += '<tr class="table-secondary"><td colspan="8"><strong>' +
                 key.charAt(0).toUpperCase() + key.slice(1) + '</strong> ' +
                 '<span class="badge bg-secondary">' + devices.length + '</span></td></tr>';
 
@@ -379,7 +380,15 @@
                     ).join('');
                 }
 
-                tbody.innerHTML += '<tr>' +
+                // Status toggle (enabled/disabled)
+                var isEnabled = d.enabled !== false; // Default true if not set
+                var statusBadge = isEnabled
+                    ? '<span class="badge bg-success" style="cursor: pointer;" onclick="toggleDeviceEnabled(\'' + d.group_name + '\', \'' + sysname + '\', false)" title="Click para deshabilitar">✓ Activo</span>'
+                    : '<span class="badge bg-danger" style="cursor: pointer;" onclick="toggleDeviceEnabled(\'' + d.group_name + '\', \'' + sysname + '\', true)" title="Click para habilitar. Motivo: ' + (d.disabled_reason || 'N/A').replace(/'/g, "\\'") + '">✗ Deshabilitado</span>';
+
+                var rowClass = isEnabled ? '' : 'table-warning opacity-75';
+
+                tbody.innerHTML += '<tr class="' + rowClass + '">' +
                     '<td style="padding-left: 24px;"><a href="#" onclick="openEditDeviceModal(\'' + d.group_name + '\', ' + JSON.stringify(d).replace(/"/g, '&quot;') + '); return false;"><strong>' + nombre + '</strong></a>' + sysnameSecondary +
                     (tagsHtml ? '<div class="mt-1">' + tagsHtml + '</div>' : '') + '</td>' +
                     '<td><code class="clickable-ip" onclick="copyToClipboard(\'' + d.ip + '\')" title="Click para copiar">' + d.ip + '</code></td>' +
@@ -387,6 +396,7 @@
                     '<td>' + tronBadge + '</td>' +
                     '<td>' + vendorBadge + tipoBadge + modeloInfo + '</td>' +
                     '<td class="text-center">' + critBadge + '</td>' +
+                    '<td class="text-center">' + statusBadge + '</td>' +
                     '<td><span class="btn-action" onclick=\'openEditDeviceModal(' + JSON.stringify(d.group_name) + ', ' + JSON.stringify(d) + ')\'>✏️</span>' +
                     '<span class="btn-action" onclick="deleteDevice(\'' + d.group_name + '\', \'' + sysname + '\')">🗑️</span></td>' +
                     '</tr>';
@@ -756,6 +766,97 @@
                 }
             });
         });
+    }
+
+    // Toggle device enabled/disabled status
+    function toggleDeviceEnabled(groupName, sysname, enable) {
+        if (enable) {
+            // Enabling - simple confirmation
+            confirmAction({
+                title: '✓ Habilitar Dispositivo',
+                message: '<p>¿Habilitar el dispositivo <strong>"' + sysname + '"</strong> para backups?</p>',
+                warning: 'El dispositivo volverá a incluirse en los backups programados.',
+                buttonText: '✓ Habilitar',
+                buttonClass: 'btn-success',
+                onConfirm: function () {
+                    fetch('/api/inventory/device/' + groupName + '/' + sysname + '/toggle-enabled', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ enabled: true })
+                    })
+                        .then(r => r.json())
+                        .then(d => {
+                            if (d.error) {
+                                alert(d.error);
+                            } else {
+                                loadDevices();
+                            }
+                        });
+                }
+            });
+        } else {
+            // Disabling - require reason
+            // Use a custom modal with input field
+            var modalHtml = `
+                <div class="modal fade" id="disableDeviceModal" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header bg-warning">
+                                <h5 class="modal-title">⚠️ Deshabilitar Dispositivo</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p>¿Deshabilitar el dispositivo <strong>"${sysname}"</strong>?</p>
+                                <p class="text-muted small">El dispositivo será excluido de todos los backups programados hasta que se vuelva a habilitar.</p>
+                                <div class="mb-3">
+                                    <label class="form-label"><strong>Motivo de deshabilitación <span class="text-danger">*</span></strong></label>
+                                    <textarea class="form-control" id="disable-reason" rows="3" 
+                                        placeholder="Ej: Equipo en mantenimiento, Equipo dado de baja, Pendiente de reemplazo..." required></textarea>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                <button type="button" class="btn btn-warning" id="confirm-disable-btn">⚠️ Deshabilitar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+
+            // Remove existing modal if present
+            var existing = document.getElementById('disableDeviceModal');
+            if (existing) existing.remove();
+
+            // Add modal to DOM
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+            var modal = new bootstrap.Modal(document.getElementById('disableDeviceModal'));
+            modal.show();
+
+            // Handle confirm
+            document.getElementById('confirm-disable-btn').onclick = function () {
+                var reason = document.getElementById('disable-reason').value.trim();
+                if (!reason) {
+                    alert('El motivo es obligatorio');
+                    document.getElementById('disable-reason').focus();
+                    return;
+                }
+
+                fetch('/api/inventory/device/' + groupName + '/' + sysname + '/toggle-enabled', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled: false, reason: reason })
+                })
+                    .then(r => r.json())
+                    .then(d => {
+                        modal.hide();
+                        if (d.error) {
+                            alert(d.error);
+                        } else {
+                            loadDevices();
+                        }
+                    });
+            };
+        }
     }
 </script>
 {% endblock %}

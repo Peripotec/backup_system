@@ -1347,6 +1347,58 @@ def api_edit_device(group_name, hostname):
     save_inventory(inv)
     return jsonify({"error": "Grupo destino no encontrado"}), 404
 
+@app.route('/api/inventory/device/<group_name>/<hostname>/toggle-enabled', methods=['PUT'])
+@requires_auth
+@requires_permission('edit_inventory')
+def api_toggle_device_enabled(group_name, hostname):
+    """
+    Enable or disable a device for backup.
+    Reason is REQUIRED when disabling.
+    """
+    data = request.json
+    enabled = data.get('enabled', True)
+    reason = data.get('reason', '').strip()
+    
+    # Reason is required when disabling
+    if not enabled and not reason:
+        return jsonify({"error": "El motivo es requerido al deshabilitar un dispositivo"}), 400
+    
+    inv = load_inventory()
+    
+    for g in inv["groups"]:
+        if g["name"] == group_name:
+            for d in g["devices"]:
+                existing_sysname = d.get("sysname") or d.get("hostname")
+                if existing_sysname == hostname:
+                    # Update enabled status
+                    d["enabled"] = enabled
+                    
+                    if enabled:
+                        # Clear disable metadata when enabling
+                        d.pop("disabled_by", None)
+                        d.pop("disabled_at", None)
+                        d.pop("disabled_reason", None)
+                        event_type = 'device_enable'
+                        details = {}
+                    else:
+                        # Record who disabled and why
+                        d["disabled_by"] = session.get('username', 'unknown')
+                        d["disabled_at"] = datetime.now().isoformat()
+                        d["disabled_reason"] = reason
+                        event_type = 'device_disable'
+                        details = {'reason': reason}
+                    
+                    save_inventory(inv)
+                    log_audit(event_type, entity_type='device', entity_id=hostname, 
+                              entity_name=d.get('nombre', hostname), details=details)
+                    
+                    status_text = "habilitado" if enabled else "deshabilitado"
+                    return jsonify({"status": "ok", "message": f"Dispositivo {status_text}"})
+            
+            return jsonify({"error": "Dispositivo no encontrado"}), 404
+    
+    return jsonify({"error": "Grupo no encontrado"}), 404
+
 @app.route('/api/inventory/test', methods=['POST'])
 @requires_auth
 @requires_permission('view_inventory')
