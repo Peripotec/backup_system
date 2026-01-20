@@ -135,6 +135,101 @@ Actualizar dispositivo.
 #### DELETE /api/inventory/devices/<sysname>
 Eliminar dispositivo.
 
+#### PUT /api/inventory/device/<group>/<sysname>/toggle-enabled
+Habilitar o deshabilitar un dispositivo para backups.
+
+**Permisos:** `edit_inventory`
+
+**Body (habilitar):**
+```json
+{
+  "enabled": true
+}
+```
+
+**Body (deshabilitar - motivo requerido):**
+```json
+{
+  "enabled": false,
+  "reason": "Equipo en mantenimiento"
+}
+```
+
+**Respuesta:**
+```json
+{
+  "status": "ok",
+  "message": "Dispositivo habilitado"
+}
+```
+
+**Nota:** Al deshabilitar, el dispositivo será excluido de todos los backups (manuales y programados). El motivo es obligatorio y queda registrado en auditoría.
+
+---
+
+### Auditoría
+
+#### GET /api/audit
+Obtener logs de auditoría con paginación y filtros.
+
+**Permisos:** `view_logs`
+
+**Query params:**
+- `page`: Número de página (default: 1)
+- `per_page`: Elementos por página (default: 20)
+- `event_type`: Filtrar por tipo de evento
+- `user_id`: Filtrar por ID de usuario
+- `username`: Filtrar por nombre de usuario (parcial)
+- `ip_address`: Filtrar por IP (parcial)
+- `date_from`: Desde fecha (YYYY-MM-DD)
+- `date_to`: Hasta fecha (YYYY-MM-DD)
+- `entity_type`: Filtrar por tipo de entidad
+
+**Respuesta:**
+```json
+{
+  "logs": [
+    {
+      "id": 1,
+      "timestamp": "2026-01-20 10:30:00",
+      "username": "admin",
+      "event_type": "device_disable",
+      "entity_type": "device",
+      "entity_id": "SW-01",
+      "entity_name": "Switch Core",
+      "ip_address": "192.168.1.100"
+    }
+  ],
+  "total": 150,
+  "page": 1,
+  "per_page": 20,
+  "total_pages": 8
+}
+```
+
+#### GET /api/audit/event-types
+Obtener lista de tipos de eventos disponibles.
+
+**Permisos:** `view_logs`
+
+**Respuesta:**
+```json
+["auth_login", "auth_logout", "device_create", "device_disable", ...]
+```
+
+#### GET /api/audit/users
+Obtener lista de usuarios que aparecen en los logs.
+
+**Permisos:** `view_logs`
+
+**Respuesta:**
+```json
+[
+  {"user_id": 1, "username": "admin"},
+  {"user_id": 2, "username": "operator"}
+]
+```
+
 ---
 
 ### Archivos / Historial

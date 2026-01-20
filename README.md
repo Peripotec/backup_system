@@ -1,6 +1,6 @@
 # Network Backup System
 
-Sistema de respaldo automatizado para equipos de red (Huawei, HP, ZTE OLT) con:
+Sistema de respaldo automatizado para equipos de red (Huawei, HP, ZTE OLT, Cisco) con:
 - 🚀 Ejecución concurrente (ThreadPool)
 - 📚 Versionado híbrido (Git para texto, Archivo para binarios)
 - 🗄️ Base de datos SQLite para trazabilidad
@@ -8,6 +8,8 @@ Sistema de respaldo automatizado para equipos de red (Huawei, HP, ZTE OLT) con:
 - 🔐 RBAC (Control de acceso basado en roles)
 - 📧 Notificaciones por Email
 - 🔑 Vault encriptado para credenciales
+- 📋 **Sistema de Auditoría** (tipo Bookstack)
+- ✅ **Control de dispositivos** (habilitar/deshabilitar con trazabilidad)
 
 ## Quick Start
 
@@ -37,8 +39,20 @@ python3 main.py            # Producción
 ├── inventory.yaml    # Dispositivos
 ├── web_app.py        # Dashboard
 ├── core/             # Lógica central
-└── vendors/          # Plugins por vendor
+│   ├── engine.py     # Motor de backup
+│   ├── db_manager.py # SQLite (jobs, audit)
+│   └── config_manager.py
+├── vendors/          # Plugins por vendor
+├── templates/        # HTML (Jinja2)
+└── docs/             # Documentación
 ```
 
 ## Documentación
+
 - [DEPLOY.md](DEPLOY.md) - Guía completa de instalación
+- [docs/rbac.md](docs/rbac.md) - Control de acceso y roles
+- [docs/audit.md](docs/audit.md) - Sistema de auditoría
+- [docs/scheduling.md](docs/scheduling.md) - Programación de backups
+- [docs/vendors.md](docs/vendors.md) - Plugins de vendors
+- [docs/api-reference.md](docs/api-reference.md) - Referencia de API
+
