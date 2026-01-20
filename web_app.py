@@ -228,7 +228,7 @@ ROLE_PERMISSIONS = {
               'edit_inventory', 'view_vault', 'edit_vault', 'view_settings', 'edit_settings', 'test_email'],
     'superadmin': ['view_dashboard', 'view_files', 'view_diff', 'run_backup', 'view_inventory', 
                    'edit_inventory', 'view_vault', 'edit_vault', 'view_settings', 'edit_settings',
-                   'test_email', 'manage_users', 'manage_roles']
+                   'test_email', 'manage_users', 'manage_roles', 'view_logs']
 }
 
 # Catálogo de permisos por categoría (source of truth para UI de roles)
@@ -240,6 +240,7 @@ PERMISSIONS_CATALOG = {
         {'id': 'view_inventory', 'label': 'Ver inventario', 'description': 'Ver lista de dispositivos'},
         {'id': 'view_vault', 'label': 'Ver credenciales', 'description': 'Ver vault de credenciales'},
         {'id': 'view_settings', 'label': 'Ver configuración', 'description': 'Ver configuración del sistema'},
+        {'id': 'view_logs', 'label': 'Ver auditoría', 'description': 'Ver registro de auditoría del sistema'},
     ],
     'Edición': [
         {'id': 'run_backup', 'label': 'Ejecutar backup', 'description': 'Ejecutar backups manualmente'},
