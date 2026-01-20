@@ -715,8 +715,14 @@ def trigger_backup():
     
     if devices:
         target = f"{len(devices)} equipo(s)"
+        target_detail = devices
     else:
         target = group or "Todos"
+        target_detail = group or "all"
+    
+    log_audit('backup_manual', entity_type='backup', entity_name=target, 
+              details={'target': target_detail, 'group': group, 'devices': devices})
+    
     return jsonify({"status": "started", "message": f"Backup iniciado: {target}", "running": True})
 
 @app.route('/api/backup/status')
@@ -1042,12 +1048,8 @@ def api_add_group():
         inv["groups"] = []
     inv["groups"].append(new_group)
     save_inventory(inv)
-    
-    # Audit log
-    current_user = get_current_user()
-    username = current_user.get('username', 'unknown') if current_user else 'unknown'
-    log.info(f"AUDIT: inventory_group_create user={username} ip={request.remote_addr} group={name}")
-    
+    log_audit('group_create', entity_type='group', entity_id=name, entity_name=name, 
+              details={'vendor': vendor})
     return jsonify({"status": "ok", "message": "Grupo creado"})
 
 @app.route('/api/inventory/group/<group_name>', methods=['PUT'])
@@ -1063,6 +1065,8 @@ def api_edit_group(group_name):
             if "credential_ids" in data:
                 g["credential_ids"] = data["credential_ids"]
             save_inventory(inv)
+            log_audit('group_update', entity_type='group', entity_id=group_name, entity_name=group_name, 
+                      details={'vendor': data.get('vendor')})
             return jsonify({"status": "ok", "message": "Grupo actualizado"})
     return jsonify({"error": "Grupo no encontrado"}), 404
 
@@ -1087,12 +1091,8 @@ def api_delete_group(group_name):
     # Remove empty group
     inv["groups"] = [g for g in inv.get("groups", []) if g["name"] != group_name]
     
-    # Audit log
-    current_user = get_current_user()
-    username = current_user.get('username', 'unknown') if current_user else 'unknown'
-    
     save_inventory(inv)
-    log.info(f"AUDIT: inventory_group_delete user={username} ip={request.remote_addr} group={group_name} result=OK")
+    log_audit('group_delete', entity_type='group', entity_id=group_name, entity_name=group_name)
     return jsonify({"status": "ok", "message": "Grupo eliminado"})
 
 @app.route('/api/vendors')
@@ -1135,18 +1135,10 @@ def api_add_vault_credential():
     if not cred_id or not name:
         return jsonify({"error": "ID y nombre son requeridos"}), 400
     
-    # Get current user for audit
-    current_user = get_current_user()
-    username = current_user.get('username', 'unknown') if current_user else 'unknown'
-    client_ip = request.remote_addr
-    
     success, message = add_credential(cred_id, name, user, password, extra_pass)
     
-    # Audit log (no secrets)
-    result_str = "OK" if success else "ERROR"
-    log.info(f"AUDIT: vault_create user={username} ip={client_ip} cred_id={cred_id} result={result_str}")
-    
     if success:
+        log_audit('credential_create', entity_type='credential', entity_id=cred_id, entity_name=name)
         return jsonify({"status": "ok", "message": message})
     return jsonify({"error": message}), 400
 
@@ -1163,18 +1155,10 @@ def api_update_vault_credential(cred_id):
     password = data.get("pass")
     extra_pass = data.get("extra_pass")
     
-    # Get current user for audit
-    current_user = get_current_user()
-    username = current_user.get('username', 'unknown') if current_user else 'unknown'
-    client_ip = request.remote_addr
-    
     success, message = update_credential(cred_id, name, user, password, extra_pass)
     
-    # Audit log (no secrets)
-    result_str = "OK" if success else "ERROR"
-    log.info(f"AUDIT: vault_update user={username} ip={client_ip} cred_id={cred_id} result={result_str}")
-    
     if success:
+        log_audit('credential_update', entity_type='credential', entity_id=cred_id, entity_name=name)
         return jsonify({"status": "ok", "message": message})
     return jsonify({"error": message}), 404
 
@@ -1185,18 +1169,10 @@ def api_delete_vault_credential(cred_id):
     """Delete a credential from vault."""
     from core.vault import delete_credential
     
-    # Get current user for audit
-    current_user = get_current_user()
-    username = current_user.get('username', 'unknown') if current_user else 'unknown'
-    client_ip = request.remote_addr
-    
     success, message = delete_credential(cred_id)
     
-    # Audit log
-    result_str = "OK" if success else "ERROR"
-    log.info(f"AUDIT: vault_delete user={username} ip={client_ip} cred_id={cred_id} result={result_str}")
-    
     if success:
+        log_audit('credential_delete', entity_type='credential', entity_id=cred_id, entity_name=cred_id)
         return jsonify({"status": "ok", "message": message})
     return jsonify({"error": message}), 404
 
@@ -2323,8 +2299,8 @@ def api_update_settings():
     
     cfg.update_settings(data)
     
-    # Audit log (no values, only keys changed)
-    log.info(f"AUDIT: settings_update user={username} ip={request.remote_addr} keys={changed_keys}")
+    log_audit('settings_update', entity_type='settings', entity_name='system', 
+              details={'keys_changed': changed_keys})
     
     return jsonify({"status": "ok", "message": "Settings updated"})
 
@@ -2452,6 +2428,8 @@ def api_create_user():
     
     user_id = cfg.create_user(username, password, role, email, permissions)
     if user_id:
+        log_audit('user_create', entity_type='user', entity_id=str(user_id), entity_name=username, 
+                  details={'role': role})
         return jsonify({"status": "ok", "id": user_id})
     return jsonify({"error": "User already exists"}), 400
 
@@ -2503,10 +2481,10 @@ def api_update_user(user_id):
     
     # AUDIT log for role changes
     if old_role != new_role:
-        log.info(f"AUDIT: user_role_change actor={actor_username} ip={client_ip} "
-                f"target={target_username} old_role={old_role} new_role={new_role}")
+        log_audit('user_update', entity_type='user', entity_id=str(user_id), entity_name=target_username,
+                  details={'role_change': f'{old_role} -> {new_role}'})
     else:
-        log.info(f"AUDIT: user_update actor={actor_username} ip={client_ip} target={target_username}")
+        log_audit('user_update', entity_type='user', entity_id=str(user_id), entity_name=target_username)
     
     return jsonify({"status": "ok"})
 
@@ -2530,7 +2508,7 @@ def api_delete_user(user_id):
         return jsonify({"error": "Cannot delete default admin"}), 400
     
     if cfg.delete_user(user_id):
-        log.info(f"AUDIT: user_delete actor={actor_username} ip={client_ip} target={target_username}")
+        log_audit('user_delete', entity_type='user', entity_id=str(user_id), entity_name=target_username)
         return jsonify({"status": "ok"})
     return jsonify({"error": "User not found"}), 404
 
@@ -2649,6 +2627,7 @@ def api_create_role():
     
     role_id = cfg.create_role(name, emoji, description, permissions)
     if role_id:
+        log_audit('role_create', entity_type='role', entity_id=str(role_id), entity_name=name)
         return jsonify({"status": "ok", "id": role_id})
     return jsonify({"error": "El rol ya existe"}), 400
 
@@ -2673,6 +2652,8 @@ def api_update_role(role_id):
         description=data.get('description'),
         permissions=data.get('permissions')
     )
+    log_audit('role_update', entity_type='role', entity_id=str(role_id), 
+              entity_name=data.get('name') or (role.get('name') if role else 'unknown'))
     return jsonify({"status": "ok"})
 
 @app.route('/api/roles/<int:role_id>', methods=['DELETE'])
@@ -2680,8 +2661,11 @@ def api_update_role(role_id):
 @requires_permission('manage_roles')
 def api_delete_role(role_id):
     cfg = get_config_manager()
+    role = cfg.get_role_by_id(role_id)
+    role_name = role.get('name') if role else 'unknown'
     success, message = cfg.delete_role(role_id)
     if success:
+        log_audit('role_delete', entity_type='role', entity_id=str(role_id), entity_name=role_name)
         return jsonify({"status": "ok", "message": message})
     return jsonify({"error": message}), 400
 
