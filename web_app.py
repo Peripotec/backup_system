@@ -84,6 +84,70 @@ MAX_LOGIN_ATTEMPTS = 5
 LOGIN_BLOCK_DURATION = 300  # 5 minutes
 
 # ===========================================
+# AUDIT HELPER
+# ===========================================
+
+# Event categories for audit log
+AUDIT_CATEGORIES = {
+    'auth_login': 'auth',
+    'auth_logout': 'auth',
+    'auth_failed': 'auth',
+    'token_create': 'auth',
+    'token_delete': 'auth',
+    'device_create': 'inventory',
+    'device_update': 'inventory',
+    'device_delete': 'inventory',
+    'device_enable': 'inventory',
+    'device_disable': 'inventory',
+    'group_create': 'inventory',
+    'group_update': 'inventory',
+    'group_delete': 'inventory',
+    'credential_create': 'vault',
+    'credential_update': 'vault',
+    'credential_delete': 'vault',
+    'user_create': 'users',
+    'user_update': 'users',
+    'user_delete': 'users',
+    'user_role_change': 'users',
+    'settings_update': 'config',
+    'schedule_update': 'config',
+    'backup_manual': 'backup',
+    'backup_scheduled': 'backup',
+    'backup_error': 'backup',
+    'file_view': 'files',
+    'file_download': 'files',
+    'file_delete': 'files',
+}
+
+def log_audit(event_type, entity_type=None, entity_id=None, entity_name=None, details=None):
+    """
+    Central helper to log audit events.
+    Automatically captures user info, IP, and user agent from Flask context.
+    """
+    try:
+        user_id = session.get('user_id')
+        username = session.get('username', 'anonymous')
+        ip_address = request.remote_addr if request else None
+        user_agent = request.headers.get('User-Agent', '') if request else None
+        event_category = AUDIT_CATEGORIES.get(event_type, 'other')
+        
+        db = DBManager()
+        db.log_audit_event(
+            user_id=user_id,
+            username=username,
+            event_type=event_type,
+            event_category=event_category,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            entity_name=entity_name,
+            details=details,
+            ip_address=ip_address,
+            user_agent=user_agent
+        )
+    except Exception as e:
+        log.error(f"Failed to log audit event {event_type}: {e}")
+
+# ===========================================
 # SECURITY MIDDLEWARE
 # ===========================================
 
@@ -431,6 +495,7 @@ def login():
                 session.permanent = True
             
             log.info(f"User logged in: {username} from {client_ip}")
+            log_audit('auth_login', entity_type='user', entity_id=str(user['id']), entity_name=username)
             next_url = request.args.get('next', '/')
             return redirect(next_url)
         else:
@@ -442,12 +507,15 @@ def login():
             else:
                 error = f"Cuenta bloqueada por {LOGIN_BLOCK_DURATION // 60} minutos."
             log.warning(f"Failed login attempt for: {username} from {client_ip}")
+            log_audit('auth_failed', entity_type='user', entity_name=username, details={'reason': 'invalid_credentials'})
     
     return render_template('login.html', error=error)
 
 @app.route('/logout')
 def logout():
     username = session.get('username', 'Unknown')
+    user_id = session.get('user_id')
+    log_audit('auth_logout', entity_type='user', entity_id=str(user_id) if user_id else None, entity_name=username)
     session.clear()
     log.info(f"User logged out: {username}")
     return redirect(url_for('login'))
@@ -1191,6 +1259,7 @@ def api_add_device():
                     return jsonify({"error": "Sysname ya existe en este grupo"}), 400
             g["devices"].append(device)
             save_inventory(inv)
+            log_audit('device_create', entity_type='device', entity_id=sysname, entity_name=data.get('nombre', sysname), details={'group': group_name, 'ip': data.get('ip')})
             return jsonify({"status": "ok", "message": "Dispositivo agregado"})
     return jsonify({"error": "Grupo no encontrado"}), 404
 
@@ -1203,6 +1272,7 @@ def api_delete_device(group_name, hostname):
         if g["name"] == group_name:
             g["devices"] = [d for d in g["devices"] if (d.get("sysname") or d.get("hostname")) != hostname]
             save_inventory(inv)
+            log_audit('device_delete', entity_type='device', entity_id=hostname, entity_name=hostname, details={'group': group_name})
             return jsonify({"status": "ok", "message": "Dispositivo eliminado"})
     return jsonify({"error": "No encontrado"}), 404
 
@@ -1267,6 +1337,7 @@ def api_edit_device(group_name, hostname):
         if g["name"] == new_group:
             g["devices"].append(device_data)
             save_inventory(inv)
+            log_audit('device_update', entity_type='device', entity_id=original_sysname, entity_name=device_data.get('nombre', original_sysname), details={'group': new_group, 'ip': new_ip})
             return jsonify({"status": "ok", "message": "Dispositivo actualizado"})
     
     # If target group not found, put back in original
@@ -2927,6 +2998,76 @@ def api_get_dependencies(entity, entity_id):
             result["warning"] = f"{backup_count} archivo(s) de backup serán eliminados"
     
     return jsonify(result)
+
+# ===========================================
+# AUDIT LOG API
+# ===========================================
+
+@app.route('/admin/audit')
+@requires_auth
+@requires_permission('view_logs')
+def audit_page():
+    """Página de Registro de Auditoría."""
+    return render_template('audit.html')
+
+@app.route('/api/audit')
+@requires_auth
+@requires_permission('view_logs')
+def api_get_audit_logs():
+    """Get audit logs with pagination and filters."""
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    
+    # Build filters from query params
+    filters = {}
+    if request.args.get('event_type'):
+        filters['event_type'] = request.args.get('event_type')
+    if request.args.get('user_id'):
+        filters['user_id'] = request.args.get('user_id', type=int)
+    if request.args.get('username'):
+        filters['username'] = request.args.get('username')
+    if request.args.get('ip_address'):
+        filters['ip_address'] = request.args.get('ip_address')
+    if request.args.get('date_from'):
+        filters['date_from'] = request.args.get('date_from')
+    if request.args.get('date_to'):
+        filters['date_to'] = request.args.get('date_to')
+    if request.args.get('entity_type'):
+        filters['entity_type'] = request.args.get('entity_type')
+    if request.args.get('search'):
+        filters['search'] = request.args.get('search')
+    
+    db = DBManager()
+    logs = db.get_audit_logs(page=page, per_page=per_page, filters=filters if filters else None)
+    total = db.get_audit_log_count(filters=filters if filters else None)
+    
+    return jsonify({
+        'logs': logs,
+        'total': total,
+        'page': page,
+        'per_page': per_page,
+        'total_pages': (total + per_page - 1) // per_page
+    })
+
+@app.route('/api/audit/event-types')
+@requires_auth
+@requires_permission('view_logs')
+def api_get_audit_event_types():
+    """Get list of available event types for filtering."""
+    # Return all defined categories plus any used in DB
+    db = DBManager()
+    db_types = db.get_audit_event_types()
+    all_types = list(set(list(AUDIT_CATEGORIES.keys()) + db_types))
+    all_types.sort()
+    return jsonify(all_types)
+
+@app.route('/api/audit/users')
+@requires_auth
+@requires_permission('view_logs')
+def api_get_audit_users():
+    """Get list of users that appear in audit logs."""
+    db = DBManager()
+    return jsonify(db.get_audit_users())
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

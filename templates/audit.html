@@ -1,0 +1,466 @@
+{% extends "base.html" %}
+{% block title %}Registro de Auditoría{% endblock %}
+
+{% block head %}
+<style>
+    .filter-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        align-items: flex-end;
+        margin-bottom: 1.5rem;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .filter-group label {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+    }
+
+    .filter-group input,
+    .filter-group select {
+        min-width: 150px;
+    }
+
+    .audit-table {
+        font-size: 0.9rem;
+    }
+
+    .audit-table th {
+        background: var(--ds-bg-elevated);
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.05em;
+    }
+
+    .user-avatar-small {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 0.8rem;
+        margin-right: 0.5rem;
+    }
+
+    .event-badge {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .event-auth {
+        background: rgba(59, 130, 246, 0.2);
+        color: #60a5fa;
+    }
+
+    .event-inventory {
+        background: rgba(34, 197, 94, 0.2);
+        color: #4ade80;
+    }
+
+    .event-vault {
+        background: rgba(168, 85, 247, 0.2);
+        color: #c084fc;
+    }
+
+    .event-users {
+        background: rgba(251, 146, 60, 0.2);
+        color: #fb923c;
+    }
+
+    .event-config {
+        background: rgba(156, 163, 175, 0.2);
+        color: #9ca3af;
+    }
+
+    .event-backup {
+        background: rgba(34, 211, 238, 0.2);
+        color: #22d3ee;
+    }
+
+    .event-files {
+        background: rgba(251, 191, 36, 0.2);
+        color: #fbbf24;
+    }
+
+    .event-other {
+        background: rgba(107, 114, 128, 0.2);
+        color: #6b7280;
+    }
+
+    .entity-link {
+        color: var(--ds-primary);
+        text-decoration: none;
+    }
+
+    .entity-link:hover {
+        text-decoration: underline;
+    }
+
+    .ip-address {
+        font-family: monospace;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+    }
+
+    .timestamp {
+        white-space: nowrap;
+        font-size: 0.85rem;
+    }
+
+    .pagination-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 1rem;
+    }
+
+    .no-results {
+        text-align: center;
+        padding: 3rem;
+        color: var(--text-muted);
+    }
+
+    .no-results i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-journal-text me-2"></i>Registro de Auditoría
+    </div>
+    <div class="card-body">
+        <p class="text-muted mb-4">
+            Este registro muestra una lista de actividades rastreadas en el sistema.
+            Utilice los filtros para encontrar eventos específicos.
+        </p>
+
+        <!-- Filters -->
+        <div class="filter-bar">
+            <div class="filter-group">
+                <label>Filtro de Eventos</label>
+                <select class="form-select form-select-sm" id="filter-event-type">
+                    <option value="">Sin Filtro</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Inicio del Rango</label>
+                <input type="date" class="form-control form-control-sm" id="filter-date-from">
+            </div>
+            <div class="filter-group">
+                <label>Final del Rango</label>
+                <input type="date" class="form-control form-control-sm" id="filter-date-to">
+            </div>
+            <div class="filter-group">
+                <label>Usuario</label>
+                <select class="form-select form-select-sm" id="filter-user">
+                    <option value="">Todos los usuarios</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Dirección IP</label>
+                <input type="text" class="form-control form-control-sm" id="filter-ip" placeholder="Ej: 192.168.">
+            </div>
+            <div class="filter-group">
+                <button class="btn btn-primary btn-sm" onclick="loadAuditLogs()">
+                    <i class="bi bi-search"></i> Buscar
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" onclick="clearFilters()">
+                    <i class="bi bi-x-circle"></i> Limpiar
+                </button>
+            </div>
+        </div>
+
+        <!-- Pagination top -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div id="pagination-top"></div>
+            <div class="text-muted" id="results-count"></div>
+        </div>
+
+        <!-- Audit Table -->
+        <div class="table-responsive">
+            <table class="table table-hover audit-table">
+                <thead>
+                    <tr>
+                        <th style="width: 200px;">Usuario</th>
+                        <th style="width: 150px;">Evento</th>
+                        <th>Elemento o detalle relacionados</th>
+                        <th style="width: 130px;">Dirección IP</th>
+                        <th style="width: 170px;">Fecha de la Actividad</th>
+                    </tr>
+                </thead>
+                <tbody id="audit-table-body">
+                    <tr>
+                        <td colspan="5" class="text-center py-4">
+                            <div class="spinner-border spinner-border-sm" role="status"></div>
+                            Cargando...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination bottom -->
+        <div class="pagination-info">
+            <div id="pagination-bottom"></div>
+            <div>
+                <select class="form-select form-select-sm" id="per-page" onchange="loadAuditLogs(1)"
+                    style="width: auto;">
+                    <option value="20">20 por página</option>
+                    <option value="50">50 por página</option>
+                    <option value="100">100 por página</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let currentPage = 1;
+    let totalPages = 1;
+
+    // Color palette for user avatars (hash-based)
+    const avatarColors = [
+        '#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6',
+        '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'
+    ];
+
+    function hashCode(str) {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            hash = ((hash << 5) - hash) + str.charCodeAt(i);
+            hash |= 0;
+        }
+        return Math.abs(hash);
+    }
+
+    function getUserColor(username) {
+        return avatarColors[hashCode(username || 'anonymous') % avatarColors.length];
+    }
+
+    function getEventCategoryClass(eventType) {
+        const category = eventType.split('_')[0];
+        const categoryMap = {
+            'auth': 'event-auth',
+            'device': 'event-inventory',
+            'group': 'event-inventory',
+            'credential': 'event-vault',
+            'user': 'event-users',
+            'settings': 'event-config',
+            'schedule': 'event-config',
+            'backup': 'event-backup',
+            'file': 'event-files'
+        };
+        return categoryMap[category] || 'event-other';
+    }
+
+    function formatTimestamp(ts) {
+        if (!ts) return '-';
+        const d = new Date(ts);
+        return d.toLocaleString('es-AR', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+    }
+
+    function renderPagination(page, totalPages, containerId) {
+        const container = document.getElementById(containerId);
+        if (totalPages <= 1) {
+            container.innerHTML = '';
+            return;
+        }
+
+        let html = '<nav><ul class="pagination pagination-sm mb-0">';
+
+        // Previous
+        html += `<li class="page-item ${page <= 1 ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="loadAuditLogs(${page - 1}); return false;">«</a>
+                 </li>`;
+
+        // Page numbers
+        const maxVisible = 7;
+        let start = Math.max(1, page - Math.floor(maxVisible / 2));
+        let end = Math.min(totalPages, start + maxVisible - 1);
+        if (end - start < maxVisible - 1) {
+            start = Math.max(1, end - maxVisible + 1);
+        }
+
+        if (start > 1) {
+            html += `<li class="page-item"><a class="page-link" href="#" onclick="loadAuditLogs(1); return false;">1</a></li>`;
+            if (start > 2) html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+        }
+
+        for (let i = start; i <= end; i++) {
+            html += `<li class="page-item ${i === page ? 'active' : ''}">
+                        <a class="page-link" href="#" onclick="loadAuditLogs(${i}); return false;">${i}</a>
+                     </li>`;
+        }
+
+        if (end < totalPages) {
+            if (end < totalPages - 1) html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+            html += `<li class="page-item"><a class="page-link" href="#" onclick="loadAuditLogs(${totalPages}); return false;">${totalPages}</a></li>`;
+        }
+
+        // Next
+        html += `<li class="page-item ${page >= totalPages ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="loadAuditLogs(${page + 1}); return false;">»</a>
+                 </li>`;
+
+        html += '</ul></nav>';
+        container.innerHTML = html;
+    }
+
+    function loadAuditLogs(page = 1) {
+        currentPage = page;
+        const perPage = document.getElementById('per-page').value;
+
+        // Build query params
+        const params = new URLSearchParams();
+        params.set('page', page);
+        params.set('per_page', perPage);
+
+        const eventType = document.getElementById('filter-event-type').value;
+        const dateFrom = document.getElementById('filter-date-from').value;
+        const dateTo = document.getElementById('filter-date-to').value;
+        const user = document.getElementById('filter-user').value;
+        const ip = document.getElementById('filter-ip').value;
+
+        if (eventType) params.set('event_type', eventType);
+        if (dateFrom) params.set('date_from', dateFrom);
+        if (dateTo) params.set('date_to', dateTo + ' 23:59:59');
+        if (user) params.set('user_id', user);
+        if (ip) params.set('ip_address', ip);
+
+        const tbody = document.getElementById('audit-table-body');
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="spinner-border spinner-border-sm"></div> Cargando...</td></tr>';
+
+        fetch('/api/audit?' + params.toString())
+            .then(r => r.json())
+            .then(data => {
+                totalPages = data.total_pages || 1;
+
+                document.getElementById('results-count').textContent =
+                    `Mostrando ${data.logs.length} de ${data.total} registros`;
+
+                if (data.logs.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="5">
+                                <div class="no-results">
+                                    <i class="bi bi-inbox"></i>
+                                    <p>No se encontraron registros de auditoría</p>
+                                </div>
+                            </td>
+                        </tr>`;
+                } else {
+                    tbody.innerHTML = data.logs.map(log => {
+                        const avatarColor = getUserColor(log.username);
+                        const initial = (log.username || '?')[0].toUpperCase();
+                        const categoryClass = getEventCategoryClass(log.event_type);
+
+                        // Build entity display
+                        let entityDisplay = log.entity_name || log.entity_id || '-';
+                        if (log.entity_type && log.entity_id) {
+                            // Could add links here for specific entity types
+                            entityDisplay = `<span class="text-muted">${log.entity_type}:</span> ${entityDisplay}`;
+                        }
+                        if (log.details) {
+                            try {
+                                const details = typeof log.details === 'string' ? JSON.parse(log.details) : log.details;
+                                if (details.role) entityDisplay += ` <span class="badge bg-secondary">${details.role}</span>`;
+                            } catch (e) { }
+                        }
+
+                        return `
+                            <tr>
+                                <td>
+                                    <span class="user-avatar-small" style="background: ${avatarColor};">${initial}</span>
+                                    ${log.username || 'Sistema'}
+                                </td>
+                                <td>
+                                    <span class="event-badge ${categoryClass}">${log.event_type}</span>
+                                </td>
+                                <td>${entityDisplay}</td>
+                                <td class="ip-address">${log.ip_address || '-'}</td>
+                                <td class="timestamp">${formatTimestamp(log.timestamp)}</td>
+                            </tr>`;
+                    }).join('');
+                }
+
+                renderPagination(page, totalPages, 'pagination-top');
+                renderPagination(page, totalPages, 'pagination-bottom');
+            })
+            .catch(err => {
+                console.error('Error loading audit logs:', err);
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error al cargar registros</td></tr>';
+            });
+    }
+
+    function loadEventTypes() {
+        fetch('/api/audit/event-types')
+            .then(r => r.json())
+            .then(types => {
+                const select = document.getElementById('filter-event-type');
+                types.forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t;
+                    opt.textContent = t;
+                    select.appendChild(opt);
+                });
+            });
+    }
+
+    function loadUsers() {
+        fetch('/api/audit/users')
+            .then(r => r.json())
+            .then(users => {
+                const select = document.getElementById('filter-user');
+                users.forEach(u => {
+                    const opt = document.createElement('option');
+                    opt.value = u.user_id;
+                    opt.textContent = u.username;
+                    select.appendChild(opt);
+                });
+            });
+    }
+
+    function clearFilters() {
+        document.getElementById('filter-event-type').value = '';
+        document.getElementById('filter-date-from').value = '';
+        document.getElementById('filter-date-to').value = '';
+        document.getElementById('filter-user').value = '';
+        document.getElementById('filter-ip').value = '';
+        loadAuditLogs(1);
+    }
+
+    // Init
+    document.addEventListener('DOMContentLoaded', function () {
+        loadEventTypes();
+        loadUsers();
+        loadAuditLogs();
+    });
+</script>
+{% endblock %}

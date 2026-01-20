@@ -82,6 +82,30 @@ class DBManager:
                 )
             ''')
             
+            # Table: Audit Log (Activity tracking - Bookstack style)
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS audit_log (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    user_id INTEGER,
+                    username TEXT,
+                    event_type TEXT NOT NULL,
+                    event_category TEXT,
+                    entity_type TEXT,
+                    entity_id TEXT,
+                    entity_name TEXT,
+                    details TEXT,
+                    ip_address TEXT,
+                    user_agent TEXT
+                )
+            ''')
+            
+            # Indexes for audit_log performance
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_log(timestamp DESC)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_audit_event_type ON audit_log(event_type)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_log(user_id)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_audit_entity ON audit_log(entity_type, entity_id)')
+            
             conn.commit()
         except Exception as e:
             log.error(f"Database initialization error: {e}")
@@ -477,3 +501,179 @@ class DBManager:
         finally:
             conn.close()
 
+    # ========================
+    # AUDIT LOG
+    # ========================
+    
+    def log_audit_event(self, user_id, username, event_type, event_category=None,
+                        entity_type=None, entity_id=None, entity_name=None,
+                        details=None, ip_address=None, user_agent=None):
+        """Record an audit log entry."""
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            # Convert details dict to JSON string if provided
+            details_str = None
+            if details:
+                import json
+                details_str = json.dumps(details, ensure_ascii=False)
+            
+            cursor.execute('''
+                INSERT INTO audit_log 
+                (timestamp, user_id, username, event_type, event_category, 
+                 entity_type, entity_id, entity_name, details, ip_address, user_agent)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (datetime.now(), user_id, username, event_type, event_category,
+                  entity_type, entity_id, entity_name, details_str, ip_address, user_agent))
+            conn.commit()
+            return cursor.lastrowid
+        except Exception as e:
+            log.error(f"Failed to log audit event: {e}")
+            return None
+        finally:
+            conn.close()
+    
+    def get_audit_logs(self, page=1, per_page=20, filters=None):
+        """Get audit logs with pagination and filters."""
+        conn = self._get_connection()
+        conn.row_factory = sqlite3.Row
+        try:
+            cursor = conn.cursor()
+            query = "SELECT * FROM audit_log WHERE 1=1"
+            params = []
+            
+            if filters:
+                if filters.get('event_type'):
+                    query += " AND event_type = ?"
+                    params.append(filters['event_type'])
+                if filters.get('event_category'):
+                    query += " AND event_category = ?"
+                    params.append(filters['event_category'])
+                if filters.get('user_id'):
+                    query += " AND user_id = ?"
+                    params.append(filters['user_id'])
+                if filters.get('username'):
+                    query += " AND username LIKE ?"
+                    params.append(f"%{filters['username']}%")
+                if filters.get('ip_address'):
+                    query += " AND ip_address LIKE ?"
+                    params.append(f"%{filters['ip_address']}%")
+                if filters.get('date_from'):
+                    query += " AND timestamp >= ?"
+                    params.append(filters['date_from'])
+                if filters.get('date_to'):
+                    query += " AND timestamp <= ?"
+                    params.append(filters['date_to'])
+                if filters.get('entity_type'):
+                    query += " AND entity_type = ?"
+                    params.append(filters['entity_type'])
+                if filters.get('search'):
+                    query += " AND (entity_name LIKE ? OR details LIKE ?)"
+                    search_term = f"%{filters['search']}%"
+                    params.extend([search_term, search_term])
+            
+            query += " ORDER BY timestamp DESC LIMIT ? OFFSET ?"
+            params.extend([per_page, (page - 1) * per_page])
+            
+            cursor.execute(query, params)
+            return [dict(row) for row in cursor.fetchall()]
+        except Exception as e:
+            log.error(f"Failed to get audit logs: {e}")
+            return []
+        finally:
+            conn.close()
+    
+    def get_audit_log_count(self, filters=None):
+        """Get total count of audit logs matching filters."""
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            query = "SELECT count(*) FROM audit_log WHERE 1=1"
+            params = []
+            
+            if filters:
+                if filters.get('event_type'):
+                    query += " AND event_type = ?"
+                    params.append(filters['event_type'])
+                if filters.get('event_category'):
+                    query += " AND event_category = ?"
+                    params.append(filters['event_category'])
+                if filters.get('user_id'):
+                    query += " AND user_id = ?"
+                    params.append(filters['user_id'])
+                if filters.get('username'):
+                    query += " AND username LIKE ?"
+                    params.append(f"%{filters['username']}%")
+                if filters.get('ip_address'):
+                    query += " AND ip_address LIKE ?"
+                    params.append(f"%{filters['ip_address']}%")
+                if filters.get('date_from'):
+                    query += " AND timestamp >= ?"
+                    params.append(filters['date_from'])
+                if filters.get('date_to'):
+                    query += " AND timestamp <= ?"
+                    params.append(filters['date_to'])
+                if filters.get('entity_type'):
+                    query += " AND entity_type = ?"
+                    params.append(filters['entity_type'])
+                if filters.get('search'):
+                    query += " AND (entity_name LIKE ? OR details LIKE ?)"
+                    search_term = f"%{filters['search']}%"
+                    params.extend([search_term, search_term])
+            
+            cursor.execute(query, params)
+            return cursor.fetchone()[0]
+        except Exception as e:
+            log.error(f"Failed to get audit log count: {e}")
+            return 0
+        finally:
+            conn.close()
+    
+    def get_audit_event_types(self):
+        """Get list of distinct event types used in audit log."""
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute('SELECT DISTINCT event_type FROM audit_log ORDER BY event_type')
+            return [row[0] for row in cursor.fetchall()]
+        except Exception as e:
+            log.error(f"Failed to get audit event types: {e}")
+            return []
+        finally:
+            conn.close()
+    
+    def get_audit_users(self):
+        """Get list of distinct users in audit log."""
+        conn = self._get_connection()
+        conn.row_factory = sqlite3.Row
+        try:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT DISTINCT user_id, username 
+                FROM audit_log 
+                WHERE user_id IS NOT NULL 
+                ORDER BY username
+            ''')
+            return [dict(row) for row in cursor.fetchall()]
+        except Exception as e:
+            log.error(f"Failed to get audit users: {e}")
+            return []
+        finally:
+            conn.close()
+    
+    def delete_old_audit_logs(self, days):
+        """Delete audit logs older than N days."""
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            limit_date = datetime.now() - timedelta(days=days)
+            cursor.execute("DELETE FROM audit_log WHERE timestamp < ?", (limit_date,))
+            deleted = cursor.rowcount
+            conn.commit()
+            log.info(f"Deleted {deleted} old audit logs (older than {days} days)")
+            return deleted
+        except Exception as e:
+            log.error(f"Failed to delete old audit logs: {e}")
+            return 0
+        finally:
+            conn.close()

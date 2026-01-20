@@ -463,6 +463,13 @@
                     </a>
                 </li>
                 {% endif %}
+                {% if has_permission('view_logs') %}
+                <li class="nav-item">
+                    <a class="nav-link {% if '/admin/audit' in request.path %}active{% endif %}" href="/admin/audit">
+                        <i class="bi bi-journal-text"></i> Auditoría
+                    </a>
+                </li>
+                {% endif %}
                 {% endif %}
             </ul>
         </div>
