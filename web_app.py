@@ -162,18 +162,40 @@ def parse_user_agent(ua_string):
     
     return f"{browser}/{os}"
 
+def get_real_ip():
+    """Get real client IP, supporting reverse proxy headers."""
+    if not request:
+        return None
+    # Check X-Forwarded-For first (Nginx, load balancers)
+    xff = request.headers.get('X-Forwarded-For')
+    if xff:
+        # Take first IP (original client)
+        return xff.split(',')[0].strip()
+    # Check X-Real-IP (Nginx)
+    xri = request.headers.get('X-Real-IP')
+    if xri:
+        return xri.strip()
+    # Fallback to remote_addr
+    return request.remote_addr
+
 def log_audit(event_type, entity_type=None, entity_id=None, entity_name=None, details=None):
     """
     Central helper to log audit events.
-    Automatically captures user info, IP, and user agent from Flask context.
+    Automatically captures user info, IP (supports proxy), and user agent from Flask context.
     """
     try:
         user_id = session.get('user_id')
         username = session.get('username', 'anonymous')
-        ip_address = request.remote_addr if request else None
+        ip_address = get_real_ip()
         raw_ua = request.headers.get('User-Agent', '') if request else None
         user_agent = parse_user_agent(raw_ua)
         event_category = AUDIT_CATEGORIES.get(event_type, 'other')
+        
+        # Enhance details with user_agent if not already present
+        if details is None:
+            details = {}
+        if user_agent and 'user_agent' not in details:
+            details['user_agent'] = user_agent
         
         db = DBManager()
         db.log_audit_event(

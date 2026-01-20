@@ -381,18 +381,52 @@
                         const initial = (log.username || '?')[0].toUpperCase();
                         const categoryClass = getEventCategoryClass(log.event_type);
 
-                        // Build entity display
-                        let entityDisplay = log.entity_name || log.entity_id || '-';
-                        if (log.entity_type && log.entity_id) {
-                            // Could add links here for specific entity types
+                        // Build entity display with more details
+                        let entityDisplay = '';
+
+                        // Entity name/id
+                        if (log.entity_name) {
+                            entityDisplay = `<strong>${log.entity_name}</strong>`;
+                        } else if (log.entity_id) {
+                            entityDisplay = log.entity_id;
+                        }
+
+                        // Add entity type prefix
+                        if (log.entity_type && entityDisplay) {
                             entityDisplay = `<span class="text-muted">${log.entity_type}:</span> ${entityDisplay}`;
                         }
+
+                        // Parse and show details
                         if (log.details) {
                             try {
                                 const details = typeof log.details === 'string' ? JSON.parse(log.details) : log.details;
-                                if (details.role) entityDisplay += ` <span class="badge bg-secondary">${details.role}</span>`;
-                            } catch (e) { }
+                                const detailParts = [];
+
+                                // Show important fields
+                                if (details.role) detailParts.push(`<span class="badge bg-secondary">${details.role}</span>`);
+                                if (details.role_change) detailParts.push(`<span class="badge bg-warning text-dark">${details.role_change}</span>`);
+                                if (details.result) {
+                                    const resultClass = details.result === 'success' ? 'bg-success' :
+                                        details.result === 'error' ? 'bg-danger' : 'bg-warning text-dark';
+                                    detailParts.push(`<span class="badge ${resultClass}">${details.result}</span>`);
+                                }
+                                if (details.completed !== undefined) detailParts.push(`✓${details.completed}`);
+                                if (details.errors !== undefined && details.errors > 0) detailParts.push(`✗${details.errors}`);
+                                if (details.reason) detailParts.push(`<small class="text-muted">"${details.reason}"</small>`);
+                                if (details.message && details.result === 'error') detailParts.push(`<small class="text-danger">${details.message}</small>`);
+                                if (details.target && !log.entity_name) entityDisplay = details.target;
+                                if (details.vendor) detailParts.push(`<small class="text-muted">${details.vendor}</small>`);
+                                if (details.user_agent) detailParts.push(`<small class="text-muted">${details.user_agent}</small>`);
+                                if (details.keys_changed) detailParts.push(`<small class="text-muted">[${details.keys_changed.join(', ')}]</small>`);
+                                if (details.changed_by) detailParts.push(`<small class="text-muted">por ${details.changed_by}</small>`);
+
+                                if (detailParts.length > 0) {
+                                    entityDisplay += ' ' + detailParts.join(' ');
+                                }
+                            } catch (e) { console.warn('Error parsing details', e); }
                         }
+
+                        if (!entityDisplay) entityDisplay = '-';
 
                         return `
                             <tr>
