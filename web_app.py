@@ -1334,7 +1334,17 @@ def api_add_device():
                     return jsonify({"error": "Sysname ya existe en este grupo"}), 400
             g["devices"].append(device)
             save_inventory(inv)
-            log_audit('device_create', entity_type='device', entity_id=sysname, entity_name=data.get('nombre', sysname), details={'group': group_name, 'ip': data.get('ip')})
+            log_audit('device_create', entity_type='device', entity_id=sysname, 
+                      entity_name=data.get('nombre', sysname), 
+                      details={
+                          'group': group_name, 
+                          'ip': data.get('ip'),
+                          'localidad': data.get('localidad'),
+                          'tipo': data.get('tipo'),
+                          'modelo': data.get('modelo'),
+                          'vendor': data.get('vendor'),
+                          'criticidad': data.get('criticidad')
+                      })
             return jsonify({"status": "ok", "message": "Dispositivo agregado"})
     return jsonify({"error": "Grupo no encontrado"}), 404
 
@@ -1376,6 +1386,18 @@ def api_edit_device(group_name, hostname):
     if not device_data:
         return jsonify({"error": "Dispositivo no encontrado"}), 404
     
+    # Capture original values for audit
+    original_values = {
+        'group': group_name,
+        'ip': device_data.get('ip'),
+        'nombre': device_data.get('nombre'),
+        'localidad': device_data.get('localidad'),
+        'tipo': device_data.get('tipo'),
+        'modelo': device_data.get('modelo'),
+        'vendor': device_data.get('vendor'),
+        'criticidad': device_data.get('criticidad'),
+    }
+    
     # Keep sysname immutable
     original_sysname = device_data.get("sysname") or device_data.get("hostname")
     device_data["sysname"] = original_sysname
@@ -1407,12 +1429,31 @@ def api_edit_device(group_name, hostname):
         elif "credential_ids" in device_data:
             del device_data["credential_ids"]
     
+    # Track changes for audit
+    changes = {}
+    new_values = {
+        'group': new_group,
+        'ip': device_data.get('ip'),
+        'nombre': device_data.get('nombre'),
+        'localidad': device_data.get('localidad'),
+        'tipo': device_data.get('tipo'),
+        'modelo': device_data.get('modelo'),
+        'vendor': device_data.get('vendor'),
+        'criticidad': device_data.get('criticidad'),
+    }
+    for key, old_val in original_values.items():
+        new_val = new_values.get(key)
+        if old_val != new_val:
+            changes[key] = f"{old_val or '-'} → {new_val or '-'}"
+    
     # Add to target group (same or different)
     for g in inv["groups"]:
         if g["name"] == new_group:
             g["devices"].append(device_data)
             save_inventory(inv)
-            log_audit('device_update', entity_type='device', entity_id=original_sysname, entity_name=device_data.get('nombre', original_sysname), details={'group': new_group, 'ip': new_ip})
+            log_audit('device_update', entity_type='device', entity_id=original_sysname, 
+                      entity_name=device_data.get('nombre', original_sysname), 
+                      details={'changes': changes, 'group': new_group})
             return jsonify({"status": "ok", "message": "Dispositivo actualizado"})
     
     # If target group not found, put back in original

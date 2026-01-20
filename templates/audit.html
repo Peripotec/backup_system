@@ -415,7 +415,30 @@
                                 if (details.reason) detailParts.push(`<small class="text-muted">"${details.reason}"</small>`);
                                 if (details.message && details.result === 'error') detailParts.push(`<small class="text-danger">${details.message}</small>`);
                                 if (details.target && !log.entity_name) entityDisplay = details.target;
-                                if (details.vendor) detailParts.push(`<small class="text-muted">${details.vendor}</small>`);
+
+                                // Show device/entity details
+                                if (details.group) detailParts.push(`<small class="text-info">grupo: ${details.group}</small>`);
+                                if (details.ip) detailParts.push(`<small class="text-muted">IP: ${details.ip}</small>`);
+                                if (details.localidad) detailParts.push(`<small class="text-muted">${details.localidad}</small>`);
+                                if (details.tipo) detailParts.push(`<small class="text-muted">${details.tipo}</small>`);
+                                if (details.modelo) detailParts.push(`<small class="text-muted">${details.modelo}</small>`);
+                                if (details.vendor && !details.changes) detailParts.push(`<small class="text-muted">${details.vendor}</small>`);
+
+                                // Show changes (for device_update)
+                                if (details.changes && Object.keys(details.changes).length > 0) {
+                                    const changesList = Object.entries(details.changes)
+                                        .map(([k, v]) => `<small class="text-warning">${k}: ${v}</small>`)
+                                        .join(' ');
+                                    detailParts.push(changesList);
+                                }
+
+                                // Show devices list (for backups)
+                                if (details.devices && Array.isArray(details.devices) && details.devices.length > 0) {
+                                    const devList = details.devices.slice(0, 5).join(', ');
+                                    const more = details.devices.length > 5 ? ` +${details.devices.length - 5} más` : '';
+                                    detailParts.push(`<small class="text-info">[${devList}${more}]</small>`);
+                                }
+
                                 if (details.user_agent) detailParts.push(`<small class="text-muted">${details.user_agent}</small>`);
                                 if (details.keys_changed) detailParts.push(`<small class="text-muted">[${details.keys_changed.join(', ')}]</small>`);
                                 if (details.changed_by) detailParts.push(`<small class="text-muted">por ${details.changed_by}</small>`);
