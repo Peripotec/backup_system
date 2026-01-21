@@ -411,6 +411,13 @@
                 window.location.href = '/files/' + encodeURIComponent(vendor) + '/' + encodeURIComponent(sysname);
                 break;
             case 'backup':
+                // Check if device is disabled
+                if (device.enabled === false) {
+                    var reason = device.disabled_reason || 'Sin motivo especificado';
+                    var disabledBy = device.disabled_by || 'N/A';
+                    alert('⚠️ Dispositivo deshabilitado\n\nNo se puede ejecutar backup de "' + sysname + '".\n\nMotivo: ' + reason + '\nDeshabilitado por: ' + disabledBy);
+                    return;
+                }
                 if (confirm('¿Ejecutar backup de ' + sysname + '?')) {
                     // Use existing backup function if available
                     fetch('/api/backup/single', {

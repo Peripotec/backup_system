@@ -100,35 +100,49 @@ class Notifier:
             html += "</ul>"
 
         if disabled_devices:
-            html += """
-            <h3 style="color:orange;">⏸️ Dispositivos Deshabilitados (no se respaldaron)</h3>
-            <table style="border-collapse: collapse; font-size: 14px;">
-                <tr style="background: #f5f5f5;">
-                    <th style="padding: 5px 10px; text-align: left;">Dispositivo</th>
-                    <th style="padding: 5px 10px; text-align: left;">Grupo</th>
-                    <th style="padding: 5px 10px; text-align: left;">Motivo</th>
-                    <th style="padding: 5px 10px; text-align: left;">Deshabilitado por</th>
-                    <th style="padding: 5px 10px; text-align: left;">Fecha</th>
-                </tr>
+            # Subtle section - grey, smaller, less prominent
+            html += f"""
+            <div style="margin-top: 15px; padding: 10px; background: #f8f8f8; border-radius: 5px; border-left: 3px solid #ccc;">
+                <p style="color: #888; font-size: 12px; margin: 0 0 8px 0;">
+                    <b>⏸️ {len(disabled_devices)} dispositivo(s) deshabilitado(s) - no se respaldaron</b>
+                </p>
             """
-            for dev in disabled_devices:
-                sysname = dev.get('sysname') or dev.get('hostname', 'Unknown')
-                group = dev.get('_group_name', '-')
-                reason = dev.get('disabled_reason', 'Sin motivo especificado')
-                disabled_by = dev.get('disabled_by', '-')
-                disabled_at = dev.get('disabled_at', '-')
-                if disabled_at and len(disabled_at) > 16:
-                    disabled_at = disabled_at[:16]  # Truncate to YYYY-MM-DD HH:MM
+            
+            # If more than 10 devices, show compact list
+            if len(disabled_devices) > 10:
+                device_names = [d.get('sysname') or d.get('hostname', '?') for d in disabled_devices]
                 html += f"""
-                <tr>
-                    <td style="padding: 5px 10px; border-bottom: 1px solid #eee;"><b>{sysname}</b></td>
-                    <td style="padding: 5px 10px; border-bottom: 1px solid #eee;">{group}</td>
-                    <td style="padding: 5px 10px; border-bottom: 1px solid #eee;">{reason}</td>
-                    <td style="padding: 5px 10px; border-bottom: 1px solid #eee;">{disabled_by}</td>
-                    <td style="padding: 5px 10px; border-bottom: 1px solid #eee;">{disabled_at}</td>
-                </tr>
+                <p style="color: #999; font-size: 11px; margin: 0;">
+                    {', '.join(device_names[:15])}{'...' if len(device_names) > 15 else ''}
+                </p>
                 """
-            html += "</table>"
+            else:
+                # Show table for few devices
+                html += """
+                <table style="border-collapse: collapse; font-size: 11px; width: 100%; color: #666;">
+                    <tr style="background: #eee;">
+                        <th style="padding: 3px 6px; text-align: left;">Dispositivo</th>
+                        <th style="padding: 3px 6px; text-align: left;">Grupo</th>
+                        <th style="padding: 3px 6px; text-align: left;">Motivo</th>
+                    </tr>
+                """
+                for dev in disabled_devices:
+                    sysname = dev.get('sysname') or dev.get('hostname', 'Unknown')
+                    group = dev.get('_group_name', '-')
+                    reason = dev.get('disabled_reason', 'Sin motivo')
+                    # Truncate long reasons
+                    if len(reason) > 40:
+                        reason = reason[:40] + '...'
+                    html += f"""
+                    <tr>
+                        <td style="padding: 3px 6px; border-bottom: 1px solid #eee;">{sysname}</td>
+                        <td style="padding: 3px 6px; border-bottom: 1px solid #eee;">{group}</td>
+                        <td style="padding: 3px 6px; border-bottom: 1px solid #eee;">{reason}</td>
+                    </tr>
+                    """
+                html += "</table>"
+            
+            html += "</div>"
 
         if diff_summary:
             html += """

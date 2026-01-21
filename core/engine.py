@@ -212,6 +212,7 @@ class BackupEngine:
             target_devices = [target_devices]
         
         tasks = []
+        disabled_devices = []  # Track disabled devices for report
         with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
             if 'groups' not in self.inventory:
                 log.warning("No groups found in inventory.")
@@ -227,10 +228,15 @@ class BackupEngine:
                     continue
 
                 for device in group['devices']:
-                    # Skip disabled devices
+                    # Skip disabled devices but collect for report
                     if device.get('enabled') is False:
                         sysname = device.get('sysname') or device.get('hostname')
                         log.info(f"Skipping disabled device: {sysname} (reason: {device.get('disabled_reason', 'N/A')})")
+                        # Only include if it would have been part of this backup
+                        if not target_devices or sysname in target_devices or device.get('hostname') in (target_devices or []):
+                            disabled_dev = device.copy()
+                            disabled_dev['_group_name'] = grp_name
+                            disabled_devices.append(disabled_dev)
                         continue
                     
                     # Filter by specific devices list
@@ -284,9 +290,9 @@ class BackupEngine:
 
         self.db.end_run(run_id, total, success, errors)
         
-        # Notify
+        # Notify with disabled devices
         duration = 0 # Not tracking total run duration in var yet, relying on DB
-        self.notifier.send_summary(total, success, errors, failed_hosts, diff_summary, duration)
+        self.notifier.send_summary(total, success, errors, failed_hosts, diff_summary, duration, disabled_devices)
         
         log.info(f"Run Completed. Success: {success}, Errors: {errors}")
 
