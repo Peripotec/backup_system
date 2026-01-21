@@ -726,7 +726,13 @@
         var grp = document.getElementById('device-group').value;
         var vendorContainer = document.getElementById('device-vendor-container');
         var vendorSel = document.getElementById('device-vendor');
-        var vendor = vendorContainer && vendorContainer.style.display !== 'none' ? vendorSel.value : '';
+
+        // Get vendor: from selector if visible (mixed group), otherwise empty (use group's default)
+        var vendor = '';
+        if (vendorContainer && vendorContainer.style.display !== 'none' && vendorSel) {
+            vendor = vendorSel.value;
+        }
+
         var localidad = document.getElementById('device-localidad').value;
         var tipo = document.getElementById('device-tipo').value;
         var modelo = document.getElementById('device-modelo').value;
