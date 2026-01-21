@@ -36,7 +36,7 @@ class Notifier:
             return []
         return [r.strip() for r in recipients_str.split(',') if r.strip()]
 
-    def send_summary(self, total, success, errors, failed_hosts, diff_summary, duration):
+    def send_summary(self, total, success, errors, failed_hosts, diff_summary, duration, disabled_devices=None):
         """Envía un resumen HTML del trabajo de backup."""
         cfg = self._get_config()
         
@@ -57,10 +57,15 @@ class Notifier:
             log.warning("Email no configurado: falta host o destinatarios")
             return False
 
+        # Count disabled devices
+        disabled_count = len(disabled_devices) if disabled_devices else 0
+
         # Asunto en español
         subject = f"📊 Reporte de Backup: {success}/{total} Exitosos"
         if errors > 0:
             subject = f"⚠️ Reporte de Backup: {success}/{total} - {errors} ERRORES"
+        if disabled_count > 0:
+            subject += f" ({disabled_count} omitidos)"
 
         # Get Disk Usage
         try:
@@ -79,6 +84,7 @@ class Notifier:
                 <tr><td style="padding: 5px 15px;"><b>Total Dispositivos:</b></td><td>{total}</td></tr>
                 <tr><td style="padding: 5px 15px;"><b>Exitosos:</b></td><td style="color:green; font-weight:bold;">{success}</td></tr>
                 <tr><td style="padding: 5px 15px;"><b>Errores:</b></td><td style="color:red; font-weight:bold;">{errors}</td></tr>
+                <tr><td style="padding: 5px 15px;"><b>Deshabilitados:</b></td><td style="color:orange; font-weight:bold;">{disabled_count}</td></tr>
                 <tr><td style="padding: 5px 15px;"><b>Duración:</b></td><td>{duration:.2f} segundos</td></tr>
                 <tr><td style="padding: 5px 15px;"><b>Uso de Disco ({BACKUP_ROOT_DIR}):</b></td><td>{disk_usage_str}</td></tr>
             </table>
@@ -92,6 +98,37 @@ class Notifier:
             for host, reason in failed_hosts.items():
                 html += f"<li><b>{host}</b>: {reason}</li>"
             html += "</ul>"
+
+        if disabled_devices:
+            html += """
+            <h3 style="color:orange;">⏸️ Dispositivos Deshabilitados (no se respaldaron)</h3>
+            <table style="border-collapse: collapse; font-size: 14px;">
+                <tr style="background: #f5f5f5;">
+                    <th style="padding: 5px 10px; text-align: left;">Dispositivo</th>
+                    <th style="padding: 5px 10px; text-align: left;">Grupo</th>
+                    <th style="padding: 5px 10px; text-align: left;">Motivo</th>
+                    <th style="padding: 5px 10px; text-align: left;">Deshabilitado por</th>
+                    <th style="padding: 5px 10px; text-align: left;">Fecha</th>
+                </tr>
+            """
+            for dev in disabled_devices:
+                sysname = dev.get('sysname') or dev.get('hostname', 'Unknown')
+                group = dev.get('_group_name', '-')
+                reason = dev.get('disabled_reason', 'Sin motivo especificado')
+                disabled_by = dev.get('disabled_by', '-')
+                disabled_at = dev.get('disabled_at', '-')
+                if disabled_at and len(disabled_at) > 16:
+                    disabled_at = disabled_at[:16]  # Truncate to YYYY-MM-DD HH:MM
+                html += f"""
+                <tr>
+                    <td style="padding: 5px 10px; border-bottom: 1px solid #eee;"><b>{sysname}</b></td>
+                    <td style="padding: 5px 10px; border-bottom: 1px solid #eee;">{group}</td>
+                    <td style="padding: 5px 10px; border-bottom: 1px solid #eee;">{reason}</td>
+                    <td style="padding: 5px 10px; border-bottom: 1px solid #eee;">{disabled_by}</td>
+                    <td style="padding: 5px 10px; border-bottom: 1px solid #eee;">{disabled_at}</td>
+                </tr>
+                """
+            html += "</table>"
 
         if diff_summary:
             html += """

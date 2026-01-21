@@ -304,6 +304,7 @@ class BackupEngine:
         
         # Collect all devices with their vendor info
         all_devices = []
+        disabled_devices = []  # Track disabled devices for report
         if 'groups' not in self.inventory:
             log.warning("No groups found in inventory.")
             return
@@ -313,10 +314,14 @@ class BackupEngine:
             grp_credential_ids = group.get('credential_ids', [])
             
             for device in group['devices']:
-                # Skip disabled devices
+                # Skip disabled devices but collect for report
                 if device.get('enabled') is False:
                     sysname = device.get('sysname') or device.get('hostname')
                     log.debug(f"Skipping disabled device from schedule: {sysname}")
+                    # Add to disabled list with group info for report
+                    disabled_dev = device.copy()
+                    disabled_dev['_group_name'] = group['name']
+                    disabled_devices.append(disabled_dev)
                     continue
                 
                 # Enrich device with vendor and group info for schedule calculation
@@ -336,6 +341,9 @@ class BackupEngine:
         if not matching_devices:
             log.info(f"No hay dispositivos programados para {current_time_hhmm}")
             self.db.end_run(run_id, 0, 0, 0)
+            # Still send email if there are disabled devices
+            if disabled_devices:
+                self.notifier.send_summary(0, 0, 0, {}, {}, 0, disabled_devices)
             return
         
         log.info(f"Dispositivos a respaldar: {len(matching_devices)}")
@@ -383,9 +391,9 @@ class BackupEngine:
         
         self.db.end_run(run_id, total, success, errors)
         
-        # Notify
+        # Notify with disabled devices
         duration = 0
-        self.notifier.send_summary(total, success, errors, failed_hosts, diff_summary, duration)
+        self.notifier.send_summary(total, success, errors, failed_hosts, diff_summary, duration, disabled_devices)
         
         log.info(f"Ejecución programada completada. Éxito: {success}, Errores: {errors}")
 
