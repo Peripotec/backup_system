@@ -1195,14 +1195,29 @@ def api_delete_group(group_name):
 
 @app.route('/api/vendors')
 def api_get_vendors():
-    """Return list of available vendor plugins."""
+    """Return list of available vendor plugins plus vendors used in inventory."""
     import os
+    vendors_set = set()
+    
+    # Get vendors from plugin files
     vendors_dir = os.path.join(os.path.dirname(__file__), 'vendors')
-    vendors = []
     for f in os.listdir(vendors_dir):
         if f.endswith('.py') and not f.startswith('_') and f != 'base_vendor.py':
-            vendors.append(f.replace('.py', ''))
-    return jsonify(vendors)
+            vendors_set.add(f.replace('.py', ''))
+    
+    # Get vendors from inventory (devices and groups)
+    try:
+        inv = load_inventory()
+        for g in inv.get('groups', []):
+            if g.get('vendor'):
+                vendors_set.add(g['vendor'])
+            for d in g.get('devices', []):
+                if d.get('vendor'):
+                    vendors_set.add(d['vendor'])
+    except:
+        pass
+    
+    return jsonify(sorted(list(vendors_set)))
 
 # ==========================
 # API: CREDENTIAL VAULT
@@ -1407,9 +1422,6 @@ def api_edit_device(group_name, hostname):
     if new_ip:
         device_data["ip"] = new_ip
     
-    # DEBUG: Print vendor value received
-    print(f"[DEBUG api_edit_device] vendor in data: '{data.get('vendor', 'NOT PRESENT')}' modelo: '{data.get('modelo', 'NOT PRESENT')}'")
-    
     # Update optional fields
     for field in ["nombre", "localidad", "tipo", "modelo", "vendor", "criticidad"]:
         if field in data:
@@ -1417,9 +1429,6 @@ def api_edit_device(group_name, hostname):
                 device_data[field] = data[field]
             elif field in device_data:
                 del device_data[field]
-    
-    # DEBUG: Print device_data after update
-    print(f"[DEBUG api_edit_device] device_data vendor after update: '{device_data.get('vendor', 'NOT SET')}'")
     
     # Handle tags
     if "tags" in data:
