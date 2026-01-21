@@ -666,30 +666,51 @@
         document.getElementById('device-ip').value = device.ip;
         document.getElementById('device-localidad').value = device.localidad || '';
         document.getElementById('device-tipo').value = device.tipo || '';
-
-        // Set vendor from device (or use group's default if device has none)
-        var vendorSel = document.getElementById('device-vendor');
-        var gObj = inventory.groups.find(g => g.name === grp);
-        if (vendorSel) {
-            var deviceVendor = device.vendor || (gObj ? gObj.vendor : '') || '';
-            // Ensure vendor option exists
-            if (deviceVendor && !Array.from(vendorSel.options).some(o => o.value === deviceVendor)) {
-                vendorSel.innerHTML += '<option value="' + deviceVendor + '">' +
-                    deviceVendor.charAt(0).toUpperCase() + deviceVendor.slice(1) + '</option>';
-            }
-            vendorSel.value = deviceVendor;
-        }
-
-        // Set modelo after vendor is set
-        setTimeout(() => {
-            updateModelDropdown();
-            document.getElementById('device-modelo').value = device.modelo || '';
-        }, 50);
-
         document.getElementById('device-criticidad').value = device.criticidad || '';
         selectedTags = device.tags ? [...device.tags] : []; renderTags();
         document.getElementById('device-test-result').innerHTML = '';
+
+        var gObj = inventory.groups.find(g => g.name === grp);
         var gCreds = gObj ? (gObj.credential_ids || []) : [];
+
+        // Set vendor and modelo with a small delay to ensure dropdown is populated
+        var deviceVendor = device.vendor || '';
+        var deviceModelo = device.modelo || '';
+
+        setTimeout(() => {
+            var vendorSel = document.getElementById('device-vendor');
+            if (vendorSel && deviceVendor) {
+                // Always add the option if it doesn't exist (case-sensitive match)
+                var hasOption = Array.from(vendorSel.options).some(o => o.value.toLowerCase() === deviceVendor.toLowerCase());
+                if (!hasOption) {
+                    vendorSel.innerHTML += '<option value="' + deviceVendor + '">' +
+                        deviceVendor.charAt(0).toUpperCase() + deviceVendor.slice(1) + '</option>';
+                }
+                // Try to find matching option (case-insensitive)
+                var matchingOption = Array.from(vendorSel.options).find(o => o.value.toLowerCase() === deviceVendor.toLowerCase());
+                if (matchingOption) {
+                    vendorSel.value = matchingOption.value;
+                } else {
+                    vendorSel.value = deviceVendor;
+                }
+            }
+
+            // Update model dropdown and set value
+            updateModelDropdown();
+            setTimeout(() => {
+                var modelSel = document.getElementById('device-modelo');
+                if (modelSel && deviceModelo) {
+                    // Check if option exists
+                    var hasModelOption = Array.from(modelSel.options).some(o => o.value === deviceModelo);
+                    if (!hasModelOption) {
+                        // Add it if missing
+                        modelSel.innerHTML += '<option value="' + deviceModelo + '">' + deviceModelo + '</option>';
+                    }
+                    modelSel.value = deviceModelo;
+                }
+            }, 50);
+        }, 100);
+
         loadVaultCredentials().then(() => { renderDeviceCredentials(device.credential_ids || [], gCreds); deviceModal.show(); });
     }
 
