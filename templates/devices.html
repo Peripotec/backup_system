@@ -730,8 +730,8 @@
         var vendorSel = document.getElementById('device-vendor');
         var vendor = vendorSel ? vendorSel.value : '';
 
-        // Debug: log vendor value
-        console.log('[DEBUG saveDevice] vendor select value:', vendor, '| options:', vendorSel ? vendorSel.options.length : 0);
+        // Debug: show vendor value (TEMPORARY)
+        alert('[DEBUG] Vendor que se va a guardar: "' + vendor + '" (modelo: "' + document.getElementById('device-modelo').value + '")');
 
         var localidad = document.getElementById('device-localidad').value;
         var tipo = document.getElementById('device-tipo').value;
