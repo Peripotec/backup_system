@@ -1407,6 +1407,9 @@ def api_edit_device(group_name, hostname):
     if new_ip:
         device_data["ip"] = new_ip
     
+    # DEBUG: Print vendor value received
+    print(f"[DEBUG api_edit_device] vendor in data: '{data.get('vendor', 'NOT PRESENT')}' modelo: '{data.get('modelo', 'NOT PRESENT')}'")
+    
     # Update optional fields
     for field in ["nombre", "localidad", "tipo", "modelo", "vendor", "criticidad"]:
         if field in data:
@@ -1414,6 +1417,9 @@ def api_edit_device(group_name, hostname):
                 device_data[field] = data[field]
             elif field in device_data:
                 del device_data[field]
+    
+    # DEBUG: Print device_data after update
+    print(f"[DEBUG api_edit_device] device_data vendor after update: '{device_data.get('vendor', 'NOT SET')}'")
     
     # Handle tags
     if "tags" in data:
