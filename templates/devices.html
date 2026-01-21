@@ -469,7 +469,7 @@
         var sel = document.getElementById('device-group');
         if (!sel || !inventory.groups) return;
         sel.innerHTML = '<option value="">Seleccionar grupo...</option>' +
-            inventory.groups.map(g => '<option value="' + g.name + '">' + g.name + ' (' + (g.vendor || 'Mixto') + ')</option>').join('');
+            inventory.groups.map(g => '<option value="' + g.name + '">' + g.name + '</option>').join('');
     }
 
     function onGroupChange() {
