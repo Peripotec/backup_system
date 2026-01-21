@@ -183,11 +183,11 @@
                             <select class="form-select" id="device-tipo"></select>
                         </div>
                     </div>
-                    <div class="col-md-3" id="device-vendor-container" style="display:none;">
+                    <div class="col-md-3" id="device-vendor-container">
                         <div class="mb-3">
-                            <label class="form-label">Vendor *</label>
-                            <select class="form-select" id="device-vendor" required></select>
-                            <div class="form-text">Requerido para grupos mixtos</div>
+                            <label class="form-label">Vendor</label>
+                            <select class="form-select" id="device-vendor"></select>
+                            <div class="form-text">Vendor del dispositivo</div>
                         </div>
                     </div>
                     <div class="col-md-3">
@@ -554,32 +554,21 @@
     function onGroupChange() {
         var grp = document.getElementById('device-group').value;
         var vendorSel = document.getElementById('device-vendor');
-        var vendor = vendorSel && vendorSel.style.display !== 'none' ? vendorSel.value : '';
         var gObj = inventory.groups.find(g => g.name === grp);
         var groupVendor = gObj ? gObj.vendor : '';
 
-        // Show vendor selector if group is mixed (no vendor defined)
-        var vendorContainer = document.getElementById('device-vendor-container');
-        var vendorSelect = document.getElementById('device-vendor');
-        if (!groupVendor) {
-            vendorContainer.style.display = 'block';
-            vendorSelect.required = true;
-        } else {
-            vendorContainer.style.display = 'none';
-            vendorSelect.required = false;
-            vendorSelect.value = groupVendor;
+        // Pre-select group's vendor as default (but user can change it)
+        if (groupVendor && vendorSel && !vendorSel.value) {
+            vendorSel.value = groupVendor;
         }
 
-        // Update model dropdown based on vendor (from group or selected)
+        // Update model dropdown based on selected vendor
         updateModelDropdown();
     }
 
     function updateModelDropdown() {
-        var grp = document.getElementById('device-group').value;
         var vendorSel = document.getElementById('device-vendor');
-        var vendor = vendorSel && vendorSel.style.display !== 'none' ? vendorSel.value : '';
-        var gObj = inventory.groups.find(g => g.name === grp);
-        var vendor = gObj && gObj.vendor ? gObj.vendor : document.getElementById('device-vendor').value;
+        var vendor = vendorSel ? vendorSel.value : '';
 
         var sel = document.getElementById('device-modelo');
         var filtered = vendor ? deviceModels.filter(m => m.vendor === vendor) : deviceModels;
@@ -678,24 +667,17 @@
         document.getElementById('device-localidad').value = device.localidad || '';
         document.getElementById('device-tipo').value = device.tipo || '';
 
-        // Trigger group change to show/hide vendor container
-        onGroupChange();
-
-        // For mixed groups, ensure vendor dropdown is populated and set value
+        // Set vendor from device (or use group's default if device has none)
+        var vendorSel = document.getElementById('device-vendor');
         var gObj = inventory.groups.find(g => g.name === grp);
-        if (gObj && !gObj.vendor && device.vendor) {
-            // Ensure vendor dropdown has the correct option
-            var vendorSel = document.getElementById('device-vendor');
-            if (vendorSel) {
-                // Check if the value exists in options
-                var hasOption = Array.from(vendorSel.options).some(o => o.value === device.vendor);
-                if (!hasOption) {
-                    // Add the option if missing
-                    vendorSel.innerHTML += '<option value="' + device.vendor + '">' +
-                        device.vendor.charAt(0).toUpperCase() + device.vendor.slice(1) + '</option>';
-                }
-                vendorSel.value = device.vendor;
+        if (vendorSel) {
+            var deviceVendor = device.vendor || (gObj ? gObj.vendor : '') || '';
+            // Ensure vendor option exists
+            if (deviceVendor && !Array.from(vendorSel.options).some(o => o.value === deviceVendor)) {
+                vendorSel.innerHTML += '<option value="' + deviceVendor + '">' +
+                    deviceVendor.charAt(0).toUpperCase() + deviceVendor.slice(1) + '</option>';
             }
+            vendorSel.value = deviceVendor;
         }
 
         // Set modelo after vendor is set
@@ -724,14 +706,8 @@
         var nombre = document.getElementById('device-nombre').value.trim();
         var ip = document.getElementById('device-ip').value.trim();
         var grp = document.getElementById('device-group').value;
-        var vendorContainer = document.getElementById('device-vendor-container');
         var vendorSel = document.getElementById('device-vendor');
-
-        // Get vendor: from selector if visible (mixed group), otherwise empty (use group's default)
-        var vendor = '';
-        if (vendorContainer && vendorContainer.style.display !== 'none' && vendorSel) {
-            vendor = vendorSel.value;
-        }
+        var vendor = vendorSel ? vendorSel.value : '';
 
         var localidad = document.getElementById('device-localidad').value;
         var tipo = document.getElementById('device-tipo').value;
