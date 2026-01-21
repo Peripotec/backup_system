@@ -371,13 +371,13 @@ class DBManager:
         finally:
             conn.close()
     
-    def update_device_model(self, model_id, name, vendor, description=''):
+    def update_device_model(self, model_id, name, vendor, description='', dev_type=''):
         """Update a device model."""
         conn = self._get_connection()
         try:
             cursor = conn.cursor()
-            cursor.execute('UPDATE device_models SET name = ?, vendor = ?, description = ? WHERE id = ?',
-                          (name, vendor, description, model_id))
+            cursor.execute('UPDATE device_models SET name = ?, vendor = ?, description = ?, type = ? WHERE id = ?',
+                          (name, vendor, description, dev_type, model_id))
             conn.commit()
             return cursor.rowcount > 0
         finally:

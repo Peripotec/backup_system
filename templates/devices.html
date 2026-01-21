@@ -677,16 +677,37 @@
         document.getElementById('device-ip').value = device.ip;
         document.getElementById('device-localidad').value = device.localidad || '';
         document.getElementById('device-tipo').value = device.tipo || '';
+
+        // Trigger group change to show/hide vendor container
         onGroupChange();
-        // Pre-select device vendor if available
-        if (device.vendor) {
-            setTimeout(() => { document.getElementById('device-vendor').value = device.vendor; }, 50);
+
+        // For mixed groups, ensure vendor dropdown is populated and set value
+        var gObj = inventory.groups.find(g => g.name === grp);
+        if (gObj && !gObj.vendor && device.vendor) {
+            // Ensure vendor dropdown has the correct option
+            var vendorSel = document.getElementById('device-vendor');
+            if (vendorSel) {
+                // Check if the value exists in options
+                var hasOption = Array.from(vendorSel.options).some(o => o.value === device.vendor);
+                if (!hasOption) {
+                    // Add the option if missing
+                    vendorSel.innerHTML += '<option value="' + device.vendor + '">' +
+                        device.vendor.charAt(0).toUpperCase() + device.vendor.slice(1) + '</option>';
+                }
+                vendorSel.value = device.vendor;
+            }
         }
-        setTimeout(() => { document.getElementById('device-modelo').value = device.modelo || ''; }, 100);
+
+        // Set modelo after vendor is set
+        setTimeout(() => {
+            updateModelDropdown();
+            document.getElementById('device-modelo').value = device.modelo || '';
+        }, 50);
+
         document.getElementById('device-criticidad').value = device.criticidad || '';
         selectedTags = device.tags ? [...device.tags] : []; renderTags();
         document.getElementById('device-test-result').innerHTML = '';
-        var gObj = inventory.groups.find(g => g.name === grp), gCreds = gObj ? (gObj.credential_ids || []) : [];
+        var gCreds = gObj ? (gObj.credential_ids || []) : [];
         loadVaultCredentials().then(() => { renderDeviceCredentials(device.credential_ids || [], gCreds); deviceModal.show(); });
     }
 

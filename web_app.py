@@ -2923,12 +2923,13 @@ def api_update_device_model(model_id):
     name = data.get('name', '').strip()
     vendor = data.get('vendor', '').strip()
     description = data.get('description', '').strip()
+    dev_type = data.get('type', '').strip()
     
     if not name or not vendor:
         return jsonify({"error": "Nombre y vendor son requeridos"}), 400
     
     db = get_db()
-    if db.update_device_model(model_id, name, vendor, description):
+    if db.update_device_model(model_id, name, vendor, description, dev_type):
         return jsonify({"status": "ok"})
     return jsonify({"error": "Modelo no encontrado"}), 404
 

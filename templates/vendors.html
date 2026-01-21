@@ -460,10 +460,14 @@
         document.getElementById('model-original-id').value = m.id;
         document.getElementById('model-id').value = m.id;
         document.getElementById('model-name').value = m.name || '';
-        document.getElementById('model-type').value = m.type || '';
         document.getElementById('model-desc').value = m.description || '';
         document.getElementById('model-vendor').value = m.vendor || '';
         document.getElementById('model-modal-title').textContent = '✏️ Editar Modelo';
+
+        // Ensure type select is populated before setting value
+        populateTypeSelect();
+        document.getElementById('model-type').value = m.type || '';
+
         modelModal.show();
     }
 
