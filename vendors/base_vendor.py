@@ -73,7 +73,7 @@ class BackupVendor(ABC):
     def __init__(self, device_info, db_manager, git_manager, credentials=None):
         self.hostname = device_info['hostname']
         self.ip = device_info['ip']
-        self.port = device_info.get('port', 23)
+        self.port = device_info.get('port')  # None by default, let connection methods decide
         
         # Credentials from vault (list) or legacy inline
         if credentials and len(credentials) > 0:
@@ -177,9 +177,10 @@ class BackupVendor(ABC):
         Basic Telnet connection helper.
         Returns a Telnet-compatible object.
         """
-        self._debug_log(f"Conectando a {self.ip}:{self.port} (Telnet)...")
+        port = self.port or 23
+        self._debug_log(f"Conectando a {self.ip}:{port} (Telnet)...")
         try:
-            tn = telnetlib_Telnet(self.ip, self.port, timeout=10)
+            tn = telnetlib_Telnet(self.ip, port, timeout=10)
             self._debug_log(f"✓ Conexión establecida con {self.ip}")
             return tn
         except Exception as e:
