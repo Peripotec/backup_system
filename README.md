@@ -56,3 +56,13 @@ python3 main.py            # Producción
 - [docs/vendors.md](docs/vendors.md) - Plugins de vendors
 - [docs/api-reference.md](docs/api-reference.md) - Referencia de API
 
+## 🧩 Desarrollo de Plugins
+
+Para agregar soporte para un nuevo fabricante (Vendor):
+
+1.  Cree un archivo en `vendors/<nombre>.py`
+2.  Implemente la clase heredando de `BackupVendor`
+3.  Defina el método `backup()` con la lógica de conexión y transferencia
+
+📄 **[Ver Guía Completa de Implementación](docs/vendors.md#guia-agregar-nuevo-vendor)**
+

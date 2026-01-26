@@ -1,250 +1,170 @@
-# Vendors
+# Vendors y Plugins
 
-El sistema soporta múltiples fabricantes de equipos de red. Cada vendor tiene
-su propia implementación para manejar las particularidades de conexión y backup.
+El sistema utiliza una arquitectura de plugins para soportar múltiples fabricantes. Cada vendor es un módulo Python independiente en la carpeta `vendors/` que hereda de una clase base común.
 
 ## Arquitectura
 
+El `BackupEngine` carga dinámicamente los plugins basándose en el nombre del vendor configurado en el inventario.
+
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                       VendorFactory                              │
-│                                                                  │
-│   create(vendor_name) → VendorBase implementation               │
-└──────────────────────────────┬──────────────────────────────────┘
-                               │
-          ┌────────────────────┼────────────────────┐
-          ▼                    ▼                    ▼
-┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
-│     Huawei      │  │     Cisco       │  │       HP        │
-│   (SSH+TFTP)    │  │   (SSH+TFTP)    │  │   (SSH+TFTP)    │
-└─────────────────┘  └─────────────────┘  └─────────────────┘
-          │
-          ▼
-┌─────────────────┐
-│     ZTE OLT     │
-│   (SSH+FTP)     │
-└─────────────────┘
+cargador dinámico (engine.py)
+       │
+       ▼
+  vendors/<vendor_name>.py  →  Clase <VendorName>(BackupVendor)
+                                     │
+                                     ▼
+                                  .backup()
 ```
+
+### Reglas de Carga
+1. **Archivo**: Debe existir en `vendors/` con el nombre en minúsculas (ej: `asga.py`).
+2. **Clase**: Debe contener una clase con el nombre en TitleCase (ej: `Asga`).
+   - Para nombres con guión bajo: `zte_olt.py` → `class ZteOlt`.
+3. **Herencia**: La clase debe heredar de `vendors.base_vendor.BackupVendor`.
+
+---
 
 ## Vendors Soportados
 
-### Huawei (`vendors/huawei.py`)
-
-**Modelos probados:**
-- S5720 series
-- S6720 series
-- S12700 series
-- NE40E series (routers)
-
-**Método de backup:**
-1. Conectar vía SSH
-2. Ejecutar: `save` (guardar config)
-3. Ejecutar: `tftp <server_ip> put vrpcfg.zip <filename>`
-4. El archivo se recibe en el servidor TFTP
-
-**Archivo resultante:** `vrpcfg.zip` (comprimido)
-
-**Comandos ejecutados:**
-```
-screen-length 0 temporary
-save
-Y
-tftp 192.168.1.100 put vrpcfg.zip SW-CORE-01_20260102_020000.zip
-quit
-```
+| Vendor | Archivo | Protocolo | Método |
+|--------|---------|-----------|--------|
+| **Huawei** | `vendors/huawei.py` | Telnet | `tftp put` (zip) |
+| **Cisco** | `vendors/cisco.py` | Telnet | `copy running-config tftp` |
+| **HP** | `vendors/hp.py` | Telnet | `copy startup-config tftp` |
+| **ZTE OLT** | `vendors/zte_olt.py` | Telnet | `file upload ... tftp` |
+| **ASGA** | `vendors/asga.py` | Telnet | `copy running-config tftp` |
 
 ---
 
-### Cisco (`vendors/cisco.py`)
+## 🛠️ Guía: Agregar Nuevo Vendor
 
-**Modelos probados:**
-- Catalyst 9200/9300/9500
-- Catalyst 2960/3560/3750
-- ISR routers
+Siga estos pasos para integrar un nuevo fabricante al sistema.
 
-**Método de backup:**
-1. Conectar vía SSH
-2. Ejecutar: `copy running-config tftp://server/filename`
-3. El archivo se recibe en el servidor TFTP
+### 1. Crear el Archivo del Plugin
 
-**Archivo resultante:** Texto plano
+Cree un archivo nuevo en `vendors/` (ej: `vendors/mikrotik.py`).
 
-**Comandos ejecutados:**
-```
-terminal length 0
-copy running-config tftp://192.168.1.100/SW-ACC-01_20260102_020000.cfg
-
-[confirmar]
-```
-
----
-
-### HP (`vendors/hp.py`)
-
-**Modelos probados:**
-- ProCurve series
-- Aruba switches
-
-**Método de backup:**
-1. Conectar vía SSH
-2. Ejecutar: `copy startup-config tftp server filename`
-
-**Archivo resultante:** Texto plano
-
-**Comandos ejecutados:**
-```
-no page
-copy startup-config tftp 192.168.1.100 SW-HP-01_20260102_020000.cfg
-```
-
----
-
-### ZTE OLT (`vendors/zte_olt.py`)
-
-**Modelos probados:**
-- C300
-- C320
-- C600
-
-**Método de backup:**
-1. Conectar vía SSH
-2. Generar backup: `backup database`
-3. Transferir vía FTP (no TFTP)
-
-**Archivo resultante:** Archivo de base de datos binario
-
-**Particularidades:**
-- Usa FTP en lugar de TFTP
-- El backup es un archivo binario, no texto
-- Requiere credenciales FTP configuradas
-
----
-
-## Configuración
-
-### Servidor TFTP/FTP
-
-En **Configuración → Sistema**:
-- **Servidor TFTP/FTP**: IP pública que ven los equipos
-
-Esta IP debe ser accesible desde los dispositivos de red.
-
-### Credenciales
-
-Las credenciales se almacenan en el Vault y se asocian por:
-- Vendor
-- Grupo
-- Device específico
-
-El sistema busca credenciales en orden de especificidad:
-1. Credencial específica del device
-2. Credencial del grupo
-3. Credencial del vendor
-4. Credencial por defecto
-
----
-
-## Agregar Nuevo Vendor
-
-### 1. Crear archivo en `vendors/`
+**Plantilla Base:**
 
 ```python
-# vendors/mikrotik.py
+import time
+import os
+from vendors.base_vendor import BackupVendor
+from settings import TFTP_ROOT
+from core.config_manager import get_config_manager
 
-from vendors.base import VendorBase
-import paramiko
-
-class Mikrotik(VendorBase):
-    def __init__(self):
-        super().__init__()
-        self.vendor_name = 'Mikrotik'
+class Mikrotik(BackupVendor):
+    """
+    Plugin para Mikrotik via Telnet + TFTP.
+    """
     
-    def backup(self, device, credentials):
+    def backup(self):
         """
-        Ejecutar backup de un dispositivo Mikrotik.
+        Implementación del flujo de backup.
+        Debe devolver: (ruta_archivo, tamaño, hubo_cambios)
+        """
+        # 1. Obtener servidor TFTP
+        config = get_config_manager()
+        tftp_server = config.get_setting('tftp_server') or '127.0.0.1'
         
-        Args:
-            device: Dict con sysname, ip, modelo, etc.
-            credentials: Dict con username, password
-            
-        Returns:
-            Tuple (success: bool, message: str, filename: str)
-        """
-        try:
-            # 1. Conectar SSH
-            ssh = paramiko.SSHClient()
-            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            ssh.connect(
-                device['ip'],
-                username=credentials['username'],
-                password=credentials['password'],
-                timeout=30
-            )
-            
-            # 2. Ejecutar comandos de backup
-            stdin, stdout, stderr = ssh.exec_command('/export')
-            config = stdout.read().decode('utf-8')
-            
-            # 3. Guardar archivo
-            filename = self.generate_filename(device)
-            filepath = self.save_config(device, config, filename)
-            
-            ssh.close()
-            return True, "Backup exitoso", filename
-            
-        except Exception as e:
-            return False, str(e), None
+        # 2. Conectar (Telnet)
+        # base_vendor provee connect_telnet()
+        tn = self.connect_telnet()
+        
+        # 3. Autenticación (usando pool de credenciales)
+        self._login(tn)
+        
+        # 4. Ejecutar comando de backup
+        # Ej: Mikrotik export a archivo local y luego upload TFTP
+        # Nota: Ajustar según comandos reales del equipo
+        filename = f"{self.hostname}.rsc"
+        cmd = f"/export file={filename}"
+        self.send_command(tn, cmd)
+        
+        # 5. Transferir a TFTP
+        # ... lógica de transferencia ...
+        
+        # 6. Procesar archivo resultante
+        # Busca el archivo en TFTP_ROOT y lo procesa
+        file_path = os.path.join(TFTP_ROOT, filename)
+        return self.process_file(file_path, is_text=True)
+
+    def _login(self, tn):
+        """Helper para iterar credenciales."""
+        # Ver implementación completa en cisco.py o huawei.py
+        pass
 ```
 
-### 2. Registrar en VendorFactory
+### 2. Métodos Útiles (clase `BackupVendor`)
+
+La clase base provee herramientas comunes:
+
+- **`self.connect_telnet()`**: Establece conexión y devuelve objeto telnet.
+- **`self.read_until(tn, lista_prompts, timeout)`**: Espera hasta recibir uno de los prompts.
+- **`self.send_command(tn, comando)`**: Envía comando + `\n` y lo loguea con debug.
+- **`self.process_file(path, is_text)`**: Mueve el archivo al archivo histórico, actualiza el puntero "latest" y hace commit en Git.
+- **`self._debug_log(msg)`**: Escribe en el log del sistema y en la consola web en tiempo real.
+
+### 3. Configuración en Web UI (Opcional)
+
+Para que el vendor aparezca con un nombre "amigable" en la interfaz web, edite `web_app.py`:
 
 ```python
-# vendors/__init__.py
-
-from vendors.mikrotik import Mikrotik
-
-VENDOR_MAP = {
-    'huawei': Huawei,
-    'cisco': Cisco,
-    'hp': Hp,
-    'zte': ZteOlt,
-    'mikrotik': Mikrotik,  # Nuevo
+# Buscar el diccionario vendor_names (aprox línea 2070)
+vendor_names = {
+    'hp': 'HP',
+    'huawei': 'Huawei',
+    # ...
+    'mikrotik': 'MikroTik RouterOS',  # Agregar aquí
+    'asga': 'ASGA'
 }
 ```
 
-### 3. Agregar dispositivos al inventario
+### 4. Prueba y Verificación
 
-```yaml
-groups:
-  - name: "MikroTik"
-    vendor: "Mikrotik"
-    devices:
-      - sysname: "RB-CORE-01"
-        ip: "192.168.10.1"
-        modelo: "CCR1036"
+Puede probar el plugin sin ejecutar toda la web usando un script temporal:
+
+```python
+# test_vendor.py
+from core.db_manager import DBManager
+from core.git_manager import GitManager
+from vendors.mikrotik import Mikrotik
+
+# Mock de objetos
+db = DBManager()
+git = GitManager()
+
+device_info = {
+    'hostname': 'Test-Router',
+    'ip': '192.168.1.50',
+    'vendor': 'mikrotik'
+}
+creds = [{'user': 'admin', 'pass': '1234', 'id': 'test'}]
+
+plugin = Mikrotik(device_info, db, git, creds)
+plugin.log_callback = print  # Ver logs en consola
+
+try:
+    path, size, changed = plugin.backup()
+    print("Éxito!")
+except Exception as e:
+    print(f"Error: {e}")
 ```
 
 ---
 
-## Troubleshooting
+## Troubleshooting Común
 
-### Timeout de conexión
-- Verificar conectividad: `ping <ip>`
-- Verificar puerto SSH: `nc -zv <ip> 22`
-- Verificar credenciales manualmente
+### El equipo no soporta TFTP
+Si el equipo solo soporta FTP, puede usar la librería estándar `ftplib` de Python dentro del método `backup()`. Ver ejemplo en `vendors/zte_olt.py`.
 
-### TFTP no recibe archivo
-- Verificar que tftpd esté corriendo
-- Verificar permisos del directorio TFTP
-- Verificar firewall (UDP 69)
+### El equipo requiere SSH
+Actualmente la clase base solo provee helper para Telnet. Para SSH, debe importar una librería externa (como `paramiko` o invocar el binario `ssh` con `subprocess`), pero esto requiere instalar dependencias adicionales en el entorno virtual.
 
-### Error en comandos
-- Revisar logs: `journalctl -u backup-web -f`
-- Probar comandos manualmente vía SSH
-- Verificar versión de firmware del equipo
+### Problemas de Tiempos (Timeout)
+Si el backup es grande y tarda en generarse, aumente el `timeout` en las llamadas a `self.read_until()`.
 
-### Logs de vendor
-```bash
-# Ver logs de un backup específico
-grep "SW-CORE-01" /var/log/backup_system.log
+```python
+# Esperar hasta 120 segundos
+self.read_until(tn, ["#"], timeout=120)
 ```
