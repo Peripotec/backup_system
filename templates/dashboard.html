@@ -254,16 +254,25 @@
 <!-- Control Panel -->
 <div class="card mb-3">
     <div class="card-header d-flex justify-content-between align-items-center py-2">
-        <span><i class="bi bi-rocket-takeoff me-2"></i>Acciones Rápidas</span>
+        <span><i class="bi bi-rocket-takeoff me-2"></i>Control de Backup</span>
+        <div>
+            <button class="btn btn-danger btn-sm me-2" id="btn-cancel" onclick="cancelBackup()" style="display:none;">⏹️
+                Cancelar</button>
+            <button class="btn btn-light btn-sm" id="btn-backup" data-bs-toggle="modal" data-bs-target="#backupModal">▶️
+                Ejecutar Backup</button>
+        </div>
     </div>
-    <div class="card-body py-3">
-        <div class="d-flex align-items-center gap-3">
-            <button class="btn btn-primary" id="btn-backup" data-bs-toggle="modal" data-bs-target="#backupModal">
-                ▶️ Ejecutar Nuevo Backup
-            </button>
-            <div class="text-muted small">
-                Inicia un backup manual seleccionando grupos o dispositivos específicos.
-                El progreso se mostrará en el widget global.
+    <div class="card-body py-2">
+        <div class="row align-items-center">
+            <div class="col-md-7">
+                <small id="backup-status" class="text-muted">Listo para ejecutar</small>
+                <div class="progress mt-1" style="height: 8px;">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" id="progress-bar"
+                        style="width: 0%"></div>
+                </div>
+            </div>
+            <div class="col-md-5">
+                <div id="log-panel" class="log-panel p-2" style="display: none;"></div>
             </div>
         </div>
     </div>
@@ -674,30 +683,79 @@
     }
 
     function startBackup(devices) {
+        isBackupRunning = true; lastLogCount = 0;
         document.getElementById('btn-backup').disabled = true;
+        document.getElementById('btn-cancel').style.display = 'inline-block';
+        document.getElementById('log-panel').style.display = 'block';
+        document.getElementById('log-panel').innerHTML = '';
+        document.getElementById('progress-bar').style.width = '0%';
 
         // Build URL with all selected devices
         var params = devices.map(d => 'device=' + encodeURIComponent(d)).join('&');
         var url = '/api/backup/trigger' + (params ? '?' + params : '');
+        addLog('info', 'Iniciando ' + devices.length + ' backup(s)...');
+        fetch(url).then(r => r.json()).then(d => { d.error ? (addLog('error', d.error), finishBackup()) : pollStatus(); });
+    }
 
-        fetch(url).then(r => r.json()).then(d => {
-            if (d.error) {
-                alert(d.error);
-                document.getElementById('btn-backup').disabled = false;
-            } else {
-                // Global widget in base.html will pick this up via polling
-                // We just need to open the modal to show progress immediately
-                if (window.openBackupGlobalModal) window.openBackupGlobalModal();
+    function cancelBackup() {
+        if (!confirm('¿Cancelar backup?')) return;
+        addLog('info', 'Cancelando...');
+        fetch('/api/backup/cancel').then(r => r.json()).then(d => addLog('info', d.message || 'Cancelado'));
+    }
 
-                // Re-enable button after a short delay (it will be disabled if running check works, but just in case)
-                setTimeout(() => { document.getElementById('btn-backup').disabled = false; }, 2000);
+    function pollStatus() {
+        if (!isBackupRunning) return;
+        fetch('/api/backup/status').then(r => r.json()).then(d => {
+            document.getElementById('backup-status').textContent = d.message;
+            document.getElementById('progress-bar').style.width = d.progress + '%';
+            if (d.logs && d.logs.length > lastLogCount) {
+                for (var i = lastLogCount; i < d.logs.length; i++) addLog(d.logs[i].type, d.logs[i].msg);
+                lastLogCount = d.logs.length;
+            }
+            if (d.running && !d.cancelled) setTimeout(pollStatus, 1000);
+            else { if (d.cancelled) addLog('warning', '⚠️ Cancelado'); finishBackup(); }
+        }).catch(() => setTimeout(pollStatus, 3000));
+    }
+
+    function finishBackup() {
+        isBackupRunning = false;
+        document.getElementById('btn-backup').disabled = false;
+        document.getElementById('btn-cancel').style.display = 'none';
+        addLog('info', '✓ Proceso finalizado');
+        setTimeout(() => loadJobs(1), 1500);
+        setTimeout(() => refreshStats(), 2000); // Refresh stats after backup
+    }
+
+    function refreshStats() {
+        fetch('/api/stats/24h').then(r => r.json()).then(data => {
+            var s = data.stats;
+            // Update success counter
+            var successDiv = document.getElementById('stat-success');
+            if (successDiv) {
+                if (s.SUCCESS > 0) {
+                    successDiv.innerHTML = '<div class="stat-number text-success" style="cursor:pointer;">' + s.SUCCESS + '</div><small class="text-muted">✓ Exitosos (24h)</small>';
+                } else {
+                    successDiv.innerHTML = '<div class="stat-number text-muted" style="cursor:pointer;">-</div><small class="text-muted">Sin actividad (24h)</small>';
+                }
+            }
+            // Update error counter
+            var errorDiv = document.getElementById('stat-error');
+            if (errorDiv) {
+                if (s.ERROR > 0) {
+                    errorDiv.innerHTML = '<div class="stat-number text-danger" style="cursor:pointer;">' + s.ERROR + '</div><small class="text-muted">✗ Fallidos (24h)</small>';
+                } else {
+                    errorDiv.innerHTML = '<div class="stat-number text-muted" style="cursor:pointer;">-</div><small class="text-success">✓ Sin errores (24h)</small>';
+                }
+            }
+            // Update disk info
+            var diskDiv = document.getElementById('disk-info');
+            if (diskDiv && data.disk) {
+                diskDiv.textContent = data.disk.free_gb + ' GB libres / ' + data.disk.total_gb + ' GB';
             }
         });
     }
 
-    // Legacy functions removed (pollStatus, cancelBackup, finishBackup, addLog) 
-    // as they are superseded by base.html global manager.
-
+    function addLog(t, m) { var p = document.getElementById('log-panel'); p.innerHTML += '<div class="log-' + t + '">' + m + '</div>'; p.scrollTop = p.scrollHeight; }
 
     function populateJobsFilters() {
         fetch('/api/filter-options').then(r => r.json()).then(opts => {
