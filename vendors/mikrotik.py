@@ -1,0 +1,53 @@
+from vendors.base_vendor import BackupVendor
+import os
+import time
+
+class Mikrotik(BackupVendor):
+    """
+    Mikrotik RouterOS backup via SSH.
+    
+    Uses '/export' command to get configuration text.
+    """
+    
+    def backup(self):
+        """
+        Connects via SSH and runs /export.
+        """
+        temp_path = f"temp_{self.hostname}.rsc"
+        
+        # 1. Connect SSH
+        client = self.connect_ssh()
+        
+        try:
+            # 2. Run Export
+            # /export verbose creates a very detailed config
+            # simple /export is usually enough for restore
+            command = "/export verbose"
+            self._debug_log(f"Ejecutando backup: {command}")
+            
+            output = self.send_command_ssh(client, command)
+            
+            # 3. Validate Output
+            # Mikrotik export normally starts with "# jan/02/1970..." or similar comments
+            if not output or len(output) < 50:
+                raise ValueError(f"Recibido output sospechosamente corto: {len(output)} bytes")
+            
+            if "bad command" in output.lower() or "syntax error" in output.lower():
+                 raise ValueError(f"Error en comando de backup: {output[:100]}...")
+
+            # 4. Save to Temp File
+            with open(temp_path, 'w', encoding='utf-8') as f:
+                f.write(output)
+            
+            self._debug_log(f"Backup guardado temporalmente: {temp_path} ({len(output)} bytes)")
+            
+            # 5. Process (Archive + Git)
+            return self.process_file(temp_path, is_text=True)
+            
+        finally:
+            client.close()
+            if os.path.exists(temp_path):
+                try:
+                    os.remove(temp_path)
+                except:
+                    pass

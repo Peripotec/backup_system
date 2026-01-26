@@ -177,17 +177,45 @@ class BackupVendor(ABC):
         Basic Telnet connection helper.
         Returns a Telnet-compatible object.
         """
-        self._debug_log(f"Conectando a {self.ip}:{self.port}...")
+        self._debug_log(f"Conectando a {self.ip}:{self.port} (Telnet)...")
         try:
             tn = telnetlib_Telnet(self.ip, self.port, timeout=10)
             self._debug_log(f"✓ Conexión establecida con {self.ip}")
             return tn
         except Exception as e:
-            self._debug_log(f"✗ Error de conexión: {e}")
+            self._debug_log(f"✗ Error de conexión Telnet: {e}")
             raise ConnectionError(f"Telnet connection failed to {self.ip}: {e}")
 
+    def connect_ssh(self, timeout=10):
+        """
+        SSH connection helper using paramiko.
+        Returns a paramiko.SSHClient object.
+        """
+        self._debug_log(f"Conectando a {self.ip}:{self.port or 22} (SSH)...")
+        try:
+            import paramiko
+            client = paramiko.SSHClient()
+            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            # Use assigned credentials
+            client.connect(
+                self.ip, 
+                port=self.port or 22, 
+                username=self.user, 
+                password=self.password,
+                timeout=timeout,
+                allow_agent=False,
+                look_for_keys=False
+            )
+            self._debug_log(f"✓ Conexión SSH establecida con {self.ip}")
+            return client
+        except ImportError:
+            raise ImportError("Paramiko is required for SSH but not installed. Run 'pip install paramiko'")
+        except Exception as e:
+            self._debug_log(f"✗ Error de conexión SSH: {e}")
+            raise ConnectionError(f"SSH connection failed to {self.ip}: {e}")
+
     def read_until(self, tn, expected_list, timeout=10):
-        """Wrapper for read_until to handle multiple prompt possibilities."""
+        """Wrapper for read_until to handle multiple prompt possibilities (Telnet only)."""
         expected_bytes = [x.encode('ascii') for x in expected_list]
         index, match, text = tn.expect(expected_bytes, timeout)
         if isinstance(text, bytes):
@@ -202,7 +230,25 @@ class BackupVendor(ABC):
         return index, text
     
     def send_command(self, tn, command, hide=False):
-        """Send a command and log it."""
+        """Send a command (Telnet) and log it."""
         display = "****" if hide else command.strip()
         self._debug_log(f"→ {display}")
         tn.write(command.encode('ascii') + b"\n")
+
+    def send_command_ssh(self, client, command, wait_time=1):
+        """
+        Send command via SSH and return output.
+        Note: For simple commands, exec_command is easier than invoke_shell.
+        """
+        self._debug_log(f"→ (SSH) {command}")
+        stdin, stdout, stderr = client.exec_command(command, timeout=30)
+        output = stdout.read().decode('utf-8', errors='ignore')
+        error = stderr.read().decode('utf-8', errors='ignore')
+        
+        if output:
+            self._debug_log(f"← {output[:100]}..." if len(output) > 100 else f"← {output.strip()}")
+        if error:
+            self._debug_log(f"⚠️ Stderr: {error.strip()}")
+            
+        return output
+

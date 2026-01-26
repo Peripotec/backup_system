@@ -6,3 +6,5 @@ telnetlib3
 cryptography
 # Note: telnetlib3 is required for Python 3.13+ (telnetlib was removed from stdlib)
 # For older Python versions, the standard telnetlib will work
+# SSH Support
+paramiko
