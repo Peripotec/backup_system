@@ -759,7 +759,218 @@
             });
         })();
     </script>
-    {% block scripts %}{% endblock %}
+    <!-- Global Backup Status Widget -->
+    <div id="backup-floating-widget" class="position-fixed bottom-0 end-0 m-3 p-3 bg-dark text-white rounded shadow-lg"
+        style="display: none; z-index: 1050; cursor: pointer; min-width: 250px;" onclick="openBackupGlobalModal()">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+            <span class="fw-bold"><span class="spinner-border spinner-border-sm me-2" role="status"></span>Backup en
+                curso</span>
+            <small id="widget-percent">0%</small>
+        </div>
+        <div class="progress" style="height: 6px;">
+            <div id="widget-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-success"
+                style="width: 0%"></div>
+        </div>
+        <small id="widget-status-text" class="d-block mt-1 text-truncate text-white-50"
+            style="font-size: 0.75rem;">Iniciando...</small>
+    </div>
+
+    <!-- Global Backup Details Modal -->
+    <div class="modal fade" id="globalBackupModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title">🚀 Estado del Backup</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
+                </div>
+                <div class="modal-body bg-light">
+                    <!-- Progress Section -->
+                    <div class="card mb-3 shadow-sm">
+                        <div class="card-body p-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <strong id="modal-status-text">En progreso...</strong>
+                                <strong id="modal-percent">0%</strong>
+                            </div>
+                            <div class="progress" style="height: 20px;">
+                                <div id="modal-progress-bar"
+                                    class="progress-bar progress-bar-striped progress-bar-animated bg-success"
+                                    style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Console Output -->
+                    <div class="card shadow-sm border-0">
+                        <div class="card-header bg-secondary text-white d-flex justify-content-between py-1">
+                            <small>🖥️ Consola de Logs</small>
+                            <small id="modal-log-count">0 líneas</small>
+                        </div>
+                        <div class="card-body p-0 bg-dark">
+                            <div id="modal-console" class="p-2"
+                                style="height: 300px; overflow-y: auto; font-family: 'Consolas', monospace; font-size: 0.85rem; color: #e0e0e0; background: #1e1e1e;">
+                                <div class="text-muted fst-italic">Esperando logs...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-danger" id="btn-global-cancel"
+                        onclick="cancelGlobalBackup()">⏹️ Cancelar Backup</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global Backup Manager
+        const globalBackupManager = (function () {
+            let isRunning = false;
+            let pollingInterval = null;
+            let lastLogCount = 0;
+            let widget = document.getElementById('backup-floating-widget');
+            let modalInstance = null;
+
+            // Console colors
+            const logColors = {
+                'info': '#61afef',
+                'success': '#98c379',
+                'warning': '#e5c07b',
+                'error': '#e06c75',
+                'debug': '#5c6370'
+            };
+
+            function init() {
+                modalInstance = new bootstrap.Modal(document.getElementById('globalBackupModal'));
+                // Start polling immediately to check if running
+                pollStatus();
+            }
+
+            function showWidget() {
+                widget.style.display = 'block';
+            }
+
+            function hideWidget() {
+                widget.style.display = 'none';
+            }
+
+            function updateUI(data) {
+                // Update Widget
+                document.getElementById('widget-percent').textContent = data.progress + '%';
+                document.getElementById('widget-progress-bar').style.width = data.progress + '%';
+                document.getElementById('widget-status-text').textContent = data.message;
+
+                // Update Modal (if open)
+                const modal = document.getElementById('globalBackupModal');
+                if (modal.classList.contains('show')) {
+                    document.getElementById('modal-percent').textContent = data.progress + '%';
+                    document.getElementById('modal-progress-bar').style.width = data.progress + '%';
+                    document.getElementById('modal-status-text').textContent = data.message;
+
+                    // Update logs
+                    if (data.logs && data.logs.length > lastLogCount) {
+                        const consoleDiv = document.getElementById('modal-console');
+                        if (lastLogCount === 0) consoleDiv.innerHTML = ''; // Clear "Initial" text
+
+                        for (let i = lastLogCount; i < data.logs.length; i++) {
+                            const log = data.logs[i];
+                            const color = logColors[log.type] || '#abb2bf';
+                            const line = `<div style="color: ${color}; border-bottom: 1px solid #2c313a; padding: 2px 0;">
+                                <span style="opacity:0.5; font-size:0.75rem; margin-right:8px;">${new Date().toLocaleTimeString()}</span>
+                                ${log.msg}
+                            </div>`;
+                            consoleDiv.innerHTML += line;
+                        }
+
+                        lastLogCount = data.logs.length;
+                        document.getElementById('modal-log-count').textContent = lastLogCount + ' líneas';
+                        consoleDiv.scrollTop = consoleDiv.scrollHeight;
+                    }
+
+                    // Cancel button state
+                    const cancelBtn = document.getElementById('btn-global-cancel');
+                    if (data.running && !data.cancelled) {
+                        cancelBtn.disabled = false;
+                        cancelBtn.textContent = "⏹️ Cancelar Backup";
+                    } else if (data.cancelled) {
+                        cancelBtn.disabled = true;
+                        cancelBtn.textContent = "Cancelando...";
+                    } else {
+                        cancelBtn.disabled = true;
+                        cancelBtn.textContent = "Finalizado";
+                    }
+                }
+            }
+
+            function pollStatus() {
+                fetch('/api/backup/status')
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.running) {
+                            if (!isRunning) {
+                                // Just started or page reload detected running backup
+                                isRunning = true;
+                                showWidget();
+                                lastLogCount = 0; // Reset local log counter to resync full history if needed
+                                // If Polling was stopped, restart it
+                                if (!pollingInterval) startPolling();
+                            }
+                            updateUI(data);
+                        } else {
+                            if (isRunning) {
+                                // Just finished
+                                isRunning = false;
+                                updateUI(data); // Final update
+                                hideWidget();
+
+                                // Show completion toast/alert if modal closed
+                                const modal = document.getElementById('globalBackupModal');
+                                if (!modal.classList.contains('show')) {
+                                    // Optional: Toast notification
+                                }
+                                stopPolling();
+
+                                // Refresh data on page if applicable
+                                if (window.refreshStats) window.refreshStats();
+                                if (window.loadJobs) window.loadJobs(1);
+                            }
+                        }
+                    })
+                    .catch(e => console.error("Poll error", e));
+            }
+
+            function startPolling() {
+                if (pollingInterval) clearInterval(pollingInterval);
+                pollingInterval = setInterval(pollStatus, 1500);
+            }
+
+            function stopPolling() {
+                if (pollingInterval) clearInterval(pollingInterval);
+                pollingInterval = null;
+                // Poll once more after a delay to ensure final state is caught cleanly
+                setTimeout(pollStatus, 3000);
+            }
+
+            return {
+                init: init,
+                openModal: () => modalInstance.show(),
+                cancel: () => {
+                    if (!confirm('¿Seguro que deseas cancelar el proceso actual?')) return;
+                    fetch('/api/backup/cancel').then(r => r.json()).then(d => {
+                        // Let polling handle the UI update
+                    });
+                }
+            };
+        })();
+
+        // Expose to window for onclick handlers
+        window.openBackupGlobalModal = () => globalBackupManager.openModal();
+        window.cancelGlobalBackup = () => globalBackupManager.cancel();
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', globalBackupManager.init);
+    </script>
 </body>
 
 </html>
