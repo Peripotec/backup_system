@@ -33,6 +33,7 @@ cargador dinámico (engine.py)
 | **HP** | `vendors/hp.py` | Telnet | `copy startup-config tftp` |
 | **ZTE OLT** | `vendors/zte_olt.py` | Telnet | `file upload ... tftp` |
 | **ASGA** | `vendors/asga.py` | Telnet | `copy running-config tftp` |
+| **Zhone** | `vendors/zhone.py` | Telnet | `dump network ...` |
 
 ---
 

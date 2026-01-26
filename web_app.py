@@ -2073,7 +2073,8 @@ def api_jobs_paginated():
     # Vendor friendly names
     vendor_names = {
         'hp': 'HP', 'huawei': 'Huawei', 'zte_olt': 'OLT ZTE',
-        'cisco': 'Cisco', 'mikrotik': 'MikroTik', 'juniper': 'Juniper', 'fortinet': 'Fortinet'
+        'cisco': 'Cisco', 'mikrotik': 'MikroTik', 'juniper': 'Juniper', 
+        'fortinet': 'Fortinet', 'asga': 'ASGA', 'zhone': 'Zhone MXK'
     }
     
     # Format for API
