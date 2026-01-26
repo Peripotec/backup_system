@@ -928,13 +928,15 @@ def api_get_devices():
             d_ip = (device.get('ip') or '').lower()
             d_modelo = (device.get('modelo') or '').lower()
             d_tags = [t.lower() for t in device.get('tags', [])]
+            # Get device-specific vendor or fallback to group vendor
+            d_vendor = (device.get('vendor') or group_vendor or '').lower()
             
             # Apply filters
             if f_localidad and d_localidad != f_localidad:
                 continue
             if f_tipo and d_tipo != f_tipo:
                 continue
-            if f_vendor and group_vendor.lower() != f_vendor:
+            if f_vendor and d_vendor != f_vendor:
                 continue
             if f_criticidad and d_criticidad != f_criticidad:
                 continue
@@ -949,11 +951,14 @@ def api_get_devices():
             if f_search:
                 searchable = ' '.join([
                     d_sysname, d_nombre, d_ip, d_localidad, d_tipo,
-                    d_modelo, d_troncal, group_vendor.lower(), group_name.lower(),
+                    d_modelo, d_troncal, d_vendor, group_name.lower(),
                     ' '.join(d_tags)
                 ])
                 if f_search not in searchable:
                     continue
+            
+            # Use device-specific vendor if set, otherwise fallback to group vendor
+            device_vendor = device.get('vendor', '') or group_vendor
             
             all_devices.append({
                 'sysname': device.get('sysname') or device.get('hostname'),
@@ -968,7 +973,8 @@ def api_get_devices():
                 'tags': device.get('tags', []),
                 'credential_ids': device.get('credential_ids', []),
                 'group_name': group_name,
-                'vendor': group_vendor
+                'vendor': device_vendor,
+                'group_vendor': group_vendor  # Also include group vendor for reference
             })
     
     # Sort by sysname
