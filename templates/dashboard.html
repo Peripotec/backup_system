@@ -251,8 +251,8 @@
 {% endblock %}
 
 {% block content %}
-<!-- Control Panel -->
-<div class="card mb-3">
+<!-- Control Panel (Legacy - Hidden, replaced by Global Widget) -->
+<div class="card mb-3" style="display: none;">
     <div class="card-header d-flex justify-content-between align-items-center py-2">
         <span><i class="bi bi-rocket-takeoff me-2"></i>Control de Backup</span>
         <div>
@@ -275,6 +275,19 @@
                 <div id="log-panel" class="log-panel p-2" style="display: none;"></div>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- New Action Button Card -->
+<div class="card mb-3">
+    <div class="card-header py-2">
+        <span><i class="bi bi-rocket-takeoff me-2"></i>Acciones Rápidas</span>
+    </div>
+    <div class="card-body py-3">
+        <button class="btn btn-primary" onclick="new bootstrap.Modal(document.getElementById('backupModal')).show()">
+            ▶️ Ejecutar Nuevo Backup
+        </button>
+        <span class="text-muted ms-2 small">El progreso del backup se mostrará en el widget global.</span>
     </div>
 </div>
 
@@ -683,18 +696,32 @@
     }
 
     function startBackup(devices) {
-        isBackupRunning = true; lastLogCount = 0;
+        // Disable button to prevent double clicks
         document.getElementById('btn-backup').disabled = true;
-        document.getElementById('btn-cancel').style.display = 'inline-block';
-        document.getElementById('log-panel').style.display = 'block';
-        document.getElementById('log-panel').innerHTML = '';
-        document.getElementById('progress-bar').style.width = '0%';
 
         // Build URL with all selected devices
         var params = devices.map(d => 'device=' + encodeURIComponent(d)).join('&');
         var url = '/api/backup/trigger' + (params ? '?' + params : '');
-        addLog('info', 'Iniciando ' + devices.length + ' backup(s)...');
-        fetch(url).then(r => r.json()).then(d => { d.error ? (addLog('error', d.error), finishBackup()) : pollStatus(); });
+
+        fetch(url).then(r => r.json()).then(d => {
+            if (d.error) {
+                alert(d.error);
+                document.getElementById('btn-backup').disabled = false;
+            } else {
+                // Success!
+                // 1. Open the Global Modal to show progress
+                if (window.openBackupGlobalModal) window.openBackupGlobalModal();
+
+                // 2. Hide local control panel if visible (optional, keeping it simple)
+                // document.getElementById('log-panel').style.display = 'none';
+
+                // 3. Re-enable button after a moment (logic handled by global state but safe to reset UI state)
+                setTimeout(() => { document.getElementById('btn-backup').disabled = false; }, 2000);
+            }
+        }).catch(err => {
+            alert("Error al iniciar backup: " + err);
+            document.getElementById('btn-backup').disabled = false;
+        });
     }
 
     function cancelBackup() {
@@ -704,17 +731,10 @@
     }
 
     function pollStatus() {
-        if (!isBackupRunning) return;
-        fetch('/api/backup/status').then(r => r.json()).then(d => {
-            document.getElementById('backup-status').textContent = d.message;
-            document.getElementById('progress-bar').style.width = d.progress + '%';
-            if (d.logs && d.logs.length > lastLogCount) {
-                for (var i = lastLogCount; i < d.logs.length; i++) addLog(d.logs[i].type, d.logs[i].msg);
-                lastLogCount = d.logs.length;
-            }
-            if (d.running && !d.cancelled) setTimeout(pollStatus, 1000);
-            else { if (d.cancelled) addLog('warning', '⚠️ Cancelado'); finishBackup(); }
-        }).catch(() => setTimeout(pollStatus, 3000));
+        // Disabled: Polling is now handled globally by base.html
+        // if (!isBackupRunning) return;
+        // fetch('/api/backup/status')....
+        return;
     }
 
     function finishBackup() {
