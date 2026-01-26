@@ -67,11 +67,16 @@ class Zhone(BackupVendor):
             self.send_command(tn, password, hide=True)
             
             self._debug_log("Esperando respuesta...")
-            # Zhone/MXK prompts often are "zSH>" or just ">"
-            idx, response = self.read_until(tn, ["zSH>", ">", "ogin:", "Login:", "failed"], timeout=15)
+            # Zhone/MXK prompts
+            # Success: "zSH>" or ">"
+            # Failure: "Login incorrect", "bad password", or looped "login:" prompt
+            idx, response = self.read_until(tn, ["zSH>", ">", "ogin:", "Login:", "incorrect", "bad password", "failed"], timeout=15)
             
             # Check if login succeeded
-            if idx in [0, 1] and "failed" not in response.lower():
+            # idx 0,1 = success
+            # idx 2,3 = login prompt again (failure)
+            # idx 4,5,6 = explicit failure message
+            if idx in [0, 1] and "incorrect" not in response.lower() and "failed" not in response.lower():
                 self._debug_log(f"✓ Login exitoso con credencial {i+1}")
                 logged_in = True
                 successful_cred_id = cred_id
@@ -79,13 +84,16 @@ class Zhone(BackupVendor):
                 self.password = password
                 break
             else:
-                self._debug_log(f"✗ Credencial {i+1} falló")
+                self._debug_log(f"✗ Credencial {i+1} falló ({'Pass incorrecto' if idx >= 4 else 'No prompt'})")
                 if i < len(credentials_to_try) - 1:
                     time.sleep(1)
         
         if not logged_in:
             tn.close()
-            raise Exception(f"Authentication failed with all {len(credentials_to_try)} credentials")
+            msg = f"Authentication failed with all {len(credentials_to_try)} credentials."
+            if len(credentials_to_try) == 1:
+                msg += " Hint: Assign more credentials to the Group in Inventory to enable auto-rotation."
+            raise Exception(msg)
         
         # Save successful credential
         if successful_cred_id:
