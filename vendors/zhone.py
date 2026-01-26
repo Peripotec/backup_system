@@ -13,6 +13,13 @@ class Zhone(BackupVendor):
     
     Uses 'dump network <ip_tftp> <filename>' command.
     """
+
+    def send_command(self, tn, command, hide=False):
+        """Override to send \r\n, required for some Zhone/MXK versions."""
+        display = "****" if hide else command.strip()
+        self._debug_log(f"→ {display}")
+        tn.write(command.encode('ascii') + b"\r\n")
+
     
     def backup(self):
         """
