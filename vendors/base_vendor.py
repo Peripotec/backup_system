@@ -102,7 +102,8 @@ class BackupVendor(ABC):
     
     def _debug_log(self, message):
         """Send debug message to callback and standard log."""
-        log.debug(message)
+        # Use INFO level so messages appear in journalctl
+        log.info(f"[VENDOR] {message}")
         if self.log_callback:
             self.log_callback(message)
 
