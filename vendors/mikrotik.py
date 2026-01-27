@@ -22,12 +22,18 @@ class Mikrotik(BackupVendor):
         """
         temp_path = f"temp_{self.hostname}.rsc"
         
-        self._debug_log(f"Iniciando backup Mikrotik para {self.hostname}")
-        self._debug_log(f"Puerto SSH: {self.port}")
+        # Log immediately - this should appear in UI
+        self._debug_log(f"[Mikrotik] Iniciando backup para {self.hostname}")
+        self._debug_log(f"[Mikrotik] IP: {self.ip}, Puerto SSH: {self.port}")
+        self._debug_log(f"[Mikrotik] Usuario: {self.user}")
         
         # 1. Connect SSH
-        self._debug_log("Conectando vía SSH...")
-        client = self.connect_ssh()
+        self._debug_log("[Mikrotik] Conectando vía SSH...")
+        try:
+            client = self.connect_ssh()
+        except Exception as e:
+            self._debug_log(f"[Mikrotik] ✗ Error de conexión: {e}")
+            raise
         
         try:
             # 2. Run Export
