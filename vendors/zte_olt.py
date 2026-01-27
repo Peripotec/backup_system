@@ -127,9 +127,21 @@ class ZteOlt(BackupVendor):
                 pass
             
             self.send_command(tn, "enable")
-            idx, response = self.read_until(tn, ["assword:", "Password:", "#"], timeout=10)
+            idx, response = self.read_until(tn, ["assword:", "Password:", "#", "Error", "Unrecognized"], timeout=10)
             
-            if idx in [0, 1]:  # Password prompt
+            # Handle different responses:
+            # - Password prompt: need to send enable password
+            # - #: already in enable mode
+            # - Error/Unrecognized: command not valid, likely already in privileged mode
+            if "Error" in response or "Unrecognized" in response:
+                self._debug_log("✓ Comando enable no reconocido - asumiendo modo privilegiado")
+                # Clear buffer and continue
+                time.sleep(0.3)
+                try:
+                    tn.read_very_eager()
+                except:
+                    pass
+            elif idx in [0, 1]:  # Password prompt
                 # Try enable passwords
                 passwords_to_try = []
                 if working_extra_pass:
@@ -157,8 +169,10 @@ class ZteOlt(BackupVendor):
                     self._debug_log("⚠ No se pudo entrar en enable mode")
                     tn.close()
                     raise Exception("Could not enter enable mode")
-            elif idx == 2:
+            elif idx == 2:  # Got # directly
                 self._debug_log("✓ Ya en enable mode")
+            else:
+                self._debug_log("✓ Asumiendo enable mode")
         else:
             self._debug_log("✓ Ya en enable mode")
         

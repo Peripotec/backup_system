@@ -122,10 +122,10 @@ class Zhone(BackupVendor):
         self.send_command(tn, cmd)
         
         # Wait for transfer to complete
-        # Script uses 900s timeout, we'll implement a polling wait or long timeout
-        self._debug_log("Esperando fin de transferencia (max 600s)...")
+        # Reduced from 600s to 120s to prevent long blocking
+        self._debug_log("Esperando fin de transferencia (max 120s)...")
         # We expect the prompt back "zSH>" when done
-        idx, response = self.read_until(tn, ["zSH>", ">", "Error", "failed", "timeout"], timeout=600)
+        idx, response = self.read_until(tn, ["zSH>", ">", "Error", "failed", "timeout"], timeout=120)
         
         if "error" in response.lower() or "failed" in response.lower() or "timeout" in response.lower():
             tn.close()
