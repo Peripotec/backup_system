@@ -2,11 +2,12 @@ import yaml
 import time
 import os
 import shutil
+import socket
 from datetime import datetime
 import importlib
 import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor
-from settings import INVENTORY_FILE, MAX_WORKERS, ARCHIVE_DIR
+from settings import INVENTORY_FILE, MAX_WORKERS, ARCHIVE_DIR, TFTP_ROOT
 from core.logger import log
 from core.db_manager import DBManager
 from core.git_manager import GitManager
@@ -22,14 +23,42 @@ class BackupEngine:
         self.notifier = Notifier()
         self.inventory = self._load_inventory()
         self.status_callback = None  # Optional callback for web UI updates
+        
+        # Cleanup stale IN_PROGRESS jobs from previous crashed runs
+        self.db.cleanup_stale_jobs(max_age_minutes=30)
 
     def _load_inventory(self):
+        """Load inventory with validation, auto-backup, and fallback."""
+        backup_file = f"{INVENTORY_FILE}.bak"
         try:
             with open(INVENTORY_FILE, 'r') as f:
-                return yaml.safe_load(f)
+                data = yaml.safe_load(f)
+            
+            # Validate structure
+            if not data or 'groups' not in data:
+                raise ValueError("Invalid inventory: missing 'groups' key")
+            
+            # Auto-backup on successful load
+            shutil.copy2(INVENTORY_FILE, backup_file)
+            log.debug(f"Inventory backup created: {backup_file}")
+            
+            return data
+        except FileNotFoundError:
+            # Try to restore from backup
+            if os.path.exists(backup_file):
+                log.warning(f"Inventory not found, restoring from backup")
+                shutil.copy2(backup_file, INVENTORY_FILE)
+                return self._load_inventory()
+            log.error("No inventory file found")
+            return {'groups': []}
         except Exception as e:
+            # If corrupted, try backup
+            if os.path.exists(backup_file):
+                log.warning(f"Inventory corrupted ({e}), loading backup")
+                with open(backup_file, 'r') as f:
+                    return yaml.safe_load(f)
             log.error(f"Failed to load inventory: {e}")
-            return {}
+            return {'groups': []}
 
     def _get_vendor_plugin(self, vendor_name):
         """
@@ -49,6 +78,54 @@ class BackupEngine:
         except AttributeError:
             log.error(f"Class {class_name} not found in {vendor_name} plugin.")
             return None
+
+    def _preflight_checks(self):
+        """
+        Run pre-flight checks before starting a batch backup.
+        Returns a list of issues found (empty = all OK).
+        """
+        issues = []
+        config = get_config_manager()
+        
+        # 1. TFTP Server reachable (UDP port 69)
+        tftp_server = config.get_setting('tftp_server')
+        if tftp_server and tftp_server not in ('127.0.0.1', 'localhost', '::1'):
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                sock.settimeout(2)
+                # Just try to connect - TFTP uses UDP so this won't establish a real connection
+                sock.connect((tftp_server, 69))
+                sock.close()
+                log.debug(f"TFTP server {tftp_server} is reachable")
+            except socket.timeout:
+                issues.append(f"TFTP server {tftp_server} timeout")
+            except Exception as e:
+                issues.append(f"TFTP server {tftp_server} unreachable: {e}")
+        
+        # 2. Disk space check (minimum 5GB free on archive)
+        if os.path.exists(ARCHIVE_DIR):
+            try:
+                usage = shutil.disk_usage(ARCHIVE_DIR)
+                free_gb = usage.free / (1024**3)
+                if free_gb < 5:
+                    issues.append(f"Low disk space: {free_gb:.1f}GB free (minimum 5GB recommended)")
+                else:
+                    log.debug(f"Disk space OK: {free_gb:.1f}GB free")
+            except Exception as e:
+                issues.append(f"Cannot check disk space: {e}")
+        
+        # 3. TFTP directory writable
+        if os.path.exists(TFTP_ROOT):
+            test_file = os.path.join(TFTP_ROOT, '.write_test')
+            try:
+                with open(test_file, 'w') as f:
+                    f.write('test')
+                os.remove(test_file)
+                log.debug(f"TFTP root {TFTP_ROOT} is writable")
+            except Exception as e:
+                issues.append(f"TFTP root not writable: {e}")
+        
+        return issues
 
     def process_device(self, device, group_name="Default", vendor_type="generic", credential_ids=None):
         """
@@ -205,7 +282,15 @@ class BackupEngine:
         target_devices: list of device hostnames or sysnames to process
         """
         log.info(f"Starting Backup Run (Dry Run={self.dry_run})")
-        run_id = self.db.start_run()
+        
+        # Run preflight checks
+        preflight_issues = self._preflight_checks()
+        if preflight_issues:
+            for issue in preflight_issues:
+                log.warning(f"Preflight check: {issue}")
+            # Continue anyway but log warnings - could be made configurable to abort
+        
+        run_id = self.db.start_run(run_type="MANUAL")
         
         # Convert single device to list for backward compatibility
         if target_devices and not isinstance(target_devices, list):
@@ -306,7 +391,15 @@ class BackupEngine:
             current_time_hhmm: Current time as HH:MM string
         """
         log.info(f"=== Ejecución Programada ({current_time_hhmm}) ===")
-        run_id = self.db.start_run()
+        
+        # Run preflight checks
+        preflight_issues = self._preflight_checks()
+        if preflight_issues:
+            for issue in preflight_issues:
+                log.warning(f"Preflight check: {issue}")
+            # Continue anyway but log warnings
+        
+        run_id = self.db.start_run(run_type="CRON", triggered_by=f"CRON:{current_time_hhmm}")
         
         # Collect all devices with their vendor info
         all_devices = []

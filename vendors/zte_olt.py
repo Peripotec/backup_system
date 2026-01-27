@@ -1,11 +1,15 @@
 import time
 import os
 import shutil
+import threading
 from vendors.base_vendor import BackupVendor
 from settings import TFTP_ROOT
 from core.logger import log
 from core.vault import save_preferred_credential_for_device
 from core.config_manager import get_config_manager
+
+# Lock global para ZTE OLT backups - todos usan startrun.dat, deben ejecutar en secuencia
+_zte_tftp_lock = threading.Lock()
 
 
 class ZteOlt(BackupVendor):
@@ -159,62 +163,69 @@ class ZteOlt(BackupVendor):
             self._debug_log("✓ Ya en enable mode")
         
         # =====================================================
-        # FASE 3: TFTP backup
+        # FASE 3: TFTP backup (con lock para evitar concurrencia)
         # =====================================================
-        tftp_incoming = os.path.join(TFTP_ROOT, "startrun.dat")
-        final_filename = f"{self.hostname}.dat"
-        tftp_path = os.path.join(TFTP_ROOT, final_filename)
-        
-        # Prepare file for TFTP
-        try:
-            with open(tftp_incoming, 'w') as f:
+        self._debug_log("Esperando lock TFTP...")
+        with _zte_tftp_lock:
+            self._debug_log("🔒 Lock TFTP adquirido")
+            
+            tftp_incoming = os.path.join(TFTP_ROOT, "startrun.dat")
+            final_filename = f"{self.hostname}.dat"
+            tftp_path = os.path.join(TFTP_ROOT, final_filename)
+            
+            # Prepare file for TFTP
+            try:
+                with open(tftp_incoming, 'w') as f:
+                    pass
+                os.chmod(tftp_incoming, 0o666)
+                self._debug_log(f"✓ Archivo startrun.dat preparado para TFTP")
+            except Exception as e:
+                self._debug_log(f"⚠ No se pudo crear archivo TFTP: {e}")
+            
+            # Execute TFTP upload command
+            # ZTE syntax: file upload cfg-startup startrun.dat tftp ipaddress <server>
+            cmd = f"file upload cfg-startup startrun.dat tftp ipaddress {tftp_server}"
+            self._debug_log(f"Ejecutando transferencia TFTP...")
+            self.send_command(tn, cmd)
+            
+            # Wait for transfer to complete (ZTE can take a while)
+            self._debug_log("Esperando fin de transferencia (max 120s)...")
+            idx, response = self.read_until(tn, ["#", "success", "100%"], timeout=120)
+            
+            if "success" in response.lower() or "100%" in response:
+                self._debug_log("✓ TFTP transfer completado")
+            else:
+                self._debug_log("⚠ Respuesta TFTP no confirmada")
+            
+            # =====================================================
+            # FASE 4: Cerrar sesión
+            # =====================================================
+            self._debug_log("Cerrando sesión...")
+            self.send_command(tn, "exit")
+            try:
+                tn.close()
+            except:
                 pass
-            os.chmod(tftp_incoming, 0o666)
-            self._debug_log(f"✓ Archivo startrun.dat preparado para TFTP")
-        except Exception as e:
-            self._debug_log(f"⚠ No se pudo crear archivo TFTP: {e}")
-        
-        # Execute TFTP upload command
-        # ZTE syntax: file upload cfg-startup startrun.dat tftp ipaddress <server>
-        cmd = f"file upload cfg-startup startrun.dat tftp ipaddress {tftp_server}"
-        self._debug_log(f"Ejecutando transferencia TFTP...")
-        self.send_command(tn, cmd)
-        
-        # Wait for transfer to complete (ZTE can take a while)
-        self._debug_log("Esperando fin de transferencia (max 120s)...")
-        idx, response = self.read_until(tn, ["#", "success", "100%"], timeout=120)
-        
-        if "success" in response.lower() or "100%" in response:
-            self._debug_log("✓ TFTP transfer completado")
-        else:
-            self._debug_log("⚠ Respuesta TFTP no confirmada")
-        
-        # =====================================================
-        # FASE 4: Cerrar sesión
-        # =====================================================
-        self._debug_log("Cerrando sesión...")
-        self.send_command(tn, "exit")
-        try:
-            tn.close()
-        except:
-            pass
-        
-        # =====================================================
-        # FASE 5: Verificar archivo y renombrar
-        # =====================================================
-        self._debug_log(f"Verificando archivo en {tftp_incoming}...")
-        
-        for i in range(15):  # ZTE can be slow
-            if os.path.exists(tftp_incoming) and os.path.getsize(tftp_incoming) > 0:
-                size = os.path.getsize(tftp_incoming)
-                self._debug_log(f"✓ Archivo encontrado ({size} bytes)")
-                
-                # Move to final location
-                shutil.move(tftp_incoming, tftp_path)
-                self._debug_log(f"✓ Renombrado a {final_filename}")
-                break
-            self._debug_log(f"Esperando archivo... ({i+1}/15)")
-            time.sleep(2)
+            
+            # =====================================================
+            # FASE 5: Verificar archivo y renombrar
+            # =====================================================
+            self._debug_log(f"Verificando archivo en {tftp_incoming}...")
+            
+            for i in range(15):  # ZTE can be slow
+                if os.path.exists(tftp_incoming) and os.path.getsize(tftp_incoming) > 0:
+                    size = os.path.getsize(tftp_incoming)
+                    self._debug_log(f"✓ Archivo encontrado ({size} bytes)")
+                    
+                    # Move to final location
+                    shutil.move(tftp_incoming, tftp_path)
+                    self._debug_log(f"✓ Renombrado a {final_filename}")
+                    break
+                self._debug_log(f"Esperando archivo... ({i+1}/15)")
+                time.sleep(2)
+            
+            self._debug_log("🔓 Lock TFTP liberado")
+        # FIN del lock
         
         if not os.path.exists(tftp_path) or os.path.getsize(tftp_path) == 0:
             raise FileNotFoundError(f"Backup file not found or empty: {tftp_path}")

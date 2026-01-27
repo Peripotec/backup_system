@@ -47,9 +47,21 @@ class DBManager:
                     total_devices INTEGER,
                     success_count INTEGER,
                     error_count INTEGER,
-                    type TEXT -- 'MANUAL', 'CRON'
+                    type TEXT, -- 'MANUAL', 'CRON'
+                    triggered_by TEXT, -- 'CRON', 'MANUAL:username', 'API'
+                    log_path TEXT -- Path to run log file
                 )
             ''')
+            
+            # Migration: Add new columns if they don't exist (for existing DBs)
+            try:
+                cursor.execute('ALTER TABLE runs ADD COLUMN triggered_by TEXT')
+            except:
+                pass  # Column already exists
+            try:
+                cursor.execute('ALTER TABLE runs ADD COLUMN log_path TEXT')
+            except:
+                pass  # Column already exists
             
             # Table: Device Types (Catalog)
             cursor.execute('''
@@ -129,14 +141,73 @@ class DBManager:
         finally:
             conn.close()
 
-    def start_run(self, run_type="CRON"):
-        """Starts a batch run record."""
+    def record_job_start(self, hostname, vendor, group_name):
+        """Record a job as IN_PROGRESS before execution starts."""
         conn = self._get_connection()
         try:
             cursor = conn.cursor()
             cursor.execute('''
-                INSERT INTO runs (start_time, type) VALUES (?, ?)
-            ''', (datetime.now(), run_type))
+                INSERT INTO jobs (timestamp, hostname, vendor, group_name, status, message)
+                VALUES (?, ?, ?, ?, 'IN_PROGRESS', 'Backup iniciado')
+            ''', (datetime.now(), hostname, vendor, group_name))
+            conn.commit()
+            return cursor.lastrowid
+        except Exception as e:
+            log.error(f"Failed to record job start for {hostname}: {e}")
+            return None
+        finally:
+            conn.close()
+
+    def update_job_status(self, job_id, status, message, file_path=None, file_size=0, duration=0, changed=False):
+        """Update an existing job record with final status."""
+        if not job_id:
+            return
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute('''
+                UPDATE jobs 
+                SET status = ?, message = ?, file_path = ?, file_size = ?, 
+                    duration_seconds = ?, changed = ?
+                WHERE id = ?
+            ''', (status, message, file_path, file_size, duration, changed, job_id))
+            conn.commit()
+        except Exception as e:
+            log.error(f"Failed to update job {job_id}: {e}")
+        finally:
+            conn.close()
+
+    def cleanup_stale_jobs(self, max_age_minutes=30):
+        """Mark old IN_PROGRESS jobs as UNKNOWN (crashed/interrupted)."""
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute('''
+                UPDATE jobs 
+                SET status = 'UNKNOWN', message = 'Proceso terminado inesperadamente'
+                WHERE status = 'IN_PROGRESS' 
+                AND timestamp < datetime('now', ?)
+            ''', (f'-{max_age_minutes} minutes',))
+            affected = cursor.rowcount
+            conn.commit()
+            if affected > 0:
+                log.warning(f"Marked {affected} stale IN_PROGRESS jobs as UNKNOWN")
+            return affected
+        except Exception as e:
+            log.error(f"Failed to cleanup stale jobs: {e}")
+            return 0
+        finally:
+            conn.close()
+
+    def start_run(self, run_type="CRON", triggered_by=None, log_path=None):
+        """Starts a batch run record with optional metadata."""
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO runs (start_time, type, triggered_by, log_path) 
+                VALUES (?, ?, ?, ?)
+            ''', (datetime.now(), run_type, triggered_by, log_path))
             conn.commit()
             return cursor.lastrowid
         except Exception as e:
@@ -145,18 +216,25 @@ class DBManager:
         finally:
             conn.close()
 
-    def end_run(self, run_id, total, success, errors):
+    def end_run(self, run_id, total, success, errors, log_path=None):
         """Updates the batch run record with final stats."""
         if not run_id:
             return
         conn = self._get_connection()
         try:
             cursor = conn.cursor()
-            cursor.execute('''
-                UPDATE runs 
-                SET end_time = ?, total_devices = ?, success_count = ?, error_count = ?
-                WHERE id = ?
-            ''', (datetime.now(), total, success, errors, run_id))
+            if log_path:
+                cursor.execute('''
+                    UPDATE runs 
+                    SET end_time = ?, total_devices = ?, success_count = ?, error_count = ?, log_path = ?
+                    WHERE id = ?
+                ''', (datetime.now(), total, success, errors, log_path, run_id))
+            else:
+                cursor.execute('''
+                    UPDATE runs 
+                    SET end_time = ?, total_devices = ?, success_count = ?, error_count = ?
+                    WHERE id = ?
+                ''', (datetime.now(), total, success, errors, run_id))
             conn.commit()
         except Exception as e:
             log.error(f"Failed to end run {run_id}: {e}")
