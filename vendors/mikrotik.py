@@ -7,7 +7,14 @@ class Mikrotik(BackupVendor):
     Mikrotik RouterOS backup via SSH.
     
     Uses '/export' command to get configuration text.
+    Default SSH port: 91 (customized for this environment).
     """
+    
+    def __init__(self, device_info, db_manager, git_manager, credentials=None):
+        super().__init__(device_info, db_manager, git_manager, credentials)
+        # Override port: use device-specified port, or default to 91 for Mikrotik
+        if self.port is None:
+            self.port = 91
     
     def backup(self):
         """
