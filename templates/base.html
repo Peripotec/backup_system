@@ -948,7 +948,16 @@
 
             return {
                 init: init,
-                openModal: () => modalInstance.show(),
+                openModal: () => {
+                    // Reset log counter when opening modal to show all logs
+                    lastLogCount = 0;
+                    // Clear the console placeholder
+                    document.getElementById('modal-console').innerHTML = '<div class="text-muted fst-italic">Cargando logs...</div>';
+                    modalInstance.show();
+                    // Force immediate poll and start polling if not already
+                    pollStatus();
+                    if (!pollingInterval) startPolling();
+                },
                 cancel: () => {
                     if (!confirm('¿Seguro que deseas cancelar el proceso actual?')) return;
                     fetch('/api/backup/cancel').then(r => r.json()).then(d => {
