@@ -297,6 +297,17 @@ class BackupEngine:
         run_logger = RunLogger(run_id, run_type="MANUAL")
         start_time = time.time()
         
+        # Log audit event for run start
+        self.db.log_audit_event(
+            user_id=None,
+            username="SYSTEM",
+            event_type="BACKUP_RUN_START",
+            event_category="BACKUP",
+            entity_type="run",
+            entity_id=str(run_id),
+            details={"type": "MANUAL", "dry_run": self.dry_run}
+        )
+        
         # Convert single device to list for backward compatibility
         if target_devices and not isinstance(target_devices, list):
             target_devices = [target_devices]
@@ -405,6 +416,24 @@ class BackupEngine:
         self.db.end_run(run_id, total, success, errors, log_path=run_logger.get_log_path())
         run_logger.close()
         
+        # Log audit event for run end
+        self.db.log_audit_event(
+            user_id=None,
+            username="SYSTEM",
+            event_type="BACKUP_RUN_END",
+            event_category="BACKUP",
+            entity_type="run",
+            entity_id=str(run_id),
+            details={
+                "type": "MANUAL",
+                "total": total,
+                "success": success,
+                "errors": errors,
+                "duration_seconds": round(duration, 1),
+                "log_path": run_logger.get_log_path()
+            }
+        )
+        
         # Notify with disabled devices
         self.notifier.send_summary(total, success, errors, failed_hosts, diff_summary, duration, disabled_devices)
         
@@ -433,6 +462,17 @@ class BackupEngine:
         # Create run logger for this execution
         run_logger = RunLogger(run_id, run_type="CRON")
         start_time = time.time()
+        
+        # Log audit event for run start
+        self.db.log_audit_event(
+            user_id=None,
+            username="SYSTEM",
+            event_type="BACKUP_RUN_START",
+            event_category="BACKUP",
+            entity_type="run",
+            entity_id=str(run_id),
+            details={"type": "CRON", "schedule": current_time_hhmm}
+        )
         
         # Collect all devices with their vendor info
         all_devices = []
@@ -551,6 +591,25 @@ class BackupEngine:
         # Update run record with log path
         self.db.end_run(run_id, total, success, errors, log_path=run_logger.get_log_path())
         run_logger.close()
+        
+        # Log audit event for run end
+        self.db.log_audit_event(
+            user_id=None,
+            username="SYSTEM",
+            event_type="BACKUP_RUN_END",
+            event_category="BACKUP",
+            entity_type="run",
+            entity_id=str(run_id),
+            details={
+                "type": "CRON",
+                "schedule": current_time_hhmm,
+                "total": total,
+                "success": success,
+                "errors": errors,
+                "duration_seconds": round(duration, 1),
+                "log_path": run_logger.get_log_path()
+            }
+        )
         
         # Notify with disabled devices
         self.notifier.send_summary(total, success, errors, failed_hosts, diff_summary, duration, disabled_devices)
