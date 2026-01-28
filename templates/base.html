@@ -779,8 +779,11 @@
     <div class="modal fade" id="globalBackupModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content">
-                <div class="modal-header bg-dark text-white">
-                    <h5 class="modal-title">🚀 Estado del Backup</h5>
+                <div class="modal-header bg-dark text-white" id="backup-modal-header">
+                    <h5 class="modal-title">
+                        <span id="backup-type-icon">🚀</span> Estado del Backup
+                        <span id="backup-type-badge" class="badge bg-secondary ms-2" style="display:none;">MANUAL</span>
+                    </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
                         aria-label="Close"></button>
                 </div>
@@ -860,6 +863,25 @@
                 document.getElementById('widget-percent').textContent = data.progress + '%';
                 document.getElementById('widget-progress-bar').style.width = data.progress + '%';
                 document.getElementById('widget-status-text').textContent = data.message;
+
+                // Update backup type badge/icon
+                const typeBadge = document.getElementById('backup-type-badge');
+                const typeIcon = document.getElementById('backup-type-icon');
+                const modalHeader = document.getElementById('backup-modal-header');
+
+                if (data.type === 'CRON') {
+                    typeBadge.textContent = '🕐 AUTOMÁTICO';
+                    typeBadge.className = 'badge bg-info ms-2';
+                    typeBadge.style.display = 'inline-block';
+                    typeIcon.textContent = '⏰';
+                    modalHeader.className = 'modal-header bg-info text-white';
+                } else {
+                    typeBadge.textContent = 'MANUAL';
+                    typeBadge.className = 'badge bg-primary ms-2';
+                    typeBadge.style.display = 'inline-block';
+                    typeIcon.textContent = '🚀';
+                    modalHeader.className = 'modal-header bg-dark text-white';
+                }
 
                 // Update Modal (if open)
                 const modal = document.getElementById('globalBackupModal');

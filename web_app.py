@@ -680,6 +680,7 @@ def inventory_groups():
 backup_status = {
     "running": False, 
     "cancelled": False,
+    "type": "MANUAL",  # "MANUAL" or "CRON"
     "message": "Listo", 
     "progress": 0,
     "current_device": None,
@@ -694,6 +695,7 @@ def run_backup_async(group=None, devices=None, user_info=None):
     backup_status = {
         "running": True, 
         "cancelled": False,
+        "type": "MANUAL",
         "message": "Iniciando backup...", 
         "progress": 5,
         "current_device": None,
@@ -839,6 +841,63 @@ def cancel_backup():
         backup_status["message"] = "Cancelando..."
         return jsonify({"status": "cancelling", "message": "Cancelando backup..."})
     return jsonify({"status": "not_running", "message": "No hay backup en ejecución"})
+
+# Endpoint para actualizaciones remotas desde scheduled_runner
+REMOTE_UPDATE_SECRET = os.environ.get('BACKUP_REMOTE_SECRET', 'backup_system_2024')
+
+@app.route('/api/backup/remote-update', methods=['POST'])
+def remote_backup_update():
+    """
+    Receive backup status updates from scheduled_runner (CRON process).
+    This allows the CRON backup to show progress in the web UI.
+    """
+    global backup_status
+    
+    # Simple authentication via shared secret
+    secret = request.headers.get('X-Backup-Secret')
+    if secret != REMOTE_UPDATE_SECRET:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data"}), 400
+    
+    action = data.get('action')
+    
+    if action == 'start':
+        # CRON backup starting
+        backup_status = {
+            "running": True,
+            "cancelled": False,
+            "type": "CRON",
+            "message": data.get('message', 'Backup automático iniciado...'),
+            "progress": 5,
+            "current_device": None,
+            "completed": [],
+            "errors": [],
+            "logs": [{"type": "info", "msg": "🕐 Backup automático iniciado (CRON)"}]
+        }
+    elif action == 'update':
+        # Status update (device progress)
+        if backup_status.get("type") == "CRON" and backup_status.get("running"):
+            device = data.get('device')
+            status = data.get('status')
+            message = data.get('message', '')
+            
+            # Delegate to existing update function
+            update_backup_status(device, status, message)
+    elif action == 'end':
+        # CRON backup finished
+        if backup_status.get("type") == "CRON":
+            backup_status["running"] = False
+            backup_status["progress"] = 100
+            backup_status["message"] = data.get('message', 'Backup automático completado')
+            backup_status["logs"].append({
+                "type": "success", 
+                "msg": f"✓ Backup automático finalizado: {data.get('success', 0)} OK, {data.get('errors', 0)} errores"
+            })
+    
+    return jsonify({"ok": True})
 
 # ==========================
 # API: INVENTORY CRUD
