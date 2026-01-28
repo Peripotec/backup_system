@@ -68,7 +68,26 @@ class BackupVendor(ABC):
     """
     Abstract Base Class for Vendor Plugins.
     Each vendor must implement the backup() method.
+    
+    Timeout Configuration:
+        Override TIMEOUTS in subclass to customize per-phase timeouts.
+        Example:
+            class SlowVendor(BackupVendor):
+                TIMEOUTS = {
+                    'connect': 15,
+                    'login': 30,
+                    'command': 60,
+                    'transfer': 300,
+                }
     """
+    
+    # Default timeouts (seconds) - override in subclass if needed
+    TIMEOUTS = {
+        'connect': 10,    # Initial TCP connection
+        'login': 15,      # Authentication phase
+        'command': 30,    # Command execution
+        'transfer': 120,  # File transfer (TFTP/FTP)
+    }
     
     def __init__(self, device_info, db_manager, git_manager, credentials=None):
         self.hostname = device_info['hostname']
@@ -173,27 +192,31 @@ class BackupVendor(ABC):
         
         return archive_path, file_size, changed
 
-    def connect_telnet(self):
+    def connect_telnet(self, timeout=None):
         """
         Basic Telnet connection helper.
         Returns a Telnet-compatible object.
+        Uses TIMEOUTS['connect'] by default.
         """
         port = self.port or 23
-        self._debug_log(f"Conectando a {self.ip}:{port} (Telnet)...")
+        connect_timeout = timeout if timeout is not None else self.TIMEOUTS['connect']
+        self._debug_log(f"Conectando a {self.ip}:{port} (Telnet, timeout={connect_timeout}s)...")
         try:
-            tn = telnetlib_Telnet(self.ip, port, timeout=10)
+            tn = telnetlib_Telnet(self.ip, port, timeout=connect_timeout)
             self._debug_log(f"✓ Conexión establecida con {self.ip}")
             return tn
         except Exception as e:
             self._debug_log(f"✗ Error de conexión Telnet: {e}")
             raise ConnectionError(f"Telnet connection failed to {self.ip}: {e}")
 
-    def connect_ssh(self, timeout=10):
+    def connect_ssh(self, timeout=None):
         """
         SSH connection helper using paramiko.
         Returns a paramiko.SSHClient object.
+        Uses TIMEOUTS['connect'] by default.
         """
-        self._debug_log(f"Conectando a {self.ip}:{self.port or 22} (SSH)...")
+        connect_timeout = timeout if timeout is not None else self.TIMEOUTS['connect']
+        self._debug_log(f"Conectando a {self.ip}:{self.port or 22} (SSH, timeout={connect_timeout}s)...")
         try:
             import paramiko
             client = paramiko.SSHClient()
@@ -204,7 +227,7 @@ class BackupVendor(ABC):
                 port=self.port or 22, 
                 username=self.user, 
                 password=self.password,
-                timeout=timeout,
+                timeout=connect_timeout,
                 allow_agent=False,
                 look_for_keys=False
             )

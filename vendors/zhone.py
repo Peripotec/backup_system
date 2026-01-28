@@ -13,6 +13,14 @@ class Zhone(BackupVendor):
     
     Uses 'dump network <ip_tftp> <filename>' command.
     """
+    
+    # Zhone transfers can be slow - use longer timeouts
+    TIMEOUTS = {
+        'connect': 10,
+        'login': 20,
+        'command': 30,
+        'transfer': 180,  # Zhone needs more time for large configs
+    }
 
     def send_command(self, tn, command, hide=False):
         """Override to send \r\n, required for some Zhone/MXK versions."""
@@ -121,11 +129,11 @@ class Zhone(BackupVendor):
         self._debug_log(f"Ejecutando: {cmd}")
         self.send_command(tn, cmd)
         
-        # Wait for transfer to complete
-        # Reduced from 600s to 120s to prevent long blocking
-        self._debug_log("Esperando fin de transferencia (max 120s)...")
+        # Wait for transfer to complete - use configured timeout
+        transfer_timeout = self.TIMEOUTS['transfer']
+        self._debug_log(f"Esperando fin de transferencia (max {transfer_timeout}s)...")
         # We expect the prompt back "zSH>" when done
-        idx, response = self.read_until(tn, ["zSH>", ">", "Error", "failed", "timeout"], timeout=120)
+        idx, response = self.read_until(tn, ["zSH>", ">", "Error", "failed", "timeout"], timeout=transfer_timeout)
         
         if "error" in response.lower() or "failed" in response.lower() or "timeout" in response.lower():
             tn.close()

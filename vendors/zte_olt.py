@@ -24,6 +24,14 @@ class ZteOlt(BackupVendor):
     5. Verificar startrun.dat y renombrar a hostname.dat
     """
     
+    # ZTE OLT transfers can be slow
+    TIMEOUTS = {
+        'connect': 10,
+        'login': 20,
+        'command': 60,     # ZTE commands can be slow
+        'transfer': 180,   # Large configs take time
+    }
+    
     # Enable passwords conocidos para ZTE
     ENABLE_PASSWORDS = [
         "zxr10",  # Default ZTE enable password
