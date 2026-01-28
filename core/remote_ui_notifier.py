@@ -3,7 +3,14 @@ Remote UI Notifier for scheduled_runner.
 Sends backup status updates to the Flask web app via HTTP.
 """
 import os
-import requests
+
+# Optional dependency - if requests is not installed, UI notifications are disabled
+try:
+    import requests
+    HAS_REQUESTS = True
+except ImportError:
+    HAS_REQUESTS = False
+
 from core.logger import log
 
 REMOTE_UPDATE_URL = os.environ.get('BACKUP_WEB_URL', 'http://localhost:5000') + '/api/backup/remote-update'
@@ -18,13 +25,20 @@ class RemoteUINotifier:
     
     def __init__(self, run_time):
         self.run_time = run_time
-        self.enabled = True
+        self.enabled = HAS_REQUESTS
         self.success_count = 0
         self.error_count = 0
+        
+        if not HAS_REQUESTS:
+            log.debug("requests library not available - UI notifications disabled")
+            return
+            
         self._check_connection()
     
     def _check_connection(self):
         """Check if web app is reachable."""
+        if not HAS_REQUESTS:
+            return
         try:
             # Just try to reach the endpoint - it will fail auth but we know it's there
             requests.post(REMOTE_UPDATE_URL, json={}, timeout=2)
