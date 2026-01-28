@@ -854,7 +854,11 @@ def trigger_backup():
 @app.route('/api/backup/status')
 @requires_auth
 def backup_status_api():
-    return jsonify(backup_status)
+    # Convert set to list for JSON serialization
+    response = backup_status.copy()
+    if 'active_devices' in response and isinstance(response['active_devices'], set):
+        response['active_devices'] = list(response['active_devices'])
+    return jsonify(response)
 
 @app.route('/api/backup/cancel')
 @requires_auth
