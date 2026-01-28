@@ -1,8 +1,11 @@
 import smtplib
 import shutil
+import os
+import time
+from datetime import datetime
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from settings import BACKUP_ROOT_DIR
+from settings import BACKUP_ROOT_DIR, LOG_DIR
 from core.logger import log
 from core.config_manager import get_config_manager
 
@@ -191,48 +194,84 @@ class Notifier:
         else:
             return False, "Error al enviar email - revisar logs"
 
-    def _send_email(self, subject, body_html, cfg):
-        """Send email using enterprise SMTP config."""
-        try:
-            msg = MIMEMultipart()
-            msg['From'] = cfg['from_addr']
-            msg['To'] = ", ".join(cfg['recipients'])
-            msg['Subject'] = subject
-            msg.attach(MIMEText(body_html, 'html'))
+    def _send_email(self, subject, body_html, cfg, max_retries=3):
+        """Send email using enterprise SMTP config with retry logic."""
+        last_error = None
+        
+        for attempt in range(1, max_retries + 1):
+            try:
+                msg = MIMEMultipart()
+                msg['From'] = cfg['from_addr']
+                msg['To'] = ", ".join(cfg['recipients'])
+                msg['Subject'] = subject
+                msg.attach(MIMEText(body_html, 'html'))
 
-            transport = cfg['transport']
-            host = cfg['host']
-            port = cfg['port']
-            timeout = cfg['timeout']
+                transport = cfg['transport']
+                host = cfg['host']
+                port = cfg['port']
+                timeout = cfg['timeout']
+                
+                log.debug(f"SMTP attempt {attempt}/{max_retries}: {host}:{port}")
+                
+                if transport == 'ssl':
+                    server = smtplib.SMTP_SSL(host, port, timeout=timeout)
+                else:
+                    server = smtplib.SMTP(host, port, timeout=timeout)
+                    if transport == 'starttls':
+                        server.starttls()
+                
+                if cfg['auth_required'] and cfg['user'] and cfg['password']:
+                    server.login(cfg['user'], cfg['password'])
+                
+                server.sendmail(cfg['from_addr'], cfg['recipients'], msg.as_string())
+                server.quit()
+                
+                log.info(f"Email enviado: {subject}")
+                return True
+                
+            except smtplib.SMTPAuthenticationError as e:
+                # Auth errors won't benefit from retry
+                log.error(f"Error de autenticación SMTP: {e}")
+                self._save_failed_notification(subject, body_html, str(e))
+                return False
+            except (smtplib.SMTPConnectError, smtplib.SMTPException, 
+                    ConnectionRefusedError, TimeoutError, OSError) as e:
+                last_error = str(e)
+                log.warning(f"SMTP attempt {attempt}/{max_retries} failed: {e}")
+                if attempt < max_retries:
+                    time.sleep(5)  # Wait 5 seconds before retry
+            except Exception as e:
+                last_error = str(e)
+                log.warning(f"SMTP attempt {attempt}/{max_retries} failed: {e}")
+                if attempt < max_retries:
+                    time.sleep(5)
+        
+        # All retries failed - save to file as fallback
+        log.error(f"Email failed after {max_retries} attempts: {last_error}")
+        self._save_failed_notification(subject, body_html, last_error)
+        return False
+    
+    def _save_failed_notification(self, subject, body_html, error_message):
+        """
+        Save failed notification to file for later review.
+        Used as fallback when SMTP is unavailable.
+        """
+        try:
+            failed_dir = os.path.join(LOG_DIR, "failed_notifications")
+            os.makedirs(failed_dir, exist_ok=True)
             
-            log.debug(f"Conectando a SMTP {host}:{port} (transporte={transport})")
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename = f"notification_{timestamp}.html"
+            filepath = os.path.join(failed_dir, filename)
             
-            if transport == 'ssl':
-                server = smtplib.SMTP_SSL(host, port, timeout=timeout)
-            else:
-                server = smtplib.SMTP(host, port, timeout=timeout)
-                if transport == 'starttls':
-                    server.starttls()
+            # Save as HTML with error header
+            with open(filepath, 'w', encoding='utf-8') as f:
+                f.write(f"<!-- SMTP Error: {error_message} -->\n")
+                f.write(f"<!-- Subject: {subject} -->\n")
+                f.write(f"<!-- Timestamp: {datetime.now().isoformat()} -->\n\n")
+                f.write(body_html)
             
-            if cfg['auth_required'] and cfg['user'] and cfg['password']:
-                log.debug(f"Autenticando como {cfg['user']}")
-                server.login(cfg['user'], cfg['password'])
+            log.warning(f"Notification saved to file: {filepath}")
             
-            server.sendmail(cfg['from_addr'], cfg['recipients'], msg.as_string())
-            server.quit()
-            
-            log.info(f"Email enviado: {subject}")
-            return True
-            
-        except smtplib.SMTPAuthenticationError as e:
-            log.error(f"Error de autenticación SMTP: {e}")
-            return False
-        except smtplib.SMTPConnectError as e:
-            log.error(f"Error de conexión SMTP: {e}")
-            return False
-        except smtplib.SMTPException as e:
-            log.error(f"Error SMTP: {e}")
-            return False
         except Exception as e:
-            log.error(f"Error al enviar email: {e}")
-            return False
+            log.error(f"Failed to save notification to file: {e}")

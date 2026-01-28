@@ -239,6 +239,23 @@ class BackupEngine:
             # Record failure in circuit breaker
             self.circuit_breaker.record_failure(group_name, str(e))
             
+            # Audit event for device error
+            self.db.log_audit_event(
+                user_id=None,
+                username="SYSTEM",
+                event_type="BACKUP_DEVICE_ERROR",
+                event_category="BACKUP",
+                entity_type="device",
+                entity_id=sysname,
+                entity_name=sysname,
+                details={
+                    "vendor": vendor_type,
+                    "group": group_name,
+                    "error": str(e)[:500],  # Truncate long errors
+                    "duration_seconds": round(duration, 1)
+                }
+            )
+            
             return {"status": "ERROR", "hostname": sysname, "error": str(e)}
 
 
