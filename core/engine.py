@@ -17,6 +17,10 @@ from core.config_manager import get_config_manager
 from core.run_logger import RunLogger
 from core.circuit_breaker import get_circuit_breaker
 
+# Vendors that use global locks (TFTP file contention)
+# These should NOT compete for pool slots - processed sequentially after parallel batch
+SEQUENTIAL_VENDORS = {'hp', 'zte_olt'}
+
 class BackupEngine:
     def __init__(self, dry_run=False):
         self.dry_run = dry_run
@@ -344,76 +348,96 @@ class BackupEngine:
         if target_devices and not isinstance(target_devices, list):
             target_devices = [target_devices]
         
-        tasks = []
-        disabled_devices = []  # Track disabled devices for report
-        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-            if 'groups' not in self.inventory:
-                log.warning("No groups found in inventory.")
-                return
-
-            for group in self.inventory['groups']:
-                grp_name = group['name']
-                grp_vendor = group['vendor']  # May be empty for mixed groups
-                # Get credential_ids for vault lookup (new format)
-                grp_credential_ids = group.get('credential_ids', [])
-
-                if target_group and target_group != grp_name:
-                    continue
-
-                for device in group['devices']:
-                    # Skip disabled devices but collect for report
-                    if device.get('enabled') is False:
-                        sysname = device.get('sysname') or device.get('hostname')
-                        log.info(f"Skipping disabled device: {sysname} (reason: {device.get('disabled_reason', 'N/A')})")
-                        # Only include if it would have been part of this backup
-                        if not target_devices or sysname in target_devices or device.get('hostname') in (target_devices or []):
-                            disabled_dev = device.copy()
-                            disabled_dev['_group_name'] = grp_name
-                            disabled_devices.append(disabled_dev)
-                        continue
-                    
-                    # Filter by specific devices list
-                    if target_devices:
-                        sysname = device.get('sysname')
-                        hostname = device.get('hostname')
-                        if sysname not in target_devices and hostname not in target_devices:
-                            continue
-                    
-                    # Determine vendor: device-level overrides group-level (for mixed groups)
-                    vendor_type = device.get('vendor') or grp_vendor
-                    if not vendor_type:
-                        log.warning(f"Skipping device {device.get('sysname', device.get('hostname'))}: no vendor defined")
-                        continue
-                    
-                    # Device-specific credential_ids override group, but include group as fallback
-                    device_cred_ids = device.get('credential_ids', [])
-                    if device_cred_ids:
-                        # Device has override - use device creds first, then group creds as fallback
-                        all_cred_ids = list(device_cred_ids)
-                        for grp_cred in grp_credential_ids:
-                            if grp_cred not in all_cred_ids:
-                                all_cred_ids.append(grp_cred)
-                        device_cred_ids = all_cred_ids
-                    else:
-                        # No device override - use group credentials
-                        device_cred_ids = grp_credential_ids
-                    
-                    # Submit to pool with credential_ids
-                    future = executor.submit(
-                        self.process_device, 
-                        device, 
-                        grp_name, 
-                        vendor_type,
-                        device_cred_ids
-                    )
-                    tasks.append(future)
+        # Separate devices into parallel (no lock) and sequential (with lock) batches
+        parallel_devices = []   # Vendors without global lock - safe to parallelize
+        sequential_devices = [] # Vendors with global lock (HP, ZTE OLT) - run one at a time
+        disabled_devices = []   # Track disabled devices for report
         
-        # Log start with device count
-        run_logger.start(len(tasks))
+        if 'groups' not in self.inventory:
+            log.warning("No groups found in inventory.")
+            return
 
-        # Collect Results
+        for group in self.inventory['groups']:
+            grp_name = group['name']
+            grp_vendor = group['vendor']  # May be empty for mixed groups
+            grp_credential_ids = group.get('credential_ids', [])
+
+            if target_group and target_group != grp_name:
+                continue
+
+            for device in group['devices']:
+                # Skip disabled devices but collect for report
+                if device.get('enabled') is False:
+                    sysname = device.get('sysname') or device.get('hostname')
+                    log.info(f"Skipping disabled device: {sysname} (reason: {device.get('disabled_reason', 'N/A')})")
+                    if not target_devices or sysname in target_devices or device.get('hostname') in (target_devices or []):
+                        disabled_dev = device.copy()
+                        disabled_dev['_group_name'] = grp_name
+                        disabled_devices.append(disabled_dev)
+                    continue
+                
+                # Filter by specific devices list
+                if target_devices:
+                    sysname = device.get('sysname')
+                    hostname = device.get('hostname')
+                    if sysname not in target_devices and hostname not in target_devices:
+                        continue
+                
+                # Determine vendor
+                vendor_type = device.get('vendor') or grp_vendor
+                if not vendor_type:
+                    log.warning(f"Skipping device {device.get('sysname', device.get('hostname'))}: no vendor defined")
+                    continue
+                
+                # Build credential list
+                device_cred_ids = device.get('credential_ids', [])
+                if device_cred_ids:
+                    all_cred_ids = list(device_cred_ids)
+                    for grp_cred in grp_credential_ids:
+                        if grp_cred not in all_cred_ids:
+                            all_cred_ids.append(grp_cred)
+                    device_cred_ids = all_cred_ids
+                else:
+                    device_cred_ids = grp_credential_ids
+                
+                # Package device info for later processing
+                device_task = {
+                    'device': device,
+                    'group_name': grp_name,
+                    'vendor_type': vendor_type,
+                    'cred_ids': device_cred_ids
+                }
+                
+                # Sort into parallel or sequential batch based on vendor
+                if vendor_type.lower() in SEQUENTIAL_VENDORS:
+                    sequential_devices.append(device_task)
+                else:
+                    parallel_devices.append(device_task)
+        
+        total_devices = len(parallel_devices) + len(sequential_devices)
+        
+        # Log start with total device count
+        run_logger.start(total_devices)
+        
+        if sequential_devices:
+            log.info(f"Smart concurrency: {len(parallel_devices)} parallel, {len(sequential_devices)} sequential (HP/ZTE)")
+        
+        # Phase 1: Execute parallel devices (no lock contention)
+        parallel_futures = []
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+            for task in parallel_devices:
+                future = executor.submit(
+                    self.process_device, 
+                    task['device'], 
+                    task['group_name'], 
+                    task['vendor_type'],
+                    task['cred_ids']
+                )
+                parallel_futures.append(future)
+
+        # Collect parallel results
         results = []
-        for future in concurrent.futures.as_completed(tasks):
+        for future in concurrent.futures.as_completed(parallel_futures):
             result = future.result()
             results.append(result)
             
@@ -421,7 +445,7 @@ class BackupEngine:
             if result['status'] == 'SUCCESS':
                 run_logger.log_success(
                     result['hostname'],
-                    size=0,  # Size info not in result dict, could be enhanced
+                    size=0,
                     changed=bool(result.get('diff'))
                 )
             else:
@@ -429,6 +453,34 @@ class BackupEngine:
                     result['hostname'],
                     result.get('error', 'Unknown error')
                 )
+        
+        # Phase 2: Execute sequential devices one at a time (vendors with global lock)
+        if sequential_devices:
+            log.info(f"Starting sequential phase: {len(sequential_devices)} devices (HP/ZTE)")
+            for task in sequential_devices:
+                sysname = task['device'].get('sysname') or task['device'].get('hostname')
+                log.info(f"Processing sequential device: {sysname}")
+                
+                result = self.process_device(
+                    task['device'],
+                    task['group_name'],
+                    task['vendor_type'],
+                    task['cred_ids']
+                )
+                results.append(result)
+                
+                # Log result
+                if result['status'] == 'SUCCESS':
+                    run_logger.log_success(
+                        result['hostname'],
+                        size=0,
+                        changed=bool(result.get('diff'))
+                    )
+                else:
+                    run_logger.log_error(
+                        result['hostname'],
+                        result.get('error', 'Unknown error')
+                    )
 
         # Success/Stats
         total = len(results)
