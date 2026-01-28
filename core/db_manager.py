@@ -1,16 +1,70 @@
 import sqlite3
 import os
+import threading
 from datetime import datetime, timedelta
 from settings import DB_FILE
 from core.logger import log
 
+
+class _PersistentConnection:
+    """
+    Wrapper around sqlite3.Connection that ignores close() calls.
+    This allows reusing connections while keeping existing code unchanged.
+    """
+    def __init__(self, conn):
+        self._conn = conn
+    
+    def close(self):
+        """Ignore close - connection is managed by the pool."""
+        pass
+    
+    def __getattr__(self, name):
+        """Delegate all other calls to the underlying connection."""
+        return getattr(self._conn, name)
+
+
 class DBManager:
+    """
+    Database manager with thread-local connection pooling.
+    Each thread maintains its own persistent connection.
+    """
+    _local = threading.local()
+    
     def __init__(self, db_path=DB_FILE):
         self.db_path = db_path
         self._check_init()
 
     def _get_connection(self):
-        return sqlite3.connect(self.db_path)
+        """
+        Get or create a thread-local database connection.
+        Returns a wrapper that ignores close() calls.
+        """
+        if not hasattr(DBManager._local, 'connections'):
+            DBManager._local.connections = {}
+        
+        if self.db_path not in DBManager._local.connections:
+            conn = sqlite3.connect(
+                self.db_path,
+                check_same_thread=False,
+                timeout=30  # Wait up to 30s if database is locked
+            )
+            conn.row_factory = sqlite3.Row
+            DBManager._local.connections[self.db_path] = _PersistentConnection(conn)
+            log.debug(f"Created new DB connection for thread {threading.current_thread().name}")
+        
+        return DBManager._local.connections[self.db_path]
+    
+    def _close_thread_connection(self):
+        """
+        Actually close the thread-local connection.
+        Call this when a thread is about to exit.
+        """
+        if hasattr(DBManager._local, 'connections') and self.db_path in DBManager._local.connections:
+            try:
+                DBManager._local.connections[self.db_path]._conn.close()
+                del DBManager._local.connections[self.db_path]
+            except Exception as e:
+                log.warning(f"Error closing DB connection: {e}")
 
     def _check_init(self):
         """Initializes the database schema if it doesn't exist."""
