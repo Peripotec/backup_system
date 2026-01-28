@@ -74,7 +74,7 @@ def main():
         should_run, reason = config.should_run_backup_now(current_time)
         
         if not should_run:
-            log.debug(f"Early-exit: {reason}")
+            log.info(f"Early-exit: {reason}")
             sys.exit(0)
         
         log.info(f"Iniciando backup programado: {reason}")
