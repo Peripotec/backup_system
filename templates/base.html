@@ -805,9 +805,16 @@
 
                     <!-- Console Output -->
                     <div class="card shadow-sm border-0">
-                        <div class="card-header bg-secondary text-white d-flex justify-content-between py-1">
+                        <div
+                            class="card-header bg-secondary text-white d-flex justify-content-between align-items-center py-1">
                             <small>🖥️ Consola de Logs</small>
-                            <small id="modal-log-count">0 líneas</small>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="form-check form-switch mb-0">
+                                    <input class="form-check-input" type="checkbox" id="toggle-debug-logs" checked>
+                                    <label class="form-check-label small" for="toggle-debug-logs">Debug</label>
+                                </div>
+                                <small id="modal-log-count">0 líneas</small>
+                            </div>
                         </div>
                         <div class="card-body p-0 bg-dark">
                             <div id="modal-console" class="p-2"
@@ -848,6 +855,14 @@
                 modalInstance = new bootstrap.Modal(document.getElementById('globalBackupModal'));
                 // Start polling immediately to check if running
                 pollStatus();
+
+                // Toggle debug logs visibility handler
+                document.getElementById('toggle-debug-logs').addEventListener('change', function () {
+                    const debugLogs = document.querySelectorAll('#modal-console .log-debug');
+                    debugLogs.forEach(el => {
+                        el.style.display = this.checked ? '' : 'none';
+                    });
+                });
             }
 
             function showWidget() {
@@ -890,24 +905,28 @@
                     document.getElementById('modal-progress-bar').style.width = data.progress + '%';
                     document.getElementById('modal-status-text').textContent = data.message;
 
-                    // Update logs
+                    // Update logs (newest first - prepend new logs at top)
                     if (data.logs && data.logs.length > lastLogCount) {
                         const consoleDiv = document.getElementById('modal-console');
+                        const showDebug = document.getElementById('toggle-debug-logs').checked;
                         if (lastLogCount === 0) consoleDiv.innerHTML = ''; // Clear "Initial" text
 
-                        for (let i = lastLogCount; i < data.logs.length; i++) {
+                        // Process new logs in reverse order so newest ends up at top
+                        for (let i = data.logs.length - 1; i >= lastLogCount; i--) {
                             const log = data.logs[i];
                             const color = logColors[log.type] || '#abb2bf';
-                            const line = `<div style="color: ${color}; border-bottom: 1px solid #2c313a; padding: 2px 0;">
+                            const isDebug = log.type === 'debug';
+                            const displayStyle = (isDebug && !showDebug) ? 'display:none;' : '';
+                            const debugClass = isDebug ? 'log-debug' : '';
+                            const line = `<div class="${debugClass}" style="${displayStyle} color: ${color}; border-bottom: 1px solid #2c313a; padding: 2px 0;">
                                 <span style="opacity:0.5; font-size:0.75rem; margin-right:8px;">${new Date().toLocaleTimeString()}</span>
                                 ${log.msg}
                             </div>`;
-                            consoleDiv.innerHTML += line;
+                            consoleDiv.insertAdjacentHTML('afterbegin', line);
                         }
 
                         lastLogCount = data.logs.length;
                         document.getElementById('modal-log-count').textContent = lastLogCount + ' líneas';
-                        consoleDiv.scrollTop = consoleDiv.scrollHeight;
                     }
 
                     // Cancel button state

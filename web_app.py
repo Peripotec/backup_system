@@ -699,6 +699,7 @@ def run_backup_async(group=None, devices=None, user_info=None):
         "message": "Iniciando backup...", 
         "progress": 5,
         "current_device": None,
+        "active_devices": set(),  # Track devices currently being processed
         "completed": [],
         "errors": [],
         "logs": [{"type": "info", "msg": "Iniciando proceso de backup..."}]
@@ -756,11 +757,27 @@ def update_backup_status(device_name, status, message=""):
     """Callback for engine to update status in real-time."""
     global backup_status
     
-    timestamp = ""
+    def update_active_message():
+        """Update the status message with current active devices."""
+        active = backup_status.get("active_devices", set())
+        if not active:
+            return
+        count = len(active)
+        names = list(active)[:3]  # Show max 3 names
+        if count == 1:
+            backup_status["message"] = f"Procesando: {names[0]}"
+        elif count <= 3:
+            backup_status["message"] = f"Procesando {count} dispositivos: {', '.join(names)}"
+        else:
+            backup_status["message"] = f"Procesando {count} dispositivos: {', '.join(names)}..."
     
     if status == "start":
+        # Add to active set
+        if "active_devices" not in backup_status:
+            backup_status["active_devices"] = set()
+        backup_status["active_devices"].add(device_name)
         backup_status["current_device"] = device_name
-        backup_status["message"] = f"Procesando: {device_name}..."
+        update_active_message()
         backup_status["logs"].append({"type": "info", "msg": f"[{device_name}] Iniciando backup..."})
     elif status == "connecting":
         backup_status["logs"].append({"type": "info", "msg": f"[{device_name}] Conectando..."})
@@ -773,16 +790,25 @@ def update_backup_status(device_name, status, message=""):
     elif status == "git":
         backup_status["logs"].append({"type": "info", "msg": f"[{device_name}] Commit a repositorio..."})
     elif status == "success":
+        # Remove from active set
+        backup_status.get("active_devices", set()).discard(device_name)
+        update_active_message()
         backup_status["completed"].append({"device": device_name, "msg": message})
         backup_status["logs"].append({"type": "success", "msg": f"[{device_name}] ✓ {message}"})
     elif status == "error":
+        # Remove from active set
+        backup_status.get("active_devices", set()).discard(device_name)
+        update_active_message()
         backup_status["errors"].append({"device": device_name, "msg": message})
         backup_status["logs"].append({"type": "error", "msg": f"[{device_name}] ✗ {message}"})
     elif status == "log":
-        # Generic log message
+        # Generic log message - show as info
         backup_status["logs"].append({"type": "info", "msg": f"[{device_name}] {message}"})
     elif status == "debug":
-        # Real-time CLI debug output from vendor plugin
+        # Technical debug output - mark as debug type (dimmed in UI)
+        # Truncate very long messages
+        if len(message) > 150:
+            message = message[:147] + "..."
         backup_status["logs"].append({"type": "debug", "msg": message})
     
     # Update progress based on completed
