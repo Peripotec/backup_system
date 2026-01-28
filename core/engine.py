@@ -15,6 +15,7 @@ from core.notifier import Notifier
 from core.vault import get_credentials_for_device
 from core.config_manager import get_config_manager
 from core.run_logger import RunLogger
+from core.circuit_breaker import get_circuit_breaker
 
 class BackupEngine:
     def __init__(self, dry_run=False):
@@ -24,6 +25,7 @@ class BackupEngine:
         self.notifier = Notifier()
         self.inventory = self._load_inventory()
         self.status_callback = None  # Optional callback for web UI updates
+        self.circuit_breaker = get_circuit_breaker()  # Circuit breaker for group failures
         
         # Cleanup stale IN_PROGRESS jobs from previous crashed runs
         self.db.cleanup_stale_jobs(max_age_minutes=30)
@@ -141,6 +143,13 @@ class BackupEngine:
         
         start_time = time.time()
         
+        # Check circuit breaker - skip if group is paused due to failures
+        if self.circuit_breaker.is_open(group_name):
+            log.warning(f"Skipping {sysname}: circuit open for group '{group_name}'")
+            if self.status_callback:
+                self.status_callback(sysname, "skipped", f"Grupo {group_name} pausado por fallas")
+            return {"status": "SKIPPED", "hostname": sysname, "error": "Circuit breaker open"}
+        
         # Metadata logging
         criticidad = device.get('criticidad', 'N/A')
         log.info(f"Starting backup for {sysname} ({vendor_type}) [Crit:{criticidad}]")
@@ -210,6 +219,9 @@ class BackupEngine:
             if self.status_callback:
                 self.status_callback(sysname, "success", msg)
             
+            # Record success in circuit breaker
+            self.circuit_breaker.record_success(group_name)
+            
             return {"status": "SUCCESS", "hostname": sysname, "diff": diff}
 
         except Exception as e:
@@ -223,6 +235,9 @@ class BackupEngine:
             # Notify UI of error
             if self.status_callback:
                 self.status_callback(sysname, "error", str(e))
+            
+            # Record failure in circuit breaker
+            self.circuit_breaker.record_failure(group_name, str(e))
             
             return {"status": "ERROR", "hostname": sysname, "error": str(e)}
 
