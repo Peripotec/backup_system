@@ -14,6 +14,7 @@ from core.git_manager import GitManager
 from core.notifier import Notifier
 from core.vault import get_credentials_for_device
 from core.config_manager import get_config_manager
+from core.run_logger import RunLogger
 
 class BackupEngine:
     def __init__(self, dry_run=False):
@@ -292,6 +293,10 @@ class BackupEngine:
         
         run_id = self.db.start_run(run_type="MANUAL")
         
+        # Create run logger for this execution
+        run_logger = RunLogger(run_id, run_type="MANUAL")
+        start_time = time.time()
+        
         # Convert single device to list for backward compatibility
         if target_devices and not isinstance(target_devices, list):
             target_devices = [target_devices]
@@ -359,11 +364,28 @@ class BackupEngine:
                         device_cred_ids
                     )
                     tasks.append(future)
+        
+        # Log start with device count
+        run_logger.start(len(tasks))
 
         # Collect Results
         results = []
         for future in concurrent.futures.as_completed(tasks):
-            results.append(future.result())
+            result = future.result()
+            results.append(result)
+            
+            # Log each result to run log
+            if result['status'] == 'SUCCESS':
+                run_logger.log_success(
+                    result['hostname'],
+                    size=0,  # Size info not in result dict, could be enhanced
+                    changed=bool(result.get('diff'))
+                )
+            else:
+                run_logger.log_error(
+                    result['hostname'],
+                    result.get('error', 'Unknown error')
+                )
 
         # Success/Stats
         total = len(results)
@@ -373,10 +395,17 @@ class BackupEngine:
         failed_hosts = {r['hostname']: r.get('error', 'Unknown') for r in results if r['status'] == "ERROR"}
         diff_summary = {r['hostname']: r['diff'] for r in results if r.get('diff')}
 
-        self.db.end_run(run_id, total, success, errors)
+        # Calculate duration
+        duration = time.time() - start_time
+        
+        # End run logger
+        run_logger.end(success, errors, duration)
+        
+        # Update run record with log path
+        self.db.end_run(run_id, total, success, errors, log_path=run_logger.get_log_path())
+        run_logger.close()
         
         # Notify with disabled devices
-        duration = 0 # Not tracking total run duration in var yet, relying on DB
         self.notifier.send_summary(total, success, errors, failed_hosts, diff_summary, duration, disabled_devices)
         
         log.info(f"Run Completed. Success: {success}, Errors: {errors}")
@@ -400,6 +429,10 @@ class BackupEngine:
             # Continue anyway but log warnings
         
         run_id = self.db.start_run(run_type="CRON", triggered_by=f"CRON:{current_time_hhmm}")
+        
+        # Create run logger for this execution
+        run_logger = RunLogger(run_id, run_type="CRON")
+        start_time = time.time()
         
         # Collect all devices with their vendor info
         all_devices = []
@@ -439,7 +472,11 @@ class BackupEngine:
         
         if not matching_devices:
             log.info(f"No hay dispositivos programados para {current_time_hhmm}")
-            self.db.end_run(run_id, 0, 0, 0)
+            run_logger.start(0)
+            run_logger.log("No devices scheduled for this time")
+            run_logger.end(0, 0, 0)
+            self.db.end_run(run_id, 0, 0, 0, log_path=run_logger.get_log_path())
+            run_logger.close()
             # Still send email if there are disabled devices
             if disabled_devices:
                 self.notifier.send_summary(0, 0, 0, {}, {}, 0, disabled_devices)
@@ -475,10 +512,27 @@ class BackupEngine:
                 )
                 tasks.append(future)
         
+        # Log start with device count
+        run_logger.start(len(tasks))
+
         # Collect Results
         results = []
         for future in concurrent.futures.as_completed(tasks):
-            results.append(future.result())
+            result = future.result()
+            results.append(result)
+            
+            # Log each result to run log
+            if result['status'] == 'SUCCESS':
+                run_logger.log_success(
+                    result['hostname'],
+                    size=0,
+                    changed=bool(result.get('diff'))
+                )
+            else:
+                run_logger.log_error(
+                    result['hostname'],
+                    result.get('error', 'Unknown error')
+                )
         
         # Stats
         total = len(results)
@@ -488,10 +542,17 @@ class BackupEngine:
         failed_hosts = {r['hostname']: r.get('error', 'Unknown') for r in results if r['status'] == "ERROR"}
         diff_summary = {r['hostname']: r['diff'] for r in results if r.get('diff')}
         
-        self.db.end_run(run_id, total, success, errors)
+        # Calculate duration
+        duration = time.time() - start_time
+        
+        # End run logger
+        run_logger.end(success, errors, duration)
+        
+        # Update run record with log path
+        self.db.end_run(run_id, total, success, errors, log_path=run_logger.get_log_path())
+        run_logger.close()
         
         # Notify with disabled devices
-        duration = 0
         self.notifier.send_summary(total, success, errors, failed_hosts, diff_summary, duration, disabled_devices)
         
         log.info(f"Ejecución programada completada. Éxito: {success}, Errores: {errors}")
