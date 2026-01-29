@@ -128,7 +128,7 @@
 [data-theme="dark"] .btn-primary {
     background-color: var(--nb-primary);
     border-color: var(--nb-primary);
-    color: #1a1a2e;
+    color: #ffffff;
 }
 
 [data-theme="dark"] .btn-secondary {

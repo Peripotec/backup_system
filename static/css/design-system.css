@@ -167,6 +167,11 @@ body {
         color var(--ds-transition-normal);
 }
 
+/* Form help text - visible in both modes */
+.form-text {
+    color: var(--ds-text-muted);
+}
+
 /* =====================================================
    3. COMPONENTES - CARDS
    ===================================================== */
@@ -471,6 +476,12 @@ label {
 .badge.bg-info {
     background-color: var(--ds-info-light) !important;
     color: var(--ds-info) !important;
+}
+
+/* Dark mode: aumentar opacidad para mejor contraste */
+[data-theme="dark"] .badge.bg-info {
+    background-color: rgba(6, 182, 212, 0.35) !important;
+    color: #22d3ee !important;
 }
 
 .badge.bg-secondary {
