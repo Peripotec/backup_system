@@ -344,7 +344,7 @@
         <button class="btn-toggle-sidebar" onclick="toggleSidebar()">
             <i class="bi bi-list"></i>
         </button>
-        <span>🛡️ Backup System</span>
+        <span><i class="bi bi-shield-check me-1"></i>Backup System</span>
         <button class="btn-toggle-sidebar" onclick="toggleTheme()" title="Cambiar tema: Claro / Oscuro / Auto">
             <i class="bi bi-circle-half theme-toggle-icon"></i>
         </button>
@@ -353,7 +353,7 @@
     <!-- Sidebar -->
     <nav class="sidebar" id="sidebar">
         <a href="/" class="sidebar-brand" style="text-decoration: none; color: inherit;">
-            🛡️ Backup System
+            <i class="bi bi-shield-check me-1"></i>Backup System
         </a>
 
         <!-- Global Search -->
@@ -507,13 +507,15 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title" id="global-confirm-title">⚠️ Confirmar Acción</h5>
+                    <h5 class="modal-title" id="global-confirm-title"><i
+                            class="bi bi-exclamation-triangle me-2"></i>Confirmar Acción</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <p id="global-confirm-message">¿Estás seguro?</p>
                     <div class="alert alert-warning mb-0">
-                        <small id="global-confirm-warning">⚠️ Esta acción no se puede deshacer.</small>
+                        <small id="global-confirm-warning"><i class="bi bi-exclamation-triangle me-1"></i>Esta acción no
+                            se puede deshacer.</small>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -610,7 +612,7 @@
 
         function confirmAction(options) {
             // options: { title, message, warning, buttonText, buttonClass, onConfirm }
-            var title = options.title || '⚠️ Confirmar Acción';
+            var title = options.title || 'Confirmar Acción';
             var message = options.message || '¿Estás seguro?';
             var warning = options.warning || 'Esta acción no se puede deshacer.';
             var buttonText = options.buttonText || '✓ Confirmar';
@@ -781,7 +783,7 @@
             <div class="modal-content">
                 <div class="modal-header bg-dark text-white" id="backup-modal-header">
                     <h5 class="modal-title">
-                        <span id="backup-type-icon">🚀</span> Estado del Backup
+                        <span id="backup-type-icon"><i class="bi bi-rocket-takeoff"></i></span> Estado del Backup
                         <span id="backup-type-badge" class="badge bg-secondary ms-2" style="display:none;">MANUAL</span>
                     </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
@@ -807,7 +809,7 @@
                     <div class="card shadow-sm border-0">
                         <div
                             class="card-header bg-secondary text-white d-flex justify-content-between align-items-center py-1">
-                            <small>🖥️ Consola de Logs</small>
+                            <small><i class="bi bi-terminal me-1"></i>Consola de Logs</small>
                             <div class="d-flex align-items-center gap-2">
                                 <div class="form-check form-switch mb-0">
                                     <input class="form-check-input" type="checkbox" id="toggle-debug-logs" checked>
@@ -827,7 +829,7 @@
                 <div class="modal-footer bg-light">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
                     <button type="button" class="btn btn-danger" id="btn-global-cancel"
-                        onclick="cancelGlobalBackup()">⏹️ Cancelar Backup</button>
+                        onclick="cancelGlobalBackup()"><i class="bi bi-stop-fill me-1"></i>Cancelar Backup</button>
                 </div>
             </div>
         </div>
@@ -888,13 +890,13 @@
                     typeBadge.textContent = '🕐 AUTOMÁTICO';
                     typeBadge.className = 'badge bg-info ms-2';
                     typeBadge.style.display = 'inline-block';
-                    typeIcon.textContent = '⏰';
+                    typeIcon.innerHTML = '<i class="bi bi-clock-history"></i>';
                     modalHeader.className = 'modal-header bg-info text-white';
                 } else {
                     typeBadge.textContent = 'MANUAL';
                     typeBadge.className = 'badge bg-primary ms-2';
                     typeBadge.style.display = 'inline-block';
-                    typeIcon.textContent = '🚀';
+                    typeIcon.innerHTML = '<i class="bi bi-rocket-takeoff"></i>';
                     modalHeader.className = 'modal-header bg-dark text-white';
                 }
 
@@ -933,7 +935,7 @@
                     const cancelBtn = document.getElementById('btn-global-cancel');
                     if (data.running && !data.cancelled) {
                         cancelBtn.disabled = false;
-                        cancelBtn.textContent = "⏹️ Cancelar Backup";
+                        cancelBtn.innerHTML = '<i class="bi bi-stop-fill me-1"></i>Cancelar Backup';
                     } else if (data.cancelled) {
                         cancelBtn.disabled = true;
                         cancelBtn.textContent = "Cancelando...";

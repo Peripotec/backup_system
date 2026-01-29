@@ -256,10 +256,8 @@
     <div class="card-header d-flex justify-content-between align-items-center py-2">
         <span><i class="bi bi-rocket-takeoff me-2"></i>Control de Backup</span>
         <div>
-            <button class="btn btn-danger btn-sm me-2" id="btn-cancel" onclick="cancelBackup()" style="display:none;">⏹️
-                Cancelar</button>
-            <button class="btn btn-light btn-sm" id="btn-backup" data-bs-toggle="modal" data-bs-target="#backupModal">▶️
-                Ejecutar Backup</button>
+            <button class="btn btn-danger btn-sm me-2" id="btn-cancel" onclick="cancelBackup()" style="display:none;"><i class="bi bi-stop-fill me-1"></i>Cancelar</button>
+            <button class="btn btn-light btn-sm" id="btn-backup" data-bs-toggle="modal" data-bs-target="#backupModal"><i class="bi bi-play-fill me-1"></i>Ejecutar Backup</button>
         </div>
     </div>
     <div class="card-body py-2">
@@ -285,7 +283,7 @@
     </div>
     <div class="card-body py-3">
         <button class="btn btn-primary" onclick="new bootstrap.Modal(document.getElementById('backupModal')).show()">
-            ▶️ Ejecutar Nuevo Backup
+            <i class="bi bi-play-fill me-1"></i>Ejecutar Nuevo Backup
         </button>
         <span class="text-muted ms-2 small">El progreso del backup se mostrará en el widget global.</span>
     </div>
@@ -357,7 +355,7 @@
 
 <!-- Group Charts -->
 <div class="card mb-3" id="group-charts-card" style="display: none;">
-    <div class="card-header py-2"><small class="text-muted">📊 Estadísticas por Grupo (24h)</small></div>
+    <div class="card-header py-2"><small class="text-muted"><i class="bi bi-bar-chart me-1"></i>Estadísticas por Grupo (24h)</small></div>
     <div class="card-body py-2">
         <div class="row" id="group-charts-row"></div>
     </div>
@@ -371,11 +369,11 @@
                 title="Mostrar/Ocultar filtros">
                 ≡
             </button>
-            <span>📋 Últimas Ejecuciones</span>
+            <span><i class="bi bi-clipboard-data me-1"></i>Últimas Ejecuciones</span>
         </div>
         <div class="d-flex gap-2 align-items-center">
             <span class="badge bg-secondary" id="active-filters-count" style="display: none;">0 filtros</span>
-            <button class="btn btn-sm btn-outline-secondary" onclick="loadJobs(1)" title="Recargar">🔄</button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="loadJobs(1)" title="Recargar"><i class="bi bi-arrow-clockwise"></i></button>
         </div>
     </div>
 
@@ -392,7 +390,7 @@
 
                 <!-- Location Filters -->
                 <div class="filter-group">
-                    <label class="filter-label">📍 Ubicación</label>
+                    <label class="filter-label"><i class="bi bi-geo-alt me-1"></i>Ubicación</label>
                     <select class="form-select form-select-sm mb-2" id="jobs-filter-localidad" onchange="loadJobs(1)">
                         <option value="">Todas las localidades</option>
                     </select>
