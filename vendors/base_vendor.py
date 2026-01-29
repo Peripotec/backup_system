@@ -121,6 +121,9 @@ class BackupVendor(ABC):
     
     def _debug_log(self, message):
         """Send debug message to callback and standard log."""
+        # Auto-prefix [hostname] if message doesn't already have context
+        if not message.startswith('['):
+            message = f"[{self.hostname}] {message}"
         # Use INFO level so messages appear in journalctl
         log.info(f"[VENDOR] {message}")
         if self.log_callback:
