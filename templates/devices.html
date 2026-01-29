@@ -87,7 +87,8 @@
                 <option value="vendor">Agrupar por: Vendor</option>
                 <option value="criticidad">Agrupar por: Criticidad</option>
             </select>
-            <button class="btn btn-light btn-sm" onclick="openAddDeviceModal()">➕ Agregar Dispositivo</button>
+            <button class="btn btn-light btn-sm" onclick="openAddDeviceModal()"><i
+                    class="bi bi-plus-lg me-1"></i>Agregar Dispositivo</button>
         </div>
     </div>
     <!-- Filter Bar Container -->
@@ -228,7 +229,8 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" onclick="saveDevice()">💾 Guardar</button>
+                <button type="button" class="btn btn-primary" onclick="saveDevice()"><i
+                        class="bi bi-floppy me-1"></i>Guardar</button>
             </div>
         </div>
     </div>
@@ -397,8 +399,8 @@
                     '<td>' + vendorBadge + tipoBadge + modeloInfo + '</td>' +
                     '<td class="text-center">' + critBadge + '</td>' +
                     '<td class="text-center">' + statusBadge + '</td>' +
-                    '<td><span class="btn-action" onclick=\'openEditDeviceModal(' + JSON.stringify(d.group_name) + ', ' + JSON.stringify(d) + ')\'>✏️</span>' +
-                    '<span class="btn-action" onclick="deleteDevice(\'' + d.group_name + '\', \'' + sysname + '\')">🗑️</span></td>' +
+                    '<td><span class="btn-action" onclick=\'openEditDeviceModal(' + JSON.stringify(d.group_name) + ', ' + JSON.stringify(d) + ')\' title="Editar"><i class="bi bi-pencil"></i></span>' +
+                    '<span class="btn-action" onclick="deleteDevice(\'' + d.group_name + '\', \'' + sysname + '\')" title="Eliminar"><i class="bi bi-trash"></i></span></td>' +
                     '</tr>';
             });
         });
@@ -636,7 +638,7 @@
     function openAddDeviceModal() {
         if (!inventory.groups || inventory.groups.length === 0) { alert('Primero cree un grupo'); return; }
         document.getElementById('device-edit-mode').value = 'add';
-        document.getElementById('device-modal-title').textContent = '➕ Agregar Dispositivo';
+        document.getElementById('device-modal-title').innerHTML = '<i class="bi bi-plus-lg me-2"></i>Agregar Dispositivo';
         document.getElementById('device-modal-header').className = 'modal-header bg-primary text-white';
         document.getElementById('device-sysname').value = ''; document.getElementById('device-sysname').disabled = false;
         document.getElementById('sysname-warning').style.display = 'block';
@@ -656,7 +658,7 @@
         document.getElementById('device-edit-mode').value = 'edit';
         document.getElementById('device-original-group').value = grp;
         document.getElementById('device-original-sysname').value = device.sysname || device.hostname;
-        document.getElementById('device-modal-title').textContent = '✏️ Editar Dispositivo';
+        document.getElementById('device-modal-title').innerHTML = '<i class="bi bi-pencil me-2"></i>Editar Dispositivo';
         document.getElementById('device-modal-header').className = 'modal-header bg-warning text-dark';
         document.getElementById('device-group').value = grp;
         document.getElementById('device-sysname').value = device.sysname || device.hostname;

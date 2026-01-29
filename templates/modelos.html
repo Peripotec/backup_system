@@ -5,7 +5,8 @@
 <div class="card">
     <div class="card-header text-white d-flex justify-content-between align-items-center" style="background: #6f42c1;">
         <span><i class="bi bi-cpu"></i> Modelos de Dispositivo</span>
-        <button class="btn btn-light btn-sm" onclick="openAddModal()">➕ Agregar Modelo</button>
+        <button class="btn btn-light btn-sm" onclick="openAddModal()"><i class="bi bi-plus-lg me-1"></i>Agregar
+            Modelo</button>
     </div>
     <!-- Toolbar -->
     <div class="d-flex gap-2 align-items-center p-2 bg-light border-bottom">
@@ -42,7 +43,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header text-white" id="modal-header" style="background: #6f42c1;">
-                <h5 class="modal-title" id="modal-title">➕ Agregar Modelo</h5>
+                <h5 class="modal-title" id="modal-title"><i class="bi bi-plus-lg me-2"></i>Agregar Modelo</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -69,8 +70,8 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn text-white" style="background: #6f42c1;" onclick="saveModel()">💾
-                    Guardar</button>
+                <button type="button" class="btn text-white" style="background: #6f42c1;" onclick="saveModel()"><i
+                        class="bi bi-floppy me-1"></i>Guardar</button>
             </div>
         </div>
     </div>
@@ -151,14 +152,14 @@
             '<td><span class="badge bg-primary">' + m.vendor + '</span></td>' +
             '<td><small class="text-muted">' + (m.description || '-') + '</small></td>' +
             '<td>' +
-            '<span class="btn-action" style="cursor:pointer" onclick="openEditModal(\'' + m.id + '\')" title="Editar">✏️</span> ' +
-            '<span class="btn-action" style="cursor:pointer" onclick="deleteModel(\'' + m.id + '\')" title="Eliminar">🗑️</span>' +
+            '<span class="btn-action" style="cursor:pointer" onclick="openEditModal(\'' + m.id + '\')" title="Editar"><i class="bi bi-pencil"></i></span> ' +
+            '<span class="btn-action" style="cursor:pointer" onclick="deleteModel(\'' + m.id + '\')" title="Eliminar"><i class="bi bi-trash"></i></span>' +
             '</td></tr>';
     }
 
     function openAddModal() {
         document.getElementById('edit-mode').value = 'add';
-        document.getElementById('modal-title').textContent = '➕ Agregar Modelo';
+        document.getElementById('modal-title').innerHTML = '<i class="bi bi-plus-lg me-2"></i>Agregar Modelo';
         document.getElementById('model-id').value = ''; document.getElementById('model-id').disabled = false;
         document.getElementById('model-name').value = '';
         document.getElementById('model-vendor').value = '';
@@ -170,7 +171,7 @@
         var m = models.find(x => x.id === id); if (!m) return;
         document.getElementById('edit-mode').value = 'edit';
         document.getElementById('original-id').value = id;
-        document.getElementById('modal-title').textContent = '✏️ Editar Modelo';
+        document.getElementById('modal-title').innerHTML = '<i class="bi bi-pencil me-2"></i>Editar Modelo';
         document.getElementById('model-id').value = id; document.getElementById('model-id').disabled = true;
         document.getElementById('model-name').value = m.name;
         document.getElementById('model-vendor').value = m.vendor;
