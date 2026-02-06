@@ -1945,8 +1945,12 @@ def api_get_diff(vendor, hostname):
             "diff": ""
         })
     
-    # Normalize vendor name: try both zte_olt and zteolt (class name is lowercase without underscores)
-    vendor_variants = [vendor, vendor.replace('_', '')]
+    # Normalize vendor name to match file system folders (class name lowercase)
+    # This handles cases like 'MikroTik' -> 'mikrotik', 'zte_olt' -> 'zteolt'
+    normalized = normalize_vendor_folder(vendor)
+    vendor_variants = [normalized, vendor.lower(), vendor.lower().replace('_', '')]
+    # Remove duplicates while preserving order
+    vendor_variants = list(dict.fromkeys(vendor_variants))
     
     repo_file = None
     for v in vendor_variants:
