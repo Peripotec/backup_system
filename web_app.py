@@ -50,19 +50,52 @@ app.config['SESSION_COOKIE_NAME'] = 'backup_session'
 login_attempts = defaultdict(lambda: {'count': 0, 'blocked_until': None})
 
 # ===========================================
-# VENDOR FOLDER MAPPING
+# VENDOR FOLDER MAPPING (Auto-discovered)
 # ===========================================
 # The backup engine creates folders using the Python class name lowercased.
-# This maps inventory vendor values to physical folder names.
-VENDOR_FOLDER_MAP = {
-    'hp': 'hp',
-    'huawei': 'huawei', 
-    'zte_olt': 'zteolt',  # Class ZteOlt -> folder 'zteolt'
-    'cisco': 'cisco',
-    'mikrotik': 'mikrotik',
-    'juniper': 'juniper',
-    'fortinet': 'fortinet',
-}
+# This mapping is auto-generated from vendor plugins at startup.
+
+def _build_vendor_folder_map():
+    """
+    Auto-generate vendor→folder mapping by scanning vendor plugins.
+    Uses same logic as BackupEngine._get_vendor_plugin() to ensure consistency.
+    
+    For each plugin file (e.g., mikrotik.py):
+    - Module name: mikrotik
+    - Class name: Mikrotik (title case, underscores removed)
+    - Folder name: mikrotik (class name lowercased)
+    
+    This means:
+    - mikrotik.py → class Mikrotik → folder 'mikrotik'
+    - zte_olt.py → class ZteOlt → folder 'zteolt'
+    """
+    import importlib
+    mapping = {}
+    vendors_dir = os.path.join(os.path.dirname(__file__), 'vendors')
+    
+    try:
+        for filename in os.listdir(vendors_dir):
+            if filename.endswith('.py') and not filename.startswith(('_', 'base')):
+                module_name = filename[:-3]  # Remove .py
+                try:
+                    # Calculate expected class name (same as engine.py line 78)
+                    class_name = "".join(x.title() for x in module_name.split('_'))
+                    mod = importlib.import_module(f'vendors.{module_name}')
+                    
+                    if hasattr(mod, class_name):
+                        # Map module name to folder (class name lowercase)
+                        folder = class_name.lower()
+                        mapping[module_name] = folder
+                        # Also map the folder to itself for direct lookups
+                        mapping[folder] = folder
+                except Exception:
+                    pass  # Skip problematic modules
+    except Exception:
+        pass  # Fallback to empty map if vendors dir issues
+    
+    return mapping
+
+VENDOR_FOLDER_MAP = _build_vendor_folder_map()
 
 def normalize_vendor_folder(vendor):
     """
@@ -71,6 +104,7 @@ def normalize_vendor_folder(vendor):
     Examples:
         'zte_olt' -> 'zteolt' (class ZteOlt)
         'huawei' -> 'huawei' (class Huawei)
+        'MikroTik' -> 'mikrotik' (class Mikrotik)
     """
     if not vendor:
         return ''
