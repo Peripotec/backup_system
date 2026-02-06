@@ -320,7 +320,7 @@
         document.getElementById('search-input').value = '';
 
         const view = getViewType();
-        var url = path ? '/api/files/list/' + path : '/api/files/list';
+        var url = path ? '/api/files/list/' + encodeURIComponent(path) : '/api/files/list';
         url += '?view=' + view;
 
         fetch(url).then(r => r.json()).then(data => {
@@ -376,10 +376,10 @@
     function loadFile(path) {
         selectedFile = path;
         document.getElementById('viewer-header').querySelector('span').textContent = 'Cargando...';
-        fetch('/api/files/content/' + path).then(r => r.json()).then(data => {
+        fetch('/api/files/content/' + encodeURIComponent(path)).then(r => r.json()).then(data => {
             document.getElementById('viewer-header').querySelector('span').textContent = data.filename || path.split('/').pop();
             document.getElementById('file-content').textContent = data.content || data.error || 'Sin contenido';
-            document.getElementById('download-btn').href = '/download/' + path;
+            document.getElementById('download-btn').href = '/download/' + encodeURIComponent(path);
             document.getElementById('download-btn').style.display = 'inline-block';
             document.getElementById('delete-btn').style.display = 'inline-block';
         });
@@ -394,7 +394,7 @@
     }
 
     function executeDelete(path) {
-        fetch('/api/files/delete/' + path, { method: 'DELETE' }).then(r => r.json()).then(data => {
+        fetch('/api/files/delete/' + encodeURIComponent(path), { method: 'DELETE' }).then(r => r.json()).then(data => {
             deleteModal.hide();
             if (data.success) { alert('✓ ' + data.message); loadFiles(currentPath); document.getElementById('file-content').textContent = 'Archivo eliminado'; document.getElementById('delete-btn').style.display = 'none'; document.getElementById('download-btn').style.display = 'none'; }
             else { alert('Error: ' + data.error); }
@@ -407,7 +407,7 @@
         // Use direct physical view for initial navigation
         currentPath = initialPath;
         updateBreadcrumb(initialPath);
-        var url = '/api/files/list/' + initialPath + '?view=direct';
+        var url = '/api/files/list/' + encodeURIComponent(initialPath) + '?view=direct';
         fetch(url).then(r => r.json()).then(data => {
             if (data.error) { document.getElementById('file-list').innerHTML = '<li class="list-group-item text-danger">' + data.error + '</li>'; return; }
             allItems = data.items || [];

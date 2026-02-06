@@ -256,8 +256,10 @@
     <div class="card-header d-flex justify-content-between align-items-center py-2">
         <span><i class="bi bi-rocket-takeoff me-2"></i>Control de Backup</span>
         <div>
-            <button class="btn btn-danger btn-sm me-2" id="btn-cancel" onclick="cancelBackup()" style="display:none;"><i class="bi bi-stop-fill me-1"></i>Cancelar</button>
-            <button class="btn btn-light btn-sm" id="btn-backup" data-bs-toggle="modal" data-bs-target="#backupModal"><i class="bi bi-play-fill me-1"></i>Ejecutar Backup</button>
+            <button class="btn btn-danger btn-sm me-2" id="btn-cancel" onclick="cancelBackup()" style="display:none;"><i
+                    class="bi bi-stop-fill me-1"></i>Cancelar</button>
+            <button class="btn btn-light btn-sm" id="btn-backup" data-bs-toggle="modal" data-bs-target="#backupModal"><i
+                    class="bi bi-play-fill me-1"></i>Ejecutar Backup</button>
         </div>
     </div>
     <div class="card-body py-2">
@@ -355,7 +357,8 @@
 
 <!-- Group Charts -->
 <div class="card mb-3" id="group-charts-card" style="display: none;">
-    <div class="card-header py-2"><small class="text-muted"><i class="bi bi-bar-chart me-1"></i>Estadísticas por Grupo (24h)</small></div>
+    <div class="card-header py-2"><small class="text-muted"><i class="bi bi-bar-chart me-1"></i>Estadísticas por Grupo
+            (24h)</small></div>
     <div class="card-body py-2">
         <div class="row" id="group-charts-row"></div>
     </div>
@@ -373,7 +376,8 @@
         </div>
         <div class="d-flex gap-2 align-items-center">
             <span class="badge bg-secondary" id="active-filters-count" style="display: none;">0 filtros</span>
-            <button class="btn btn-sm btn-outline-secondary" onclick="loadJobs(1)" title="Recargar"><i class="bi bi-arrow-clockwise"></i></button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="loadJobs(1)" title="Recargar"><i
+                    class="bi bi-arrow-clockwise"></i></button>
         </div>
     </div>
 
@@ -946,7 +950,7 @@
                 var msgFull = (j.message || '').replace(/"/g, '&quot;');
                 var msgShort = (j.message || '').substring(0, 40);
                 if (j.message && j.message.length > 40) msgShort += '...';
-                tb.innerHTML += '<tr><td><small>' + ts + '</small></td><td><strong title="' + j.hostname + '">' + displayName + '</strong></td><td><small>' + (j.group_name || '-') + '</small></td><td>' + st + '</td><td><small class="text-muted" title="' + msgFull + '" style="cursor:help;">' + msgShort + '</small></td><td><a href="/files/' + j.vendor + '/' + j.hostname + '" class="btn btn-sm btn-outline-primary py-0">📁</a> <a href="/diff/' + j.vendor + '/' + j.hostname + '" class="btn btn-sm btn-outline-secondary py-0">📝</a> <button class="btn btn-sm btn-outline-success py-0" onclick="backupSingle(\'' + j.hostname + '\')">🔄</button></td></tr>';
+                tb.innerHTML += '<tr><td><small>' + ts + '</small></td><td><strong title="' + j.hostname + '">' + displayName + '</strong></td><td><small>' + (j.group_name || '-') + '</small></td><td>' + st + '</td><td><small class="text-muted" title="' + msgFull + '" style="cursor:help;">' + msgShort + '</small></td><td><a href="/files/' + encodeURIComponent(j.vendor) + '/' + encodeURIComponent(j.hostname) + '" class="btn btn-sm btn-outline-primary py-0">📁</a> <a href="/diff/' + encodeURIComponent(j.vendor) + '/' + encodeURIComponent(j.hostname) + '" class="btn btn-sm btn-outline-secondary py-0">📝</a> <button class="btn btn-sm btn-outline-success py-0" onclick="backupSingle(\'' + j.hostname + '\')">🔄</button></td></tr>';
             });
             document.getElementById('jobs-info').textContent = 'Pág ' + data.page + '/' + data.pages + ' (' + data.total + ')';
 
