@@ -293,43 +293,42 @@
             return;
         }
 
-        let html = '<nav><ul class="pagination pagination-sm mb-0">';
+        let html = '';
+        const pages = totalPages, current = page;
 
-        // Previous
-        html += `<li class="page-item ${page <= 1 ? 'disabled' : ''}">
-                    <a class="page-link" href="#" onclick="loadAuditLogs(${page - 1}); return false;">«</a>
-                 </li>`;
-
-        // Page numbers
-        const maxVisible = 7;
-        let start = Math.max(1, page - Math.floor(maxVisible / 2));
-        let end = Math.min(totalPages, start + maxVisible - 1);
-        if (end - start < maxVisible - 1) {
-            start = Math.max(1, end - maxVisible + 1);
+        // Dashboard-style pagination with ellipsis: « 1 2 ... 5 6 7 ... 39 40 »
+        function addBtn(p, label, active) {
+            const cls = active ? 'btn-primary' : 'btn-outline-secondary';
+            html += `<a class="btn btn-sm ${cls} me-1" href="#" onclick="loadAuditLogs(${p}); return false;">${label || p}</a>`;
+        }
+        function addEllipsis() {
+            html += '<span class="px-2 text-muted">...</span>';
         }
 
-        if (start > 1) {
-            html += `<li class="page-item"><a class="page-link" href="#" onclick="loadAuditLogs(1); return false;">1</a></li>`;
-            if (start > 2) html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+        if (current > 1) addBtn(current - 1, '«');
+
+        if (pages <= 9) {
+            for (let i = 1; i <= pages; i++) addBtn(i, i, i === current);
+        } else {
+            // Always show first 2
+            addBtn(1, 1, 1 === current);
+            addBtn(2, 2, 2 === current);
+
+            if (current > 4) addEllipsis();
+
+            const start = Math.max(3, current - 1);
+            const end = Math.min(pages - 2, current + 1);
+            for (let i = start; i <= end; i++) addBtn(i, i, i === current);
+
+            if (current < pages - 3) addEllipsis();
+
+            // Always show last 2
+            addBtn(pages - 1, pages - 1, pages - 1 === current);
+            addBtn(pages, pages, pages === current);
         }
 
-        for (let i = start; i <= end; i++) {
-            html += `<li class="page-item ${i === page ? 'active' : ''}">
-                        <a class="page-link" href="#" onclick="loadAuditLogs(${i}); return false;">${i}</a>
-                     </li>`;
-        }
+        if (current < pages) addBtn(current + 1, '»');
 
-        if (end < totalPages) {
-            if (end < totalPages - 1) html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
-            html += `<li class="page-item"><a class="page-link" href="#" onclick="loadAuditLogs(${totalPages}); return false;">${totalPages}</a></li>`;
-        }
-
-        // Next
-        html += `<li class="page-item ${page >= totalPages ? 'disabled' : ''}">
-                    <a class="page-link" href="#" onclick="loadAuditLogs(${page + 1}); return false;">»</a>
-                 </li>`;
-
-        html += '</ul></nav>';
         container.innerHTML = html;
     }
 

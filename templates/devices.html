@@ -77,7 +77,7 @@
 {% block content %}
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-hdd-network me-2"></i>Dispositivos Registrados</span>
+        <span>🖥️ Dispositivos Registrados</span>
         <div class="d-flex gap-2">
             <select class="form-select form-select-sm" id="group-by" style="width: auto;">
                 <option value="group">Agrupar por: Grupo</option>
@@ -87,8 +87,7 @@
                 <option value="vendor">Agrupar por: Vendor</option>
                 <option value="criticidad">Agrupar por: Criticidad</option>
             </select>
-            <button class="btn btn-light btn-sm" onclick="openAddDeviceModal()"><i
-                    class="bi bi-plus-lg me-1"></i>Agregar Dispositivo</button>
+            <button class="btn btn-light btn-sm" onclick="openAddDeviceModal()">➕ Agregar Dispositivo</button>
         </div>
     </div>
     <!-- Filter Bar Container -->
@@ -112,9 +111,7 @@
     </div>
     <div class="card-footer d-flex justify-content-between align-items-center py-2">
         <small id="devices-info" class="text-muted">Cargando...</small>
-        <nav>
-            <ul class="pagination pagination-sm mb-0" id="pagination"></ul>
-        </nav>
+        <div id="pagination"></div>
     </div>
 </div>
 
@@ -229,8 +226,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" onclick="saveDevice()"><i
-                        class="bi bi-floppy me-1"></i>Guardar</button>
+                <button type="button" class="btn btn-primary" onclick="saveDevice()">💾 Guardar</button>
             </div>
         </div>
     </div>
@@ -432,14 +428,40 @@
         pg.innerHTML = '';
         if (data.pages <= 1) return;
 
-        if (data.page > 1)
-            pg.innerHTML += '<li class="page-item"><a class="page-link" href="#" onclick="loadDevices(' + (data.page - 1) + ')">«</a></li>';
+        var pages = data.pages, current = data.page;
 
-        for (var i = Math.max(1, data.page - 2); i <= Math.min(data.pages, data.page + 2); i++)
-            pg.innerHTML += '<li class="page-item ' + (i === data.page ? 'active' : '') + '"><a class="page-link" href="#" onclick="loadDevices(' + i + ')">' + i + '</a></li>';
+        // Dashboard-style pagination with ellipsis: « 1 2 ... 5 6 7 ... 39 40 »
+        function addBtn(page, label, active) {
+            var cls = active ? 'btn-primary' : 'btn-outline-secondary';
+            pg.innerHTML += '<a class="btn btn-sm ' + cls + ' me-1" href="#" onclick="loadDevices(' + page + '); return false;">' + (label || page) + '</a>';
+        }
+        function addEllipsis() {
+            pg.innerHTML += '<span class="px-2 text-muted">...</span>';
+        }
 
-        if (data.page < data.pages)
-            pg.innerHTML += '<li class="page-item"><a class="page-link" href="#" onclick="loadDevices(' + (data.page + 1) + ')">»</a></li>';
+        if (current > 1) addBtn(current - 1, '«');
+
+        if (pages <= 9) {
+            for (var i = 1; i <= pages; i++) addBtn(i, i, i === current);
+        } else {
+            // Always show first 2
+            addBtn(1, 1, 1 === current);
+            addBtn(2, 2, 2 === current);
+
+            if (current > 4) addEllipsis();
+
+            var start = Math.max(3, current - 1);
+            var end = Math.min(pages - 2, current + 1);
+            for (var i = start; i <= end; i++) addBtn(i, i, i === current);
+
+            if (current < pages - 3) addEllipsis();
+
+            // Always show last 2
+            addBtn(pages - 1, pages - 1, pages - 1 === current);
+            addBtn(pages, pages, pages === current);
+        }
+
+        if (current < pages) addBtn(current + 1, '»');
     }
 
     function loadCatalogs() {
@@ -638,7 +660,7 @@
     function openAddDeviceModal() {
         if (!inventory.groups || inventory.groups.length === 0) { alert('Primero cree un grupo'); return; }
         document.getElementById('device-edit-mode').value = 'add';
-        document.getElementById('device-modal-title').innerHTML = '<i class="bi bi-plus-lg me-2"></i>Agregar Dispositivo';
+        document.getElementById('device-modal-title').textContent = '➕ Agregar Dispositivo';
         document.getElementById('device-modal-header').className = 'modal-header bg-primary text-white';
         document.getElementById('device-sysname').value = ''; document.getElementById('device-sysname').disabled = false;
         document.getElementById('sysname-warning').style.display = 'block';
@@ -658,7 +680,7 @@
         document.getElementById('device-edit-mode').value = 'edit';
         document.getElementById('device-original-group').value = grp;
         document.getElementById('device-original-sysname').value = device.sysname || device.hostname;
-        document.getElementById('device-modal-title').innerHTML = '<i class="bi bi-pencil me-2"></i>Editar Dispositivo';
+        document.getElementById('device-modal-title').textContent = '✏️ Editar Dispositivo';
         document.getElementById('device-modal-header').className = 'modal-header bg-warning text-dark';
         document.getElementById('device-group').value = grp;
         document.getElementById('device-sysname').value = device.sysname || device.hostname;

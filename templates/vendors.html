@@ -154,9 +154,9 @@
 {% block content %}
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-building me-2"></i>Vendors y Modelos</span>
+        <span>🏢 Vendors y Modelos</span>
         <button class="btn btn-light btn-sm" onclick="openAddVendorModal()">
-            <i class="bi bi-plus-lg"></i> Agregar Vendor
+            ➕ Agregar Vendor
         </button>
     </div>
     <div class="card-body">
@@ -183,7 +183,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header text-white" style="background: #0d6efd;">
-                <h5 class="modal-title" id="vendor-modal-title"><i class="bi bi-plus-lg me-2"></i>Agregar Vendor</h5>
+                <h5 class="modal-title" id="vendor-modal-title">➕ Agregar Vendor</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -201,8 +201,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" onclick="saveVendor()"><i
-                        class="bi bi-floppy me-1"></i>Guardar</button>
+                <button type="button" class="btn btn-primary" onclick="saveVendor()">💾 Guardar</button>
             </div>
         </div>
     </div>
@@ -213,7 +212,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header text-white" style="background: #6f42c1;">
-                <h5 class="modal-title" id="model-modal-title"><i class="bi bi-plus-lg me-2"></i>Agregar Modelo</h5>
+                <h5 class="modal-title" id="model-modal-title">➕ Agregar Modelo</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -244,8 +243,8 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn text-white" style="background: #6f42c1;" onclick="saveModel()"><i
-                        class="bi bi-floppy me-1"></i>Guardar</button>
+                <button type="button" class="btn text-white" style="background: #6f42c1;" onclick="saveModel()">💾
+                    Guardar</button>
             </div>
         </div>
     </div>
@@ -415,7 +414,7 @@
         document.getElementById('vendor-original-id').value = '';
         document.getElementById('vendor-id').value = '';
         document.getElementById('vendor-name').value = '';
-        document.getElementById('vendor-modal-title').innerHTML = '<i class="bi bi-plus-lg me-2"></i>Agregar Vendor';
+        document.getElementById('vendor-modal-title').textContent = '➕ Agregar Vendor';
         vendorModal.show();
     }
 
@@ -449,7 +448,7 @@
         document.getElementById('model-type').value = '';
         document.getElementById('model-desc').value = '';
         document.getElementById('model-vendor').value = vendorId || '';
-        document.getElementById('model-modal-title').innerHTML = '<i class="bi bi-plus-lg me-2"></i>Agregar Modelo';
+        document.getElementById('model-modal-title').textContent = '➕ Agregar Modelo';
         modelModal.show();
     }
 
@@ -463,7 +462,7 @@
         document.getElementById('model-name').value = m.name || '';
         document.getElementById('model-desc').value = m.description || '';
         document.getElementById('model-vendor').value = m.vendor || '';
-        document.getElementById('model-modal-title').innerHTML = '<i class="bi bi-pencil me-2"></i>Editar Modelo';
+        document.getElementById('model-modal-title').textContent = '✏️ Editar Modelo';
 
         // Ensure type select is populated before setting value
         populateTypeSelect();

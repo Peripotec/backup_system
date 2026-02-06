@@ -14,8 +14,8 @@
 {% block content %}
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-folder me-2"></i>Grupos de Equipos</span>
-        <button class="btn btn-light btn-sm" onclick="openAddGroupModal()"><i class="bi bi-plus-lg me-1"></i>Agregar
+        <span>📁 Grupos de Equipos</span>
+        <button class="btn btn-light btn-sm" onclick="openAddGroupModal()">➕ Agregar
             Grupo</button>
     </div>
 
@@ -91,7 +91,7 @@
             <form method="POST" action="/inventory/groups">
                 <textarea class="form-control" name="yaml_content" rows="15"
                     style="font-family: monospace; font-size: 11px;">{{ content }}</textarea>
-                <button type="submit" class="btn btn-warning mt-2"><i class="bi bi-floppy me-1"></i>Guardar
+                <button type="submit" class="btn btn-warning mt-2">💾 Guardar
                     YAML</button>
             </form>
         </div>
@@ -103,7 +103,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-success text-white" id="group-modal-header">
-                <h5 class="modal-title" id="group-modal-title"><i class="bi bi-plus-lg me-2"></i>Agregar Grupo</h5>
+                <h5 class="modal-title" id="group-modal-title">➕ Agregar Grupo</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -120,7 +120,7 @@
                 <div class="mb-3" id="vault-credentials-container">
                     <div class="text-muted">Cargando...</div>
                 </div>
-                <div class="form-text"><a href="/admin/vault" target="_blank"><i class="bi bi-plus-lg me-1"></i>Agregar
+                <div class="form-text"><a href="/admin/vault" target="_blank">➕ Agregar
                         credenciales al vault</a></div>
             </div>
             <div class="modal-footer">
@@ -207,7 +207,7 @@
 
     function openAddGroupModal() {
         document.getElementById('group-edit-mode').value = 'add';
-        document.getElementById('group-modal-title').innerHTML = '<i class="bi bi-plus-lg me-2"></i>Agregar Grupo';
+        document.getElementById('group-modal-title').textContent = '➕ Agregar Grupo';
         document.getElementById('group-modal-header').className = 'modal-header bg-success text-white';
         document.getElementById('group-name').value = ''; document.getElementById('group-name').disabled = false;
         loadVaultCredentials().then(() => { renderVaultCheckboxes([]); groupModal.show(); });
@@ -217,7 +217,7 @@
         var g = inventory.groups.find(gr => gr.name === name); if (!g) return;
         document.getElementById('group-edit-mode').value = 'edit';
         document.getElementById('group-original-name').value = name;
-        document.getElementById('group-modal-title').innerHTML = '<i class="bi bi-pencil me-2"></i>Editar Grupo';
+        document.getElementById('group-modal-title').textContent = '✏️ Editar Grupo';
         document.getElementById('group-modal-header').className = 'modal-header bg-warning text-dark';
         document.getElementById('group-name').value = name; document.getElementById('group-name').disabled = true;
         document.getElementById('group-vendor').value = g.vendor;
